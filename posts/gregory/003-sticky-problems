@@ -209,7 +209,9 @@ https://github.com/ruport/ruport/blob/master/lib/ruport/data/table.rb
 
 This time around, I'm going to take a very different approach, adding features to my Table object only when I have a real project that depends on that feature. Even when there is something the API doesn't support, I will try to work around the problem and see how much pain it causes me. Only after something causes me a lot of pain in one place or a little pain spread across several places will I add new features.
 
-Testing this idea is something that we're going to need to do collectively as homework, because not enough time passed between when I started this experiment and when I wrote this article. If you'd like to help, please take a look at the following repository on Github and follow the instructions in the README.
+I am very interested to see what kind of code is produced from this sort of aggressive use-case driven development. But testing this idea is something that we're going to need to do collectively as homework, because not enough time passed between when I started this experiment and when I wrote this article. 
+
+If you'd like to help, please take a look at the following repository on Github and follow the instructions in the README.
 
 http://github.com/sandal/waffle
 
