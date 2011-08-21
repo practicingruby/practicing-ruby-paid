@@ -1,3 +1,4 @@
+<pre>
 There are many ways to load Ruby code, and that has lead to confusion over the years. In this article, I will give you the back story behind several conventions seen in the wild and share some stories about how I use those conventions in my own code.
 
 The topic of code loading breaks up naturally into two sub-topics: loading code within your own project, and loading code from third party libraries. People tend to struggle more with loading code properly within their own projects than they do with loading code from third party libraries, and so that's what I'll focus on exclusively in this issue. That said, there is certainly room for a second article on dealing with external dependencies, so be sure to let me know if that interests you.
@@ -298,3 +299,4 @@ But really, optional dependencies are things I very rarely need to think about. 
 On a somewhat tangential note, I try to avoid things like dynamic require calls where I walk over a file list generated from something like Dir.glob() or the like. I also avoid using Bundler.require(), even when I use bundler. The reason I avoid these things is because I like to be able control exactly what order my files and my dependencies are being loaded in. It's possible to not have to worry about this sort of thing, but doing so requires a highly disciplined way of organizing your code so that files can be loaded independently. But that general opinion is possibly the subject of another post, and so I'll wrap up here.
 
 Hopefully this background story about the various ways to load code along with the few bits of advice I've offered in the end here have been useful to you. I am happy to answer whatever questions you have on the mailing list. I look forward to your feedback!
+</pre>
