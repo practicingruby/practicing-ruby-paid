@@ -1,4 +1,3 @@
-<pre>
 There are many ways to load Ruby code, and that has lead to confusion 
 over the years. In this article, I will give you the back story behind 
 several conventions seen in the wild and share some stories about how I 
@@ -539,4 +538,3 @@ Hopefully this background story about the various ways to load code
 along with the few bits of advice I've offered in the end here have been 
 useful to you. I am happy to answer whatever questions you have on the 
 mailing list. I look forward to your feedback!
-</pre>
