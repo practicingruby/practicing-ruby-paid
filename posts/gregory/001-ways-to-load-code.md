@@ -4,7 +4,7 @@ The topic of code loading breaks up naturally into two sub-topics: loading code 
 
 For now, let's focus on the basic mechanics of load(), auto_load(), require(), and require_relative(). We'll discuss how they work and then think about how they can be used within your own projects.
 
-- Kernel#load() 
+### Kernel#load() 
 
 Suppose we have a file called speaker.rb that contains the code shown below which wraps the OS X say command.
 
@@ -67,7 +67,7 @@ In this implementation, our approximation of load() is evaluating the loaded cod
 
 The existence of this option is a hint that while load() is suitable for code loading, it's more meant for implementing customized runners for Ruby code than it is for simply loading the classes and modules in your projects. So that means if you've been using load() on a daily basis, you might be using the wrong tool for the job at least some of the time. Of course, the same is true if you have never used load(), so there is room for improvement either way.
 
-- Kernel#autoload()
+### Kernel#autoload()
 
 Whether you've used it explicitly in your own projects or not, the concept of automatically loading code on demand should be familiar to any Rails developer. In Rails, none of the classes or modules you define get loaded until the first time they are referenced in your running program. There are two main benefits to this: faster startup time, and delayed loading of optional dependencies.
 
@@ -135,7 +135,7 @@ This sort of rigidity is frustrating, because unlike load() which does not care 
 
 In the context of Rails, particularly when working in development mode in which the whole environment gets reloaded on every request, some form of autoload makes sense. However, outside of that environment, the drawbacks of autoload() tend to outweigh the benefits, and so most pure Ruby projects tend to avoid it entirely by making heavy use of require(). 
 
-- Kernel#require()
+### Kernel#require()
 
 If you've written any code at all outside of Rails, odds are you've used require() before. It is actually quite similar to load(), but has a few additional features that come in handy. To illustrate how require() works, we will revisit our original speaker.rb file, the one that had a bit of code to be executed in the end of it.
 
@@ -176,7 +176,7 @@ The main benefit of using require() is that it gives the explicit, predictable l
 
 While using require() will take you far, it suffers from a pretty irritating problem that load() and autoload() also share with the way it looks up files. The require_relative() is meant to solve that problem, so we'll take a look at it now.
 
-- Kernel#require_relative()
+### Kernel#require_relative()
 
 Each time I referenced files using a relative path in the previous examples, I wrote the path to explicitly reference the current working directory. If you're used to using Ruby 1.8, this may come as a surprise to you. If you've been using Ruby 1.9.2, it may or may not appear like the natural thing to do. However, now is the time where I confess that it's almost always the wrong way to go about things.
 
@@ -207,8 +207,8 @@ as the ones shown below.
 
 Now, if we run bin/speaker.rb from the project root, things will work as expected.
 
-  $ ruby bin/ruby_say.rb "Hello World"
-  # ...
+    $ ruby bin/ruby_say.rb "Hello World"
+    # ...
 
 But if we ran this file from any other directory, it'd fail to work as expected, because the relative paths would be evaluated relative to wherever you executed the files from, not relative to where the files live on the file system. That means if you ran ruby_say.rb from within the bin/ folder, it would be looking for a file called bin/lib/speaker.rb.
 
@@ -224,8 +224,8 @@ In bin/ruby_say.rb, we rewrite our code to match what is shown below.
 
 Now, because we've added the lib/ folder to the lookup path for all require() calls in our application, we can modify lib/speaker.rb to match what is shown below.
 
-  require "speaker/audible"
-  require "speaker/visual"
+    require "speaker/audible"
+    require "speaker/visual"
 
 Now, it is possible to run the ruby_say.rb program from any folder within our computer, as long as we tell ruby where to find it. That means you can run it directly from within the bin/ folder, or even with an absolute path.
 
@@ -264,7 +264,7 @@ This looks and feels the way that we'd like to think require() would work. The f
 
 Of course, it is not a perfect solution. In some cases, it does not work as expected, such as in Rackup files. Additionally, because it's a Ruby 1.9 feature, it's not built into Ruby 1.8.7. The former cannot be worked around, but the latter can be. I'll go into a bit more detail about both of these issues in the recommendations section that's coming up right now. 
 
-- Conventions and Recommendations
+### Conventions and Recommendations
 
 If you remember one thing from this article, it's that whenever it's possible to use require_relative() and there isn't an obviously better solution in your context, it's probably the right tool to reach for. It has the least amount of dark corners and pretty much just works.
 
