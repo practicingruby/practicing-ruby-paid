@@ -149,24 +149,24 @@ If you've written any code at all outside of Rails, odds are you've used require
 
 If we attempt to load this code twice via require(), we immediately see how it differs from load():
 
->> require "./speaker.rb" # 1
-=> true
->> require "./speaker.rb" # 2
-=> false
+    >> require "./speaker.rb" # 1
+    => true
+    >> require "./speaker.rb" # 2
+    => false
 
 When I ran require() the first time, the familiar robotic voice greeted me, and then the function returned a true value. The second time I ran it, nothing happened and the function returned false. This is a feature, and not a bug. The code below is a crude approximation of what is going on under the hood in require().
 
-$LOADED_BY_FAKE_REQUIRE = []
+    $LOADED_BY_FAKE_REQUIRE = []
 
-def fake_require(file)
-  full_path = File.expand_path(file)
-  return false if $LOADED_BY_FAKE_REQUIRE.include?(full_path)
-  
-  load full_path
-  $LOADED_BY_FAKE_REQUIRE << full_path
+    def fake_require(file)
+      full_path = File.expand_path(file)
+      return false if $LOADED_BY_FAKE_REQUIRE.include?(full_path)
+      
+      load full_path
+      $LOADED_BY_FAKE_REQUIRE << full_path
 
-  return true
-end
+      return true
+    end
 
 This behavior ensures that each file loaded by require() is loaded exactly once, even if the require() calls appear in many places. This means that updates to those files will take effect after they have been loaded once. While this makes require() less suitable than load() for quick exploratory code loading, it does prevent programs from needlessly reloading the same code again and again, similar to how autoload() works once a constant has been loaded.
 
