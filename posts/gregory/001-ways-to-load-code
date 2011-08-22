@@ -548,7 +548,7 @@ helper functions, and one such function eventually got adopted into Ruby
 require_relative(), we can simplify our calls significantly, while 
 preserving the 'don't touch the $LOAD_PATH variable' ethos.
 
-    # bin/ruby_say.rb
+    # bin/ruby_calendar.rb
     require_relative "../lib/calendar"
 
     case ARGV.size
