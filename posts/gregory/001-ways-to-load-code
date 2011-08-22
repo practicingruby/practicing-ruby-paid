@@ -506,7 +506,7 @@ the bin/ folder, or even with an absolute path.
     $ ruby /Users/seacreature/devel/ruby_calendar/bin/ruby_calendar.rb
 
 This approach works, and was quite common in Ruby for some time. Then, 
-people began to get itchy about it, because it really is a big hammer. 
+people began to get itchy about it, because it is quite overkill.
 It effectively adds an entire folder to the $LOAD_PATH, giving Ruby one 
 more place it has to look on every require, and possibly leading to 
 unexpected naming conflicts between libraries.
