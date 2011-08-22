@@ -183,7 +183,7 @@ is happening.
 
 In this implementation, our approximation of load() is evaluating the 
 loaded code in the context of an anonymous module, which essentially 
-wraps everything in a name space. This prevents any of the constants 
+wraps everything in a namespace. This prevents any of the constants 
 defined in the loaded code from being defined within the global 
 namespace, including any class or module definitions.
 
