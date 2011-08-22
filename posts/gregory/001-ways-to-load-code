@@ -173,8 +173,8 @@ changed. Here's a clue.
 
 Surely the Calendar class must have been defined *somewhere*, because 
 the program worked as expected. So is going on here? Take a look 
-at the following code and it should give you a better picture 
-if you're feeling stumped.
+at the following code and it should give you a clearer picture of what
+is happening.
 
     def fake_load(file)
       Module.new.module_eval(File.read(file))
