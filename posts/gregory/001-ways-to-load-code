@@ -128,8 +128,8 @@ modification, these warnings should make a lot of sense. The first time
 we called load(), it defined the initialize() and to_s() methods for 
 the Calendar class. The second time we called load(), that class and 
 its methods already existed, so it redefined them. This is not 
-necessarily a sign of a bug, but Ruby is smart enough to know it might
-be something you should look at.
+necessarily a sign of a bug, but Ruby is smart enough to know that it 
+might be something you should look at.
 
 Ultimately, these warnings are Ruby telling you that there is probably a 
 better way for you to do what you're trying to do. One interesting way 
