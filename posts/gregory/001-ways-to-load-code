@@ -461,7 +461,7 @@ as the ones shown below.
     require "lib/calendar/year"
     require "lib/calendar/month"
 
-Now, if we run bin/speaker.rb from the project root, things will work as 
+Now if we run bin/speaker.rb from the project root, things will work as 
 expected.
 
     $ ruby bin/ruby_calendar.rb 2011
@@ -490,8 +490,7 @@ In bin/ruby_calendar.rb, we rewrite our code to match what is shown below.
       raise "Invalid arguments"
     end
 
-
-Now, because we've added the lib/ folder to the lookup path for all 
+Because we've added the lib/ folder to the lookup path for all 
 require() calls in our application, we can modify lib/calendar.rb to 
 match what is shown below.
 
