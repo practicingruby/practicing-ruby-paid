@@ -391,7 +391,7 @@ once a constant has been loaded.
 
 Another interesting property of require() is that you can omit the file 
 extension when loading your code. This means that require("./calendar") 
-will work just as well as require("./calendae.rb"). While this may seem 
+will work just as well as require("./calendar.rb"). While this may seem 
 like a small feature, the reason it exists is because Ruby can actually 
 load more than just Ruby files. When you omit an extension on a file 
 loaded with require, it will attempt to load the file with the ".rb" 
