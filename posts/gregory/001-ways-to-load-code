@@ -125,7 +125,7 @@ restarting irb. But we'd also be greeted with some warnings in the process.
 
 If we remember that Ruby classes and modules are permanently open to 
 modification, these warnings should make a lot of sense. The first time 
-we called load(), it defined the initialize() and say() methods for 
+we called load(), it defined the initialize() and to_s() methods for 
 the Calendar class. The second time we called load(), that class and 
 its methods already existed, so it redefined them. This is not 
 necessarily a sign of a bug, but Ruby is smart enough to know it might
