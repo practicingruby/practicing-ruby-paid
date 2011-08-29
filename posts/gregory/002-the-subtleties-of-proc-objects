@@ -2,7 +2,7 @@ All Proc objects have the property of closure, which allows the code within the 
 
     class Vector
       def initialize(data)
-        @data = data
+        @data = data 
       end
 
       def *(num)

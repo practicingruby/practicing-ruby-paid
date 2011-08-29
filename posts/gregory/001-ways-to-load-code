@@ -196,7 +196,7 @@ job at least some of the time. It should be clear by the end of this
 article why that is the case.
 
 Now that we have looked at the most simple code loading behavior Ruby
-has to offer, we will jump straight into the deepend and explore one
+has to offer, we will jump straight into the deep end and explore one
 of its most complex options: loading code on demand via
 Kernel#autoload.
 
@@ -261,7 +261,7 @@ implemented, to wrap your head around the idea. While the code below is
 evil and should never be used for anything but educational purposes, it 
 simulates the load on demand behavior nicely.
 
-    $load_hooks = {}
+    $load_hooks = Hash.new
 
     module Kernel
       def fake_autoload(constant_name, file_name)
@@ -369,7 +369,7 @@ it, nothing happened and the function returned false. This is a feature,
 and not a bug. The code below is a crude approximation of what is going 
 on under the hood in require().
 
-    $LOADED_BY_FAKE_REQUIRE = []
+    $LOADED_BY_FAKE_REQUIRE = Array.new
 
     def fake_require(file)
       full_path = File.expand_path(file)
@@ -580,7 +580,7 @@ of these issues in the recommendations section that's coming up right now.
 
 If you remember one thing from this article, it's that whenever it's 
 possible to use require_relative() and there isn't an obviously better 
-solution in your particualr sitaution, it's probably the right tool 
+solution in your particular situation, it's probably the right tool 
 to reach for. It has the least amount of dark corners and pretty much 
 just works.
 
