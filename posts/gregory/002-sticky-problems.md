@@ -6,7 +6,7 @@ Every time I've attempted to work on this project in the past, I've set myself u
 
 In the past I had always been bogged down by thinking of all the possible ways my table structure was going to be used. This time around, I forced myself to think of a single, specific use case to focus on first. Instantly, the idea of of performing some manipulations on sales data came to mind, because I hate the reporting features PayPal gives me.
 
-Typically I'd start by creating some fake data that was themed to fit this scenario, but lately I've been experimenting more and more with trying to work with real data where possible. I've had mixed results with that, but this time around, a few minutes of cleanup work got me from a nastily formatted CSV file with way too much information to a nice array of arrays in JSON format that's concise enough that you can see the entire contents of the file below.
+Typically I'd start by creating some fake data that was themed to fit this scenario, but lately I've been experimenting more and more with trying to work with real data whenever it isn't too inconvenient. I've had mixed results with that, but this time around, a few minutes of cleanup work got me from a nastily formatted CSV file with way too much information to a nice array of arrays in JSON format that's concise enough that you can see the entire contents of the file below.
 
     [["Date","Payments Received","Amount Received",
       "Payment Fees","Net Amount"],
@@ -47,7 +47,7 @@ My next step was to come up with a question about this data that would be easy t
     row = data.find { |x| x[0] == "6/14/2011" }
     p row[1] #=> "2"
 
-If instead I chose a question that required too much thought to answer, the judgemental side of my brain would have kicked in too early, and derailed my efforts to get even the smallest start on the problem. However, by picking an extremely simple problem to work on, I managed to turn the judge's voice in my head into a collaborator rather than an interrogator.
+If instead I chose a question that required too much thought to answer, the judgmental side of my brain would have kicked in too early, and derailed my efforts to get even the smallest start on the problem. However, by picking an extremely simple problem to work on, I managed to turn the judge's voice in my head into a collaborator rather than an interrogator.
 
 He looked at these three lines of code and instantly started with his criticisms.
 
@@ -55,14 +55,14 @@ JUDGE: _"This is just terrible! If the order of the columns in your data changes
 
 Addressing all his points right away would have been a bad idea, because it would have led me into a spiral of self-doubt. Instead, I just looked for one thing we could agree on so that we had some common ground to start from. The criticism about the column order dependency was a pretty good one, and so I decided to work with that.
 
-Whenever I think of good APIs I've seen for table interactions, the approach ActiveRecord 3 always comes to mind. It seemed to fit this particular problem well, so I cautiously asked the judge for his opinion on the following code.
+Whenever I think of good APIs I've seen for table interactions, the approach ActiveRecord 3 takes always comes to mind. It seemed to fit this particular problem well, so I cautiously asked the judge for his opinion on the following code.
 
     table = Table.new(data)
     row   = table.where("Date" => "6/14/2011").first
 
     p row["Payments Received"] #=> "2"
 
-JUDGE: _"Hmm... that .first call looks weird, but this is a LOT better than your last attempt. I won't be convinced until I see an implementation, though. Also, do you really think baking in the assumption that there are headers in the first row of your data is a good idea?"_
+JUDGE: _"Hmm... that `first()` call looks weird, but this is a LOT better than your last attempt. I won't be convinced until I see an implementation, though. Also, do you really think baking in the assumption that there are headers in the first row of your data is a good idea?"_
 
 His point about headers was a good one, and knowing that this was the closest thing I could get to approval from the judge, I started writing some tests that took his suggestion into account.
 
@@ -128,7 +128,7 @@ This was too much to take in all at once, and I felt overwhelmed. I knew that re
 
 ### Lesson 2: Seek ways to defer tough design decisions
 
-After catching my breath, I realized that I could address many of the judge's points without actually making any major decisions about implementation details. I could do this by introducing a Record object, but keeping its core implementation similar to my previous example. The test below describes what I was shooting for.
+After catching my breath, I realized that I could address many of the judge's points without actually making any major decisions about implementation details. I could do this by introducing a `Record` object. This object would initially have a core implementation similar to my previous example, but would make it much easier to introduce changes down the line. The test below describes what I was shooting for.
 
     describe "Record" do
       it "must allow access to attributes by name" do
@@ -154,7 +154,7 @@ After catching my breath, I realized that I could address many of the judge's po
       end
     end
 
-To pass these tests, I essentially pushed logic down from the `Table` class into a newly created `Record` class.
+To pass these tests, I pushed logic down from the `Table` class into a newly created `Record` class.
 
     class Record
       def initialize(values, attribute_names)
@@ -192,11 +192,11 @@ The thing that made this new `Table` code "Not Bad" in the eyes of the judge is 
 
 ### Lesson 3: Let real use cases be your guide, not imagined scenarios
 
-In his various outbursts, the judge pointed out lots of different things that he felt my Table code should do. Here is a short list of them, for those who haven't been keeping track:
+In his various outbursts, the judge pointed out lots of different things that he felt my `Table` code should do. Here is a short list of them, for those who haven't been keeping track:
 
 * Should be able to set column data types (i.e. convert a column that contains numeric strings into numeric values)
 * Should be able to deserialize array-of-array datastructure from JSON
-* Should provide a way to match a single record rather than calling .first on the array returned by Table#where
+* Should provide a way to match a single record rather than calling `first()` on the array returned by `Table#where`
 * Should preserve data ordering explicitly
 * Should support both by column and by row access
 * Should be able to rename columns
@@ -216,7 +216,4 @@ http://github.com/sandal/waffle
 
 ### Reflections
 
-Hopefully by following in my footsteps, you were able to notice some similarities to your own struggles with sticky projects. The judgmental and creative sides of your brain can be made to work together, you just need to trick them a little bit.
-
-Since this article was just a story about an approach that seems to have worked for me, your mileage will probably vary. Still, I'd love to hear what you think of the ideas I mentioned here, especially if you have a different way of dealing with this kind of problem.
-
+Hopefully by following in my footsteps, you were able to notice some similarities to your own struggles with sticky projects. Since this article was just a story about an approach that seems to have worked for me, your mileage will probably vary. Still, I'd love to hear what you think of the ideas I mentioned here, especially if you have a different way of dealing with this kind of problem.
