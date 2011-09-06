@@ -19,15 +19,15 @@ end
 => [7, 14, 21]
 ```
 
-In this example, when we call `@data.map` and provide it with a code block to execute, we have no trouble accessing the `num` variable. However, this local variable is not defined within the block's local scope, it's defined within the scope of the caller (the `Vector#*`) method. To see that these are truly two different scopes, check out the following examples which clarify the relationship between the `Proc` object's code and its caller.
+In this example, when we call `@data.map` and provide it with a code block to execute, we have no trouble accessing the `num` variable. However, this local variable is not defined within the block's local scope, it's defined within the enclosing scope (the `Vector#*`) method. To see that these are truly two different scopes, check out the following examples which clarify the relationship between the `Proc` object's code and its enclosing scope.
 
 ```ruby
-def proc_can_see_locals_of_caller
+def proc_can_see_outer_scope_locals
   y = 10
   lambda { p defined?(y) }.call
 end
 
-def proc_can_modify_locals_of_caller
+def proc_can_modify_outer_scope_locals
   y = 10
   lambda { y = 20 }.call
   p y
@@ -38,12 +38,12 @@ def proc_destroys_block_local_vars_on_exit
   p defined?(y)
 end
 
-proc_can_see_locals_of_caller            #=> "local-variable"
-proc_can_modify_locals_of_caller         #=> 20
+proc_can_see_outer_scope_locals          #=> "local-variable"
+proc_can_modify_outer_scope_locals       #=> 20
 proc_destroys_block_local_vars_on_exit   #=> nil
 ```
 
-Our first example demonstrates that a `Proc` object's code can access the local variables of its caller, which is exactly what is going on in our `Vector` example. The second example is an answer to a question which arises naturally from the first example, which is whether or not the `Proc` object's code can modify the contents of the caller's local variables. The third example simply verifies that once the `Proc` object's code has been called, any variable set up within its own code block are wiped out and are not visible from the caller's scope.
+Our first example demonstrates that a `Proc` object's code can access the local variables of its enclosing scope, which is exactly what is going on in our `Vector` example. The second example is an answer to a question which arises naturally from the first example, which is whether or not the `Proc` object's code can modify the contents of the local variables that are defined in its enclosing scope. The third example simply verifies that once the `Proc` object's code has been called, any variable set up within its own code block are wiped out and are not visible from the outer scope.
 
 ### Closures make memory management complicated
 
