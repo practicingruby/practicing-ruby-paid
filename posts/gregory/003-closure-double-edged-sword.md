@@ -1,6 +1,6 @@
 Every `Proc` object is a closure, which means that each code block you write captures references to data from its surrounding scope for later use. While that sounds highly academic, it has some very practical benefits that you're probably already aware of, as well as some drawbacks that you may or may not know about.
 
-## Closures make block-based APIs feel natural
+### Closures make block-based APIs feel natural
 
 The closure property of `Proc` objects is what makes the following snippet of code possible.
 
@@ -45,7 +45,7 @@ proc_destroys_block_local_vars_on_exit   #=> nil
 
 Our first example demonstrates that a `Proc` object's code can access the local variables of its caller, which is exactly what is going on in our `Vector` example. The second example is an answer to a question which arises naturally from the first example, which is whether or not the `Proc` object's code can modify the contents of the caller's local variables. The third example simply verifies that once the `Proc` object's code has been called, any variable set up within its own code block are wiped out and are not visible from the caller's scope.
 
-## Closures make memory management complicated
+### Closures make memory management complicated
 
 While it takes some getting used to, the behaviors provided by the closure property in `Proc` objects are relatively easy to understand and have many practical benefits. However, they do give rise to a complex behavior that sometimes leads to surprising results. Check out the example below for a bit of a head trip.
 
@@ -71,9 +71,9 @@ In the code above, we see the two `Proc` objects returned by the `new_counter()`
 
 If used correctly, this behavior can be a feature. It's not one that you or I would use day to day, but because this approach can be used to maintain state in a purely functional way, it is at least academically interesting. However, in most ordinary use cases, it is much more likely that this behavior is going to cause a memory leak than it is to do anything helpful for you, since it leads to lots of seemingly throwaway data stored in local variables getting dangling references that prevent that data from being garbage collected.
 
-## Not all closure-based memory leaks are so obvious
+### Not all closure-based memory leaks are so obvious
 
-Capturing references to locals from the enclosing scope for longer than you meant to isn't the only way that you can cause leaks with `Proc` objects. Every `Proc` object also creates a reference to the object that it was defined within, which is an even harder to notice leak. Let's take a look at an example of how that can come back to bite you.
+Capturing references to locals from the enclosing scope for longer than necessary isn't the only way that you can cause leaks with `Proc` objects. Every `Proc` object also creates a reference to the object that it was defined within, which is an even harder to notice leak. Let's take a look at an example of how that can come back to bite you.
 
 Suppose we have a configurable logger module and we want to record a message to the logs each time a new `User` object is created. If we were going for something simple and straightforward, we might end up with code similar to what you see below.
 
@@ -148,7 +148,7 @@ The reason why our `LazyLogger` leaks is that when `LazyLogger.log` is called wi
 
 These kinds of problems can be very easy to run into, and very hard to work around. In fact, I've have been having trouble figuring out a way to preserve the `LazyLogger` behavior in a way that'd plug the leak or at mitigate it somewhat. My core assumption was that if I added a `@log_actions = []` line to `LazyLogger.flush`, that the dangling references to the users would be cleaned up each time that method was called, because the `Proc` objects themselves would be garbage collected. No matter what I tried, I was unable to get this to work, which tells me that I've got a leak somewhere else in my program that's not the one I was intentionally creating.
 
-## Reflections
+### Reflections
 
 Because we use code blocks so freely and tend to ignore the closure property, many Ruby applications and libraries have memory leaks in them. Even fairly experienced developers (myself included) don't necessarily design with these issues in mind. Those who do need have firm memory constraints to deal with are forced to use a variety of awkward techniques to overcome this problem. 
 
@@ -156,7 +156,7 @@ One possible way to avoid closure-based memory leaks is to use `Method` objects 
 
 I don't want to give much more advice on handling memory management, because it's not an area that I'm particularly strong at. I welcome any corrections to what I've said here, if you find that I've made a mistake anywhere.
 
-## Questions / Discussion Points
+### Questions / Discussion Points
 
 This article wasn't especially long, but the material is quite dense and I don't want to push my luck by covering too many concepts at once. That said, I've provided a few exercises those who want to dig a bit deeper, and would be happy to continue discussing the topic in general now that we have a starting point. Leave a comment if something is on your mind!
 
