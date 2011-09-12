@@ -83,8 +83,7 @@ refactorings are much easier to pull off with a safety net. At a minimum, tests
 should exist at the interaction points between collaborators, so that immediate
 effects of refactoring can be detected and dealt with.
 
-### The value of testing goes up as the number of collaborators increase, and
-also as the lifecycle of the project increases.
+### The value of testing goes up as the number of collaborators increase, and also as the lifecycle of the project increases.
 
 If many people are working on a program, tests make it possible to work on one
 area of a project without necessarily understanding the whole system. Tests also
