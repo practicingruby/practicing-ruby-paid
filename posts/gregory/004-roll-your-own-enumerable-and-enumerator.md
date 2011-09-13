@@ -1,12 +1,10 @@
-iWhen I first came to Ruby, one of the things that impressed me the most was the killer features provided by the `Enumerable` module. Methods like `map`, `select`, and `sort_by` were my gateway drug, and it didn't take long before my nose was buried in the Pickaxe book on a near constant basis until I mastered all of what `Enumerable` had to offer. I swear, when I finally understood why one might want to use `reduce` from time to time, it was a near religious experience for me.
+When I first came to Ruby, one of the things that impressed me the most was the killer features provided by the `Enumerable` module. I eventually also came to love `Enumerator`, even though it took me a long time to figure out what it was and what one might use it for.
 
-Working with `Enumerator` on the other hand, was a totally different story. I had no idea what an `Enumerator` was, or why one would want to use one. The fact that earlier versions of Ruby did not integrate the construct nearly as seamlessly as modern versions do combined with the lack of obvious use cases made it hard for me to have the same excitement that I had about `Enumerable`. But then eventually, I developed a need for `map_with_index`, something that ActiveSupport provided but didn't exist in pure Ruby. Seeing how elegantly this method could be implemented using `Enumerator` broke down my resistance, and I gradually came to love the construct.
+As a beginner, I had always assumed that these features worked through some dark form of magic that was buried deep within the Ruby interpreter. With so much left to learn just to be productive, I was content to leave the details about what was going on under the hood as something to study much later. After some time passed, I came to regret that decision thanks to David A. Black.
 
-I had always assumed that these features worked through some dark form of magic that was buried deep within the Ruby interpreter. As a beginner with so much left to learn just to be productive, I was content to leave the details about what was going on under the hood as something to study much later. After some time passed, I came to regret that decision thanks to David A. Black.
+David teaches Ruby to raw beginners by not only showing them what `Enumerable` can do, but also by making them implement their own version of it! This is a profoundly good exercise, because it exposes how non-magical the features are: if you understand `yield`, you can build all the methods in `Enumerable`. Similarly, the interesting features of `Enumerator` can be implemented fairly easily if you use Ruby's `Fiber` construct.
 
-David teaches Ruby to raw beginners by not only showing them what `Enumerable` can do, but also by making them implement their own version of it! This is a profoundly good exercise, because it exposes how non-magical the features are: if you understand while loops and yield, you can build all the methods in `Enumerable`. Recently, I discovered that the same can be said for `Enumerator`, as long as your understanding of `Enumerable` is solid, and if you're not averse to learning some basic details about the relatively new `Fiber` construct.
-
-In this article, we're going to work through the exercise of rolling your own subset of the functionality provided by `Enumerable` and `Enumerator`, discussing each detail along the way. For some of you, this may be the first time you've really thought about these concepts, but it is bound to be a review for others. No matter what your skill level is, I recommend working slowly and deliberately through these materials, running the code on your own machine and playing around with it. An understanding of the elegant design of these constructs will undoubtedly give you a great source of inspiration that you can draw from when designing new constructs in your own programs.
+In this article, we're going to work through the exercise of rolling your own subset of the functionality provided by `Enumerable` and `Enumerator`, discussing each detail along the way. Regardless of your skill level, an understanding of the elegant design of these constructs will undoubtedly give you a great source of inspiration that you can draw from when designing new constructs in your own programs.
 
 ### Setting the stage with some tests
 
@@ -128,7 +126,7 @@ module FakeEnumerable
 end
 ```
 
-I then began working on implementing the methods one by one, starting with `map`. The key thing to realize while working with `Enumerable` is that each method will build on top of the `each` method in some way, using it in combination with `yield` to produce its results. The `map` method is possibly the most straightforward non-trivial combination of these features, as you can see in the implementation below.
+I then began working on implementing the methods one by one, starting with `map`. The key thing to realize while working with `Enumerable` is that every feature will build on top of the `each` method in some way, using it in combination with `yield` to produce its results. The `map` feature is possibly the most straightforward non-trivial combination of these operations, as you can see in the implementation below.
 
 ```ruby
 def map 
@@ -198,7 +196,7 @@ Without a pre-defined initial value, we set the initial value to the first eleme
 
 If you are having trouble following the implementation of `reduce()`, don't worry about it. It's definitely one of the more complex `Enumerable` methods, and if you try to implement a few of the others and then return to studying `reduce()`, you may have better luck. But the beautiful thing is that if you ignore the `reduce(:+)` syntactic sugar, it introduces no new concepts beyond that what is used to implement `map()`. If you feel you understand `map()` but not `reduce()`, it's a sign that you may need to brush up on your fundamentals, such as how `yield` works.
 
-If you've been following along at home, you should at this point be passing all your `FakeEnumerable` tests. That means it's time to get started on our `FakeEnumerator`!
+If you've been following along at home, you should at this point be passing all your `FakeEnumerable` tests. That means it's time to get started on our `FakeEnumerator`.
 
 ### Implementing the `FakeEnumerator` class
 
@@ -210,6 +208,9 @@ class FakeEnumerator
   end
 
   def with_index
+  end
+
+  def rewind
   end
 end
 ```
@@ -228,7 +229,7 @@ module FakeEnumerable
 end
 ```
 
-While technically speaking I should have also updated all my other `FakeEnumerable` methods, it's not important to do so because our tests don't cover it and that change introduce no new concepts to discuss. With this change to `map`, my tests all failed rather than error out, which meant it was time to start working on the implementation code.
+While technically speaking I should have also updated all my other `FakeEnumerable` methods, it's not important to do so because our tests don't cover it and that change introduce no new concepts to discuss. With this change to `map`, my tests all failed rather than erroring out, which meant it was time to start working on the implementation code.
 
 But before we get started, it's worth reflecting on the core purpose of an `Enumerator`, which I haven't talked about yet. At its core, an `Enumerator` is simply a proxy object which mixes in `Enumerable` and then delegates its `each` method to some other iterator provided by the object it wraps. This turns an internal iterator into an external one, which allows you to pass it around and manipulate it as an object. 
 
@@ -246,27 +247,42 @@ class FakeEnumerator
   def each(&block)
     @target.send(@iter, &block) 
   end
+
+   # other methods go here...
 end
 ```
 
 Here we see that `each` uses `send` to call the original iterator method on the target object. Other than that, this is the ordinary pattern we've seen in implementing other collections. The next step is to implement our `next` method, which is a bit tricky.
 
-What we need to be able to do is iterate once, then pause and return a value. Then, when `next` is called again, we need to be able to advance one more iteration and repeat the process. We could do something like run the whole iteration and cache the results into an array, then do some sort of indexing operation, but that's both inefficient and impractical for certain applications. This problem made me realize that it Ruby's `Fiber` construct might be a good fit, because it specifically allows you to jump in and out of a chunk of code on demand. So I decided to try that out and see how far I could get. After some fumbling around, I got the code below to pass the test.
+What we need to be able to do is iterate once, then pause and return a value. Then, when `next` is called again, we need to be able to advance one more iteration and repeat the process. We could do something like run the whole iteration and cache the results into an array, then do some sort of indexing operation, but that's both inefficient and impractical for certain applications. This problem made me realize that Ruby's `Fiber` construct might be a good fit, because it specifically allows you to jump in and out of a chunk of code on demand. So I decided to try that out and see how far I could get. After some fumbling around, I got the code below to pass the test.
 
 ```ruby
-def next
-  @fiber ||= Fiber.new do
-    each { |e| Fiber.yield(e) }
-    raise StopIteration
-  end
+# loading the fiber stdlib gives us some extra features, including Fiber#alive?
+require "fiber" 
 
-  @fiber.resume
-end
+class FakeEnumerator
+  def next
+    @fiber ||= Fiber.new do
+      each { |e| Fiber.yield(e) }
+
+      raise StopIteration
+    end
+
+    if @fiber.alive?
+      @fiber.resume 
+    else
+      raise StopIteration
+    end
+  end
 ```
 
-This code is hard to read because it isn't really a linear flow, but I'll do my best to explain it using my very limited knowledge of how the `Fiber` construct works. Basically, when you call `Fiber#new` with a block, the code in that block isn't executed immediately. Instead, execution begins when `Fiber#resume` is called. Each time a `Fiber#yield` call is encountered, control is returned to the caller of `Fiber#resume`, with the value that was passed to yield returned. Each subsequent `Fiber#resume` will pick up execution back at the point where the last `Fiber#yield` call was made, rather than at the beginning of the code block. This process will continue until no more `Fiber#yield` calls remain, and then the last executed line of code will be returned as the final value of `Fiber#resume`. Any additional attempts to call `Fiber#resume` will result in a `FiberError`, because there is nothing left to execute.
+This code is hard to read because it isn't really a linear flow, but I'll do my best to explain it using my very limited knowledge of how the `Fiber` construct works. Basically, when you call `Fiber#new` with a block, the code in that block isn't executed immediately. Instead, execution begins when `Fiber#resume` is called. Each time a `Fiber#yield` call is encountered, control is returned to the caller of `Fiber#resume`, with the value that was passed to `Fiber#yield` returned. Each subsequent `Fiber#resume` will pick up execution back at the point where the last `Fiber#yield` call was made, rather than at the beginning of the code block. This process will continue until no more `Fiber#yield` calls remain, and then the last executed line of code will be returned as the final value of `Fiber#resume`. Any additional attempts to call `Fiber#resume` will result in a `FiberError`, because there is nothing left to execute.
 
-If you re-read the above paragraph a couple times and compare it to the definition of my `next` method, it should start to make sense. But if it's causing your brain to melt, you should check out the [Fiber documentation](http://ruby-doc.org/core-1.9/classes/Fiber.html) which is reasonably helpful. The very short story about this whole thing is that using a `Fiber` in our `next` definition lets us keep track of just how far into the `each` iteration we are, and jump back into the iterator on demand to get the next value. This makes it possible for `next` to work with infinite iterators, such as `Enumerable#cycle`. While we won't get into implementation details, the code below should give some hints at why this is a useful feature.
+If you re-read the above paragraph a couple times and compare it to the definition of my `next` method, it should start to make sense. But if it's causing your brain to melt, you should check out the [Fiber documentation](http://ruby-doc.org/core-1.9/classes/Fiber.html) which is reasonably helpful. 
+
+The very short story about this whole thing is that using a `Fiber` in our `next` definition lets us keep track of just how far into the `each` iteration we are, and jump back into the iterator on demand to get the next value. I prevent the `FiberError` from ever occurring by checking to see if the `Fiber` object is still alive before calling `resume`. But I also need to make it so the last executed statement within the `Fiber` raises a `StopIteration` error as well, to prevent it from returning the result of `each`, which would be the collection itself. This is a kludge, and if you have a better idea for how to handle this case, please leave me a comment.
+
+The use of `Fiber` objects to implement `next` makes it possible to work with infinite iterators, such as `Enumerable#cycle`. While we won't get into implementation details, the code below should give some hints at why this is a useful feature.
 
 ```ruby
 >> row_colors = [:red, :green].cycle
@@ -283,7 +299,7 @@ If you re-read the above paragraph a couple times and compare it to the definiti
 
 As cool as that is, and as much as it makes me want to dig into implementing it, I have to imagine that you're getting tired by now. Heck, I've already slept twice since I started writing this article! So let's hurry up and finish implementing `rewind` and `each_index`, so that we can wrap things up.
 
-I found a way to implement `rewind` that is trivial, but something about it makes me wonder if I've orphaned a `Fiber` object somewhere and whether that has weird GC implications or not. But nonetheless, because our implementation of `next` depends on the caching of a `Fiber` object to keep track of where it is in its iteration, the easiest way to rewind back to the beginning state is to simply wipe out that object! The code below gets my `rewind` tests passing.
+I found a way to implement `rewind` that is trivial, but something about it makes me wonder if I've orphaned a `Fiber` object somewhere and whether that has weird GC implications or not. But nonetheless, because our implementation of `next` depends on the caching of a `Fiber` object to keep track of where it is in its iteration, the easiest way to rewind back to the beginning state is to simply wipe out that object. The code below gets my `rewind` tests passing.
 
 ```ruby
 def rewind
@@ -304,7 +320,7 @@ def with_index
 end
 ```
 
-Here, I did the brute force thing and maintained my own counter. I then made a small modification to control flow so that rather than yielding just the element on each iteration, I yield both the element and its index. Keep in mind that the `each` call here is a proxy to some other iterator on another collection. This is what gives us the ability to call `@list.map.with_index` and get `map` behavior rather than `each` behavior. While you won't use it every day, this sort of around filter using `yield` is a good pattern to know about.
+Here, I did the brute force thing and maintained my own counter. I then made a small modification to control flow so that rather than yielding just the element on each iteration, both the element and its index are yielded. Keep in mind that the `each` call here is a proxy to some other iterator on another collection. This is what gives us the ability to call `@list.map.with_index` and get `map` behavior rather than `each` behavior. While you won't use it every day, this sort of around filter using `yield` is a good pattern to know about.
 
 With this code written, my full test suite finally went green. Even though I've done these exercises a dozen times before, I still learned a thing or two while writing this article, and imagine there is still plenty left for me to learn as well. How about you?
 
@@ -312,6 +328,6 @@ With this code written, my full test suite finally went green. Even though I've 
 
 This is definitely one of my favorite exercises for getting to understand Ruby better. I'm not usually big on contrived practice drills, but there is something about peeling back the magic on features that look really complex on the surface that gives me a great deal of satisfaction. I find that even if my solutions are very much cheap counterfeits of what Ruby must really be doing, it still helps tremendously to have implemented these features in any way I know how, because it gives me a mental model of my own construction to view the features from.
 
-If you enjoyed this exercise, there are a number of things that you could do to squeeze even more out of it. The most obvious of which is just to implement a few more of the `Enumerable` and `Enumerator` methods. As you do that, you'll find areas where the implementations we built out today are clearly insufficient or would be better off written another way. That's fine, because it will teach you even more about how these features hang together. You can also discuss and improve upon the examples I've provided, as there is certainly room for refactoring in several of them. Lastly, if you want to take a more serious approach to things, you could take a look at the tests in [RubySpec](https://github.com/rubyspec/rubyspec), and the implementations in [Rubinius](https://github.com/rubinius/rubinius). Implementing Ruby in Ruby isn't just something folks do for fun these days, and if you really enjoyed working on these low level features, you might consider contributing to Rubinius in some way. The maintainers of that project are amazing and you can learn a tremendous amount that way.
+If you enjoyed this exercise, there are a number of things that you could do to squeeze even more out of it. The easiest way to do so is to implement a few more of the `Enumerable` and `Enumerator` methods. As you do that, you'll find areas where the implementations we built out today are clearly insufficient or would be better off written another way. That's fine, because it will teach you even more about how these features hang together. You can also discuss and improve upon the examples I've provided, as there is certainly room for refactoring in several of them. Lastly, if you want to take a more serious approach to things, you could take a look at the tests in [RubySpec](https://github.com/rubyspec/rubyspec), and the implementations in [Rubinius](https://github.com/rubinius/rubinius). Implementing Ruby in Ruby isn't just something folks do for fun these days, and if you really enjoyed working on these low level features, you might consider contributing to Rubinius in some way. The maintainers of that project are amazing and you can learn a tremendous amount that way.
 
 Of course, not everyone has time to contribute to a Ruby implementation, even if it's for the purpose of advancing their own understanding of Ruby. So I'd certainly settle for a comment here sharing your experiences with this exercise.
