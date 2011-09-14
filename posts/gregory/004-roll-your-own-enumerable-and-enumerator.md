@@ -274,6 +274,7 @@ class FakeEnumerator
       raise StopIteration
     end
   end
+end
 ```
 
 This code is hard to read because it isn't really a linear flow, but I'll do my best to explain it using my very limited knowledge of how the `Fiber` construct works. Basically, when you call `Fiber#new` with a block, the code in that block isn't executed immediately. Instead, execution begins when `Fiber#resume` is called. Each time a `Fiber#yield` call is encountered, control is returned to the caller of `Fiber#resume`, with the value that was passed to `Fiber#yield` returned. Each subsequent `Fiber#resume` will pick up execution back at the point where the last `Fiber#yield` call was made, rather than at the beginning of the code block. This process will continue until no more `Fiber#yield` calls remain, and then the last executed line of code will be returned as the final value of `Fiber#resume`. Any additional attempts to call `Fiber#resume` will result in a `FiberError`, because there is nothing left to execute.
