@@ -1,4 +1,4 @@
-## The middle path to automated testing
+u## The middle path to automated testing
 
 ### Make sure to have some Test First / TDD experience
 
@@ -36,14 +36,6 @@ tests doubling as integration tests of your internals. Limit the use of mocks to
 the following things: 1) external resources 2) highly performance intensive
 tasks 3) very hard to set up resources. Try to couple anything mocked with real
 tests that are run on demand.
-
-### Use MiniTest::Spec if possible
-
-MiniTest is in the Ruby standard library, so it "just works". Moreover, it is
-trivial to understand the entire library inside and out with just a small amount
-of code reading. RSpec is very powerful (and incredibly featureful), but its
-complexity along with the tools around it give testing too much emphasis. You
-don't need RSpec unless you *want* to be test obsessed. 
 
 ### Design for Testability
 
@@ -121,6 +113,14 @@ Just have a good policy in place for post-production applications that anything
 that gets merged into the main line comes with tests, or is obviously not going
 to interfere with critical operations.
 
+### Use MiniTest::Spec if possible
+
+MiniTest is in the Ruby standard library, so it "just works". Moreover, it is
+trivial to understand the entire library inside and out with just a small amount
+of code reading. RSpec is very powerful (and incredibly featureful), but its
+complexity along with the tools around it give testing too much emphasis. You
+don't need RSpec unless you *want* to be test obsessed. 
+
 ### You don't need a story framework to practice outside-in development
 
 I like to think outside-in as much as possibly, applying the concept recursively
@@ -128,3 +128,5 @@ as I get to lower and lower levels of my system. But this is a state of mind,
 not a particular format. Given/When/Then is a construct that I feel is far too
 formal for most applications. Just think in terms of the real value and behaviors
 of your code!
+
+
