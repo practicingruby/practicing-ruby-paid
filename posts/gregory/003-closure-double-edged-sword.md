@@ -146,7 +146,7 @@ p ObjectSpace.each_object(User).count #=> 1
 
 The reason why our `LazyLogger` leaks is that when `LazyLogger.log` is called with a block from within `User#initialize`, a new `Proc` object is created that holds a reference to that user object. That `Proc` object ends up getting stored in the `@log_actions` array in `LazyLogger` module, and needs to be kept alive at least until `LazyLogger.flush` is called in order for everything to work as expected. That means that our `User` objects that we expected to get thrown away still have live references to them, and so don't end up getting garbage collected.
 
-These kinds of problems can be very easy to run into, and very hard to work around. In fact, I've have been having trouble figuring out a way to preserve the `LazyLogger` behavior in a way that'd plug the leak or at mitigate it somewhat. My core assumption was that if I added a `@log_actions = []` line to `LazyLogger.flush`, that the dangling references to the users would be cleaned up each time that method was called, because the `Proc` objects themselves would be garbage collected. No matter what I tried, I was unable to get this to work, which tells me that I've got a leak somewhere else in my program that's not the one I was intentionally creating.
+These kinds of problems can be very easy to run into, and very hard to work around. In fact, I've have been having trouble figuring out a way to preserve the `LazyLogger` behavior in a way that'd plug the leak or at mitigate it somewhat.  In this particular case, it'd be possible to call `clear` on the `@log_actions` array whenever `flush` is called, and that would free up the references to the `User` instances. But that still ends up keeping unnecessary references alive longer than you might want, and the pattern doesn't necessarily apply generally to other scenarios.
 
 ### Reflections
 
@@ -167,3 +167,4 @@ This article wasn't especially long, but the material is quite dense and I don't
 * Share your thoughts on when you need to worry about the downsides of closures, and when you don't. Come up with some metrics for determining what issues to look out for.
 
 * CHALLENGE: Explain why my `ObjectSpace` example showed 1 `User` instance, and not 0!
+

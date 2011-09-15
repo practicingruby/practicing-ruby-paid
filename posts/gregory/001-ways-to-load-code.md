@@ -12,7 +12,7 @@ issue. That said, there is certainly room for a second article on
 dealing with external dependencies, so be sure to let me know if that 
 interests you.
 
-For now, let's focus on the basic mechanics of `load()`, `auto_load()`, 
+For now, I would like to focus on the basic mechanics of `load()`, `auto_load()`, 
 `require()`, and `require_relative()`. We'll discuss how they work and then 
 think about how they can be used within your own projects.
 
