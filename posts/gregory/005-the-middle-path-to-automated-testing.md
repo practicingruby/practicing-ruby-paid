@@ -2,11 +2,11 @@
 
 ### Make sure to have some Test First / TDD experience
 
-You won't know what you can flex on and what you can't without experiencing the full Test-First experience. You won't know what pitfalls to look out for when it comes to under testing or over testing if you don't drink at least some of the kool-aid.
+You won't know what you can flex on and what you can't without experiencing the full test first experience. You won't know what pitfalls to look out for when it comes to under testing or over testing if you don't drink at least some of the kool-aid.
 
-It's important to get back into this flow from time to time, but feel free to pick and choose the projects you use it on. You don't HAVE to write test first all the time, and some projects may not need tests at all. 
+It's important to get back into this flow from time to time, but you can definitely pick and choose the projects you use it on. You don't HAVE to write test first all the time, and some projects may not need tests at all. 
 
-Test First works best for me on fairly well defined problems. If the solution is obvious, TDD gives me a nice, clean path to it. But if I'm not sure what the *right problem* is to solve, or whether my app will be a success, I prefer doing spikes and layering in tests once things stabilize more.
+Writing tests first works best for me on fairly well defined problems. If the solution is obvious, TDD gives me a nice, clean path to it. But if I'm not sure what the *right problem* is to solve, or whether my app will be a success, I prefer doing spikes and layering in tests once things stabilize more.
 
 ### Regressions should always have tests
 
