@@ -1,6 +1,6 @@
 ## The middle path to automated testing
 
-### Make sure to have some Test First / TDD experience
+### Make sure to have some formal TDD experience under your belt
 
 You won't know what you can flex on and what you can't without experiencing the full test first experience. You won't know what pitfalls to look out for when it comes to under testing or over testing if you don't drink at least some of the kool-aid.
 
