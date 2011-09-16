@@ -16,8 +16,23 @@ In this article, I have collected my thoughts on what I feel is more pragmatic a
 
 ## Things that matter in (almost) every project
 
+### Building a good set of examples and seed data
+
+### Testing bug fixes
+
+### Testing business logic / algorithms
+
+### Testing critical paths
+
+### Testing core building blocks
+
 ## Things that matter after your code ships
 
+### Full test coverage for new features or non-trivial changes to existing features
+
+### Sufficient test coverage for any non-trivial refactoring
+
+### Cleanup and removal of stale or obsolete tests
 
 ---------------
 
