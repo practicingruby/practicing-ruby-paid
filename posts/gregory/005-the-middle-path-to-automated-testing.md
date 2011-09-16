@@ -4,6 +4,16 @@ In this article, I have collected my thoughts on what I feel is more pragmatic a
 
 ## Things that don't matter as much as they seem
 
+### Choosing the best testing framework
+
+### Writing tests before writing implementation code
+
+### Having 100% code coverage
+
+### Adopting a "mockist" testing strategy
+
+### Using formal user stories and/or a story runner
+
 ## Things that matter in (almost) every project
 
 ## Things that matter after your code ships
