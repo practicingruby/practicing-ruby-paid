@@ -1,10 +1,8 @@
 Automated testing is tremendously useful, but is not something to obsess over.  Too many people spread dogmatic views about testing, and many others feel guilty about not living up to the rigid expectations set by TDD purists. We have collectedly generated more heat than light when it comes to testing, and I think it's about time for us to change our perspective a little bit.
 
-In this article, I have collected my thoughts on what I feel is more pragmatic approach to testing that doesn't need to carry the label of "Test Driven Development" and its associated baggage. My goal is to lay out middle-of-the-road path for those who want to experience many of the benefits of automated testing without feeling boxed in by rigid and excessively formal methodologies.
+In this article, I have collected my thoughts on what I feel is more pragmatic approach to testing that doesn't need to carry the label of "Test Driven Development" and its associated baggage. My goal is to lay out middle-of-the-road path for those who want to experience many of the benefits of automated testing without feeling boxed in by rigid and excessively formal methodologies. But before I can do that, I need to point out some of the things that people tend to get tripped up on which make getting started with testing harder than it needs to be.
 
-Because of the cultural background which surrounds this topic, it is just as important to discuss what you don't need to worry about when it comes to automated testing as much it is to talk about the things you should be concerned about. For that reason, I'll start off with a few things which I think have been overemphasized in the past which you can feel free to relax a bit about. I'll then move on to discuss the things that matter in pretty much every project, as well as some additional things that are important to consider once your code has shipped and is in active use.
-
-## Things that don't matter as much as some folks want you to believe
+## Things that don't matter as much as they seem
 
 ## Things that matter in (almost) every project
 
