@@ -2,7 +2,7 @@ Automated testing is tremendously useful, but is not something to obsess over.  
 
 In this article, I have collected my thoughts on what I feel is more pragmatic approach to testing that doesn't need to carry the label of "Test Driven Development" and its associated baggage. My goal is to lay out middle-of-the-road path for those who want to experience many of the benefits of automated testing without feeling boxed in by rigid and excessively formal methodologies.
 
-Because of the cultural background which surrounds this topic, it is just as important to discuss what you don't need to worry about when it comes to automated testing as much it is to talk about the things you should be concerned about. For that reason, I'll start off with a few things which I think have been overemphasized in the past which you can feel free to relax a bit about.
+Because of the cultural background which surrounds this topic, it is just as important to discuss what you don't need to worry about when it comes to automated testing as much it is to talk about the things you should be concerned about. For that reason, I'll start off with a few things which I think have been overemphasized in the past which you can feel free to relax a bit about. I'll then move on to discuss the things that matter in pretty much every project, as well as some additional things that are important to consider once your code has shipped and is in active use.
 
 ## Things that don't matter as much as some folks want you to believe
 
