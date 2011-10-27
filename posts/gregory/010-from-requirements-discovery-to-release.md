@@ -6,7 +6,7 @@ My angle of approach was fairly simple: I decided to take a greenfield project f
 
 ### Brainstorming for project ideas
 
-A few days before writing this article, I was actually trying to come up with ideas for another Practicing Ruby article I'm planning on writing. I wanted to do something on event-driven programming and thought that some sort of tower defense game might be a fun example to play with. However, the ideas I had in mind were too complicated, and so I gradually simplified my game ideas until they turned into something vaguely resembling a simple board game.
+A few days before writing this article, I was actually trying to come up with ideas for another Practicing Ruby article I had planned to write. I wanted to do something on event-driven programming and thought that some sort of tower defense game might be a fun example to play with. However, the ideas I had in mind were too complicated, and so I gradually simplified my game ideas until they turned into something vaguely resembling a simple board game.
 
 Eventually I forgot that my main goal was to get an article written and decided to focus on developing my board game ideas instead. With my wife's help, I managed over the course of a weekend to come up with a fairly playable board game which beared no resemblence to a tower defense game and would serve as a terrible event-driven programming exercise. However, I still wanted to implement a software version of the game because it would make it much easier for us to analyze and share with others.
 
@@ -14,13 +14,86 @@ My intuition said that the project was something that would take me a day or so 
 
 ### Establishing the 10,000 foot view
 
-The difference betweeen inventing a new game and implementing an existing one is that you need to come up with a whole new vocabulary to describe your game elements and actions. We were able to cheat a little bit while playing face to face with a physical board, so I didn't realize just how informal our ruleset was until I decided to implement a software version of the game. I immediately sketched out the important components and actions and defined them before going any farther.
+The difference betweeen inventing a new game and implementing an existing one is that you need to come up with a whole new vocabulary to describe your game elements and actions. My wife and I were able to cheat a little bit while playing face to face with a physical board, so I didn't realize just how informal our ruleset was until I decided to implement a software version of the game. I immediately sketched out the important components and actions and defined them before going any farther.
 
 <div align="center">
-![Sketch of game elements and actions](http://farm7.static.flickr.com/6229/6283525185_35bd4c96a8_z.jpg)
+<img src="http://farm7.static.flickr.com/6229/6283525185_35bd4c96a8_z.jpg">
 </div>
 
+Having a sense of what the overall structure of the game was in a bit more formal terms made it possible for me to begin mapping these concepts onto object relationships. The image below shows my first crack at figuring out what classes I'd need and how they would interact with each other.
+
+<div align="center">
+<img src="http://farm7.static.flickr.com/6049/6283524127_032ab93d77_z.jpg">
+</div>
+
+It's worth noting that in both of these diagrams, I was making no attempt at being exhaustive, nor was I expecting these designs to survive beyond an initial spike. But because moving boxes and arrows around on a whiteboard is easier than rewriting code, I tend to start off any moderately complex project this way.
+
+With just these two whiteboard sketches, I had most of what I needed to start coding. The only important thing left to be done before I could fire up my text editor was to come up with a suitable name for the game. After trying and failing at finding a variant of "All your base" which wasn't an existing gem name, I eventually settled on "Stack Wars". I picked this name because 
+a big part of the physical game has to do with building little stacks of army tiles in the territories you control. Despite the fact that the name doesn't mean much in the electronic version, it was an unclaimed name that could easily be _CamelCased_ and _snake_cased_, so I decided to go with it.
+
+At this point I reflected on how much truth there is to the claim that naming things is one of the two fundamentally hard problems in computer science. Whether you're building a game or modeling a complex business process, you need to define lots of terms before you can go about describing the interactions of your system. When you consider the added impact that complex dependencies can make it hard to change names later, it's hard to understate the importance of this stage of the process.
+
+However, getting bogged down in naming considerations can be just as harmful as paying no attention to the problem at all. For this reason, I decided to leave some of the details of the game in my head so that I could defer some naming decisions until I saw how the code was coming together. That allowed me to start coding a bit earlier at the cost of having a bit of an incomplete roadmap.
+
 ### Picking some low hanging fruit
+
+Every time I start a new project, I try to identify a small task that I can finish quickly so that I can get some instant gratification. I find that an early success is important for my morale, and also that the inability to find a meaningful task early on in a project is a sign of a flawed design.
+
+I try to avoid starting with the boring stuff like setting up boilerplate code and building trivial container objects. Instead I typically attempt to build a small but useful end-to-end feature. For the purposes of this game, an ASCII representation of the battlefield seemed like a good place to start. I started this task by creating a file called _sample_ui.txt_ with the contents you see below.
+
+```
+       0      1      2      3      4      5      6      7      8 
+    BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
+ 0  (___)--(___)--(___)--(___)--(___)--(___)--(___)--(___)--(___)
+      |      |      |      |      |      |      |      |      |
+ 1  (___)--(___)--(___)--(___)--(___)--(___)--(___)--(___)--(___)
+      |      |      |      |      |      |      |      |      |
+ 2  (___)--(___)--(___)--(___)--(___)--(___)--(___)--(___)--(___)
+      |      |      |      |      |      |      |      |      |
+ 3  (___)--(___)--(___)--(___)--(___)--(___)--(___)--(___)--(___)
+      |      |      |      |      |      |      |      |      |
+ 4  (___)--(___)--(___)--(___)--(___)--(___)--(___)--(___)--(___)
+      |      |      |      |      |      |      |      |      |
+ 5  (___)--(___)--(___)--(___)--(___)--(___)--(___)--(___)--(___)
+      |      |      |      |      |      |      |      |      |
+ 6  (___)--(___)--(___)--(___)--(___)--(___)--(___)--(___)--(___)
+      |      |      |      |      |      |      |      |      |
+ 7  (B 2)--(___)--(___)--(___)--(___)--(___)--(___)--(___)--(___)
+      |      |      |      |      |      |      |      |      |
+ 8  (___)--(W 2)--(___)--(___)--(___)--(___)--(___)--(___)--(___)
+    WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
+```
+
+In order to implement this visualization, I needed to make some decisions about how the battlefield data was going to be represented, but I wanted to defer as much of that as possible. After [asking for some about this problem](https://gist.github.com/1310883), I opted to write the visualization code against a simple array of arrays of Ruby primitives that could be trivially be transformed to and from JSON. Within a few minutes, I had a script that was generating similar output to my original sketch.
+
+```ruby
+require "json"
+
+data = JSON.parse(File.read(ARGV[0]))
+
+color_to_symbol = { "black" => "B", "white" => "W" }
+
+output = data.map do |row|
+  row.map do |color, strength|
+    if color == "unclaimed"
+      "(___)"
+    else
+      "(#{color_to_symbol[color]}#{strength.to_s.rjust(2)})"
+    end
+  end.join("--") + "\n"
+end.join("  |      |      |      |      |      |      |      |      |\n")
+
+puts output
+```
+
+Although this script is a messy little hack, it got me started on the project in a way that was immediately useful. In the process of creating this little visualization tool, I ended up thinking about a lot of tangentially related topics. In particular, I started to brainstorm about the following topics:
+
+* What fixture data I would need for testing various game actions
+* What the coordinate system for the `Battlefield` would be
+* What data the `Territory` object would need to contain
+* What format to use for inputting moves via the command line interface
+
+The fact that I was thinking about all of these things was a sign that my initial spike was successful. However, it was also a sign that I should spend some time laying out the foundation for a real object-oriented project rather than continuing to hack things together as if I was writing a ball of Perl scripts.
 
 ### Laying out some scaffolding
 
@@ -39,18 +112,6 @@ The difference betweeen inventing a new game and implementing an existing one is
 
 Had to cut a 0.1.1 ;)
 
-
-
-
-The 10,000 foot view
--------------------------------------------------------
-
-**** come up with a name [stackwars]
-
-**** whiteboards
-  - establish a vocabulary
-  - establish requirements
-  - establish major objects and their relationships
 
 
 Solve an easy problem
