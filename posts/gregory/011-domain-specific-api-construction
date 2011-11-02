@@ -50,11 +50,11 @@ class Person
 end
 ```
 
-This is powerful stuff. As soon as you recognize that things like `attr_accessor` are not some special hardcoded keywords or macros that only the Ruby interpreter can use, a ton of possibilities open up.
+This is powerful stuff. As soon as you recognize that things like `attr_accessor` are not some special keywords or macros that only the Ruby interpreter can define, a ton of possibilities open up.
 
 ### Implementing a Rails-style `before_filter` construct
 
-Rails uses class methods all over the place to make it look and feel like its own dialect of Ruby. As a single example, it is possible to register callbacks to be run before a given controller action is executed using the `before_filter` macro. The simplified example below is a rough approximation of what this functionality looks like in Rails.
+Rails uses class methods all over the place to make it look and feel like its own dialect of Ruby. As a single example, it is possible to register callbacks to be run before a given controller action is executed using the `before_filter` feature. The simplified example below is a rough approximation of what this functionality looks like in Rails.
 
 ```ruby
 class ApplicationController < BasicController
@@ -90,7 +90,7 @@ class PeopleController < ApplicationController
 end
 ```
 
-Suppose that `BasicController` provides us with the `before_filter` method as well as an `execute` method which will execute a given action, but first trigger any `before_filter` callbacks. Then we'd expect the code to work something like what is shown below.
+Suppose that `BasicController` provides us with the `before_filter` method as well as an `execute` method which will execute a given action, but first trigger any `before_filter` callbacks. Then we'd expect the `execute` method to have the following behavior. 
 
 ```ruby
 controller = PeopleController.new
@@ -117,7 +117,7 @@ creating a new person
 =end 
 ```
 
-Implementing this sort of behavior isn't as trivial as implementing a clone of `attr_accessor`, because it requires persisting some data at the class level rather than simply defining a few methods. Things are further complicated by the fact that we want filters to propagate down through the inheritance chain, allowing a given class to apply both its own filters as well as the filters of its ancestors. Fortunately, Ruby provides facilities to deal with both of these concerns, resulting in a fairly simple implementation of our `BasicController` class:
+Implementing this sort of behavior isn't as trivial as implementing a clone of `attr_accessor`, because in this scenario we need to manipulate some class level data. Things are further complicated by the fact that we want filters to propagate down through the inheritance chain, allowing a given class to apply both its own filters as well as the filters of its ancestors. Fortunately, Ruby provides facilities to deal with both of these concerns, resulting in the following implementation of our `BasicController` class:
 
 ```ruby
 class BasicController
@@ -161,7 +161,7 @@ While we've only gone through two examples of class level macros so far, the tec
 
 ### Implementing a cheap counterfeit of Mail's API
 
-Historically, sending email in Ruby has always been an ugly and cumbersome process. However, the _mail_ gem changed all of that not too long ago. Using Mail, sending a message can be as simple as the code shown below.
+Historically, sending email in Ruby has always been an ugly and cumbersome process. However, the Mail gem changed all of that not too long ago. Using Mail, sending a message can be as simple as the code shown below.
 
 ```ruby
 Mail.deliver do
@@ -172,7 +172,7 @@ Mail.deliver do
 end
 ```
 
-The nice thing about Mail is that in addition to this convenient syntax, it is still possible to construct and deliver as an ordinary Ruby object.
+The nice thing about Mail is that in addition to this convenient syntax, it is still possible to work with a more ordinary looking API as well.
 
 ```ruby
 mail         = Mail::Message.new
@@ -250,7 +250,7 @@ There are only two things that make this class definition different from that of
   mail.from "gregory.t.brown@gmail.com"
 ```
 
-This approach to implementing this pattern is fairly common and shows up in a lot of different Ruby projects, including my own libraries. By accepting a bit more complexity in our accessor code, we end up with a more palatable API in both scenarios, and it feels like a good trade. However, the dual purpose accessors always felt like a bit of a hack to me, and I recently found a different approach that is probably a better way to go about things. The code below shows how I would attack this problem in new projects:
+This approach to implementing this pattern is fairly common and shows up in a lot of different Ruby projects, including my own libraries. By accepting a bit more complexity in our accessor code, we end up with a more palatable API in both scenarios, and it feels like a good trade. However, the dual purpose accessors always felt like a bit of a hack to me, and I recently found a different approach that is I think is a bit more solid. The code below shows how I would attack this problem in new projects:
 
 ```ruby
 class FakeMail
@@ -297,9 +297,9 @@ class FakeMail
 end
 ```
 
-This code is a drop-in replacement for what I wrote before, but is quite different under the hood. Rather than putting the syntactic sugar directly onto the `Message` object, I create a `MessageBuilder` object for this purpose. When `FakeMail.deliver` is called, the `MessageBuilder` object ends up being the target context for the block to be evaluated in rather than the `Message` object. This effectively splits the code which implements the sugary interface from the domain model, eliminating the need for dual purpose accessors.
+This code is a drop-in replacement for what I wrote before, but is quite different under the hood. Rather than putting the syntactic sugar directly onto the `Message` object, I create a `MessageBuilder` object for this purpose. When `FakeMail.deliver` is called, the `MessageBuilder` object ends up being the target context for the block to be evaluated in rather than the `Message` object. This effectively splits the code the implements the sugary interface from the code that implements the domain model, eliminating the need for dual purpose accessors.
 
-There is another benefit that comes along with taking this approach, but it is more subtle. Whenever we use `instance_eval`, it evaluates the block as if you were executing your statements within the object it was called on. This means it is possible to bypass private methods and otherwise mess around with objects in ways that are typically reserved for internal use. By switching the context to a simple facade object whose only purpose is to provide some domain specific API calls for the user, it's less likely that a user will accidentally call internal methods or otherwise stomp on the internals of the system's domain objects.
+There is another benefit that comes along with taking this approach, but it is more subtle. Whenever we use `instance_eval`, it evaluates the block as if you were executing your statements within the object it was called on. This means it is possible to bypass private methods and otherwise mess around with objects in ways that are typically reserved for internal use. By switching the context to a simple facade object whose only purpose is to provide some domain specific API calls for the user, it's less likely that someone will accidentally call internal methods or otherwise stomp on the internals of the system's domain objects.
 
 It's worth mentioning that even this improved approach to implementing an `instance_eval` based interface comes with its own limitations. For example, whenever you use `instance_eval`, it makes it so that `self` within the block points to the object the block is being evaluated against rather than the object in the the surrounding scope. The closure property of Ruby code blocks makes it possible to access local variables, but if you reference instance variables, they will refer to the object your block is being evaluated against. This can confuse beginners and even some more experienced Ruby developers. 
 
@@ -355,9 +355,9 @@ module FakeBuilder
 end
 ```
 
-Despite how compact this code is, it gives us a lot to talk about. The heart of this code relies on the use of the `method_missing` hook to convert unknown method calls into XML strings. There are few special things to note about this code, even if you are already familiar with `method_missing`.
+Despite how compact this code is, it gives us a lot to talk about. The heart of the implemenation relies on the use of a `method_missing` hook to convert unknown method calls into XML tags. There are few special things to note about this code, even if you are already familiar with `method_missing`.
 
-Typically it is expected that if you implement a `method_missing` hook is used, you should be as conservative as possible about what you handle in your hook and then use `super` to delegate everything else upstream. So for example, if you were to write a dynamic finder like what ActiveRecord provides (i.e. something like `find_by_some_attribute`), you would make it so that your `method_missing` call matched the method call on something like like `/^find_by_(.*)/`. However, in the case of Builder all method calls captured by `method_missing` are potentially valid XML tags, and so `super` is not needed in its `method_missing` hook.
+Typically it is expected that if you implement a `method_missing` hook, you should be as conservative as possible about what you handle in your hook and then use `super` to delegate everything else upstream. For example, if you were to write dynamic finders similar to the ones that ActiveRecord provides (i.e. something like `find_by_some_attribute`), you would make it so that your `method_missing` hook only handled method calls which matched the pattern `/^find_by_(.*)/`. However, in the case of Builder all method calls captured by `method_missing` are potentially valid XML tags, and so `super` is not needed in its `method_missing` hook.
 
 On a somewhat similar note, certain methods that are provided by `Object` are actually valid XML tag names that wouldn't be too rare to come across. In my example, I intentionally used XML data representing a class of students to illustrate this point, because it forces us to call `builder.class`. By inheriting from `BasicObject` instead of `Object`, we end up with far fewer reserved words on our object, which decreases the likelihood that we will accidentally call a method that does exist. While we don't think about it often, all `method_missing` based APIs hinge on the idea that your hook will only be triggered by calls to undefined methods. In many cases we don't need to think about this, but in the case of Builder (and perhaps when building proxy objects), we need to work with a blank slate object.
 
@@ -373,17 +373,17 @@ end
 puts xml
 ```
 
-However, Builder cleverly exploits block local variable assignment to allow contextual abbreviations so that the syntax more closely mirrors the underlying structure. These days we occasionally see `Object#tap` being used for similar purposes, but at the time that `Builder` did this it was quite novel.
+However, Builder cleverly exploits block local variable assignment to allow contextual abbreviations so that the syntax more closely mirrors the underlying structure. These days we occasionally see `Object#tap` being used for similar purposes, but at the time that Builder did this it was quite novel.
 
-While it's tempting to write Builder off as just a weird little bit of Ruby magic, it has some surprisingly practical benefits to its design. Unlike my crappy prototype, the real Builder library will automatically escape your strings so that they're XML safe. Also, because Builder essentially uses Ruby to build up an abstract syntax tree (AST) internally, it could possibly be used to render to multiple different output formats. While I've not actually tried it out myself, it looks like someone has already made a [JSON builder](https://github.com/nov/jsonbuilder) which matches the same API but emits JSON hashes instead of XML documents.
+While it's tempting to write Builder off as just a weird little bit of Ruby magic, it has some surprisingly practical benefits to its design. Unlike my crappy prototype, the real Builder library will automatically escape your strings so that they're XML safe. Also, because Builder essentially uses Ruby to build up an abstract syntax tree (AST) internally, it could possibly be used to render to multiple different output formats. While I've not actually tried it out myself, it looks like someone has already made a [JSON builder](https://github.com/nov/jsonbuilder) which matches the same API but emits JSON hashes instead of XML tags.
 
-With those benefits in mind, this is a good pattern to use for problems that involves outputting documents which nicely map to Ruby syntax as an intermediate format. But as I mentioned before, those circumstances are rare in most day to day programming work, and so you shouldn't be too eager to use this technique as often as possible. That having been said, you could have some fantastic fun adding this sort of freewheeling code to various classes that don't actually need it in your production applications and then telling your coworkers I told you to do it. I'll leave it up to you to decide whether that's a good idea or not :)
+With those benefits in mind, this is a good pattern to use for problems that involve outputting documents that nicely map to Ruby syntax as an intermediate format. But as I mentioned before, those circumstances are rare in most day to day programming work, and so you shouldn't be too eager to use this technique as often as possible. That having been said, you could have some fantastic fun adding this sort of freewheeling code to various classes that don't actually need it in your production applications and then telling your coworkers I told you to do it. I'll leave it up to you to decide whether that's a good idea or not :)
 
 With four tough examples down and only two more to go, we're on the home stretch. Take a quick break if you're feeling tired, and then let's move on to the next pattern. 
 
 ### Implementing Contest on top of MiniTest
 
-When I used to write code for Ruby 1.8, I liked using the Test::Unit standard library for testing, but I wanted context support and full text test cases similar to what was found in RSpec. I eventually settled on using the [contest](https://github.com/citrusbyte/contest) library, because it was such a simple and elegant extension and gave me exactly what I needed.
+When I used to write code for Ruby 1.8, I liked using the Test::Unit standard library for testing, but I wanted context support and full text test cases similar to what was found in RSpec. I eventually settled on using the [contest](https://github.com/citrusbyte/contest) library, because it gave me exactly what I needed in a very simple an elegant way.
 
 When I moved to Ruby 1.9 and MiniTest, I didn't immediately invest the time in learning `MiniTest::Spec`, which provides similar functionality to contest as well as few other RSpec-style goodies. Instead, I looked into porting contest to MiniTest. After finding a [gist](https://gist.github.com/25455) from Chris Wanswrath and customizing it heavily, I ended up with a simple little test helper that made it possible for me to write tests in minitest which looked like this.
 
@@ -474,6 +474,8 @@ Getting away from these ugly little details and returning to the overall pattern
 
 While this example was perfect for having a discussion about the pattern of dynamic class creation in general, I'd strongly recommend against using my helper in your MiniTest code at this point. You'll find everything you need in `MiniTest::Spec`, and that is a much more standard solution than using some crazy hack I cooked up simply because I could.
 
+With that disclaimer out of the way, we can move on to our final topic.
+
 ### Implement your own Gherkin parser, or criticize mine!
 
 So far, we've talked about various tools which enable the use of domain specific language (DSL) within your Ruby applications. However, there is a whole other category of DSL techniques which involve parsing external languages and then converting them into meaningful structures within the host language. This is a topic that deserves an entire article of its own.
@@ -491,7 +493,7 @@ Feature: Addition
     Then the result should be 120
 ```
 
-If that sounds like too much work for you, you can take on a slightly easier task instead. In preparation for this article, I build two different implementations that capture the essence of the way that that Cucumber story runner works. [One implementation uses global functions](https://github.com/elm-city-craftworks/dsl_construction/blob/master/cucumber/global-dsl/fake_cuke.rb), and the [other implementation uses `eval()` with a `binding` object](https://github.com/elm-city-craftworks/dsl_construction/blob/master/cucumber/binding-dsl/fake_cuke.rb). I'd like you to examine these two approachs and share your thoughts on what the functional differences between them are.
+If that sounds like too much work for you, you can take on a slightly easier task instead. In preparation for this article, I build two different implementations that capture the essence of the way that that Cucumber story runner works. [One implementation uses global functions](https://github.com/elm-city-craftworks/dsl_construction/blob/master/cucumber/global-dsl/fake_cuke.rb), and the [other implementation uses eval() with a binding](https://github.com/elm-city-craftworks/dsl_construction/blob/master/cucumber/binding-dsl/fake_cuke.rb). I'd like you to examine these two approachs and share your thoughts on what the functional differences between them are.
 
 While I know not everyone will have the time to try out this exercise, if a few of you work on this and share your results, it will lead to a good discussion which could help me gauge interest in a second article about external DSLs. So if you have a few spare moments, please participate! 
 
@@ -499,8 +501,8 @@ While I know not everyone will have the time to try out this exercise, if a few 
 
 We've now reached the end of a whirlwind tour of several powerful tools Ruby provides for bending its syntax and semantics to meet domain-specific needs. While I tried to pick examples which illustrated natural uses of domain specific API construction patterns, I am left feeling that these are advanced techniques which even experienced developers have a hard time evaluating the tradeoffs of.
 
-There are two metrics to apply before trying out anything you've seen in this article in your own libraries. The first thing to remember is that any deviation from ordinary method definitions and ordinary method calls should offer a benefit that is at least proportional to how exotic your approach is. Cleverness for the sake of cleverness can be a real killer if you're not careful. The second thing to remember is that whenever if you provide nice domain-specific APIs for convenience or aesthetic reasons, you should always make sure to build it as a facade over a boring and vanilla API. This will help make sure your objects are easier to test and easier to work with in scenarios that your DSL did not anticipate.
+There are two metrics to apply before trying out anything you've seen in this article in your own projects. The first thing to remember is that any deviation from ordinary method definitions and ordinary method calls should offer a benefit that is at least proportional to how exotic your approach is. Cleverness for the sake of cleverness can be a real killer if you're not careful. The second thing to remember is that whenever if you provide nice domain-specific APIs for convenience or aesthetic reasons, you should always make sure to build it as a facade over a boring and vanilla API. This will help make sure your objects are easier to test and easier to work with in scenarios that your domain specific interface did not anticipate.
 
-If you follow these two bits of advice, you can have fun using Ruby's sharp knives without getting cut too often. But if you do slip up from time to time, don't be afraid to abandon fancy interfaces in favor of having something a bit dull but easier to maintain. It can be tempting to layer dynamic features on top of one another to "simplify" things, but that only hides the underlying problem which is that perhaps you were trying too hard. This is something that used to happen to me all the time, so don't feel bad when it happens to you!
+If you follow these two bits of advice, you can have fun using Ruby's sharp knives without getting cut too often. But if you do slip up from time to time, don't be afraid to abandon fancy interfaces in favor of having something a bit dull but easier to maintain and understand. It can be tempting to layer dynamic features on top of one another to "simplify" things, but that only hides the underlying problem which is that perhaps you were trying too hard. This is something that used to happen to me all the time, so don't feel bad when it happens to you. Just do what you can to learn from your mistakes as you try out new designs.
 
 _NOTE: If you want to experiment with the examples in this article a bit more, you can find all of them in [this git repository](https://github.com/elm-city-craftworks/dsl_construction). If you fork the code and submit pull requests with improvements, I will review your changes and eventually make a note of them here if we stumble across some good ideas that I didn't cover._
