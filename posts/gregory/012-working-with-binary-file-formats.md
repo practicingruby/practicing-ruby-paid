@@ -131,7 +131,9 @@ To see how this number relates to the binary sequence in the raw bitmap file, we
 => "46"
 ```
 
-While this number is small enough to fit in a single byte, larger images would have larger file sizes and so BMP reserves four bytes worth of space for the integer representing the file size. If we look at this field in the raw BMP file, we see `46 00 00 00`. This is how the decimal number gets represented as a 32bit little-endian unsigned integer, and it's safe for you to ignore the details for now if that isn't immediately obvious to you.
+While this number is small enough to fit in a single byte, larger images would have larger file sizes and so the bitmap format reserves four bytes worth of space for the integer representing the file size. If we look at this field in the raw BMP file, we see `46 00 00 00`. It's worth mentioning that this is exactly how the decimal number 70 gets represented as a 32bit little-endian unsigned integer, buts it's safe for you to ignore the details for now if that isn't immediately obvious to you. 
+
+The file size field is followed by two fields which are reserved for use by the application which generates the bitmap file. This kind of reserved field is common in binary files, and typically are safe to ignore. This explains why the third and fourth field in the sample file are set to `00 00`.
 
 
 ### Decoding a bitmap image
