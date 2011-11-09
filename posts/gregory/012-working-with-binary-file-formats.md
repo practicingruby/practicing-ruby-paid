@@ -79,20 +79,48 @@ bmp[1,1] = "ffffff"
 bmp.save_as("example_generated.bmp")
 ```
 
-Like most binary formats, the bitmap format has a tremendous amount of options that make building a complete implementation a whole lot more complex than just building something suitable for generating a single type of image. I realized shortly after skimming the format description that you can skip out on a lot of the semi-optional header data if you stick to 24bit-per-pixel images, and so I decided to start there.
+Like most binary formats, the bitmap format has a tremendous amount of options that make building a complete implementation a whole lot more complex than just building something suitable for generating a single type of image. I realized shortly after skimming the format description that you can skip out on a lot of the semi-optional header data if you stick to 24bit-per-pixel images, so I decided to do exactly that.
 
-Working backwards from the example file, I found that I would need to study the bitmap file header as well as the device independent bitmap header. I started with exploring the bitmap file header because it was the more straightforward of the two.
+Looking at the implementation from the outside-in, it's easy to see the general structure I laid out for the object. Pixels are stored as a boring array of arrays, and all the interesting things happen at the time you write the image out to file.
 
-The file header starts with a magic number which is meant to indicate to decoders that the file is a bitmap file. While there are several valid values for this number, most of them are OS/2 related and virtually all common uses of bitmaps are in the Windows format. This means that almost all the bitmaps you'll encounter start off with the identifier which represents the windows format, "BM". This explains why the raw code of the bitmap we looked at earlier started with `42 4D` as its hex values. 
+```ruby
+class BMP 
+  class Writer
+    def initialize(width, height)
+      @width, @height = width, height
 
+      @pixels = Array.new(@height) { Array.new(@width) { "000000" } }
+    end
+
+    def [](x,y)
+      @pixels[y][x]
+    end
+
+    def []=(x,y,value)
+      @pixels[y][x] = value
+    end
+
+    def save_as(filename)
+      File.open(filename, "wb") do |file|
+        write_bmp_file_header(file)
+        write_dib_header(file)
+        write_pixel_array(file)
+      end
+    end
+
+    # ... rest of implementation details omitted for now ...
+  end
+end
 ```
->> 0x42.chr
-=> "B"
->> 0x4D.chr
-=> "M"
-```
 
-The next field in the file header is an integer that indicates the size of the file itself. This may sound a bit like a circular reference, but due to the highly structured nature of most binary file formats, this number can usually be computed easily. I was able to find the [computations I needed](http://en.wikipedia.org/wiki/BMP_file_format#Pixel_storage) by briefly skimming the wikipedia article. Because these computations depend only on the number of bits per pixel and the dimensions of the image, it was easy to write a function which computes the file size.
+All bitmap files start out with the bitmap file header, which consists of the following things:
+
+* A two character signature to indicate the file is a bitmap file (typically "BM").
+* A 32bit unsigned little-endian integer representing the size of the file itself.
+* A pair of 16bit unsigned little-endian integers reserved for application specific uses.
+* A 32bit unsigned little-endian integer representing the offset to where the pixel array starts in the file.
+
+The following code shows how `BMP::Writer` builds up this header and writes it to file:
 
 ```ruby
 class BMP 
@@ -100,8 +128,10 @@ class BMP
     PIXEL_ARRAY_OFFSET = 54
     BITS_PER_PIXEL     = 24
 
-    def initialize(width, height)
-      @width, @height = width, height
+    # ... rest of code as before ...
+
+    def write_bmp_file_header(file)
+      file << ["BM", file_size, 0, 0, PIXEL_ARRAY_OFFSET].pack("A2Vv2V")
     end
 
     def file_size
@@ -115,28 +145,134 @@ class BMP
 end
 ```
 
-After I wrote this code I was able to verify that the calculated file size matched the real file size of the sample file, as shown below.
+Out of the five fields in this header, only the file size ended up being dynamic. I was able to treat the pixel array offset as a constant because we never need to include extra information beyond that what is included in the two fixed width headers that all bitmap files need. The [computations I used for the file size](http://en.wikipedia.org/wiki/BMP_file_format#Pixel_storage) are taken directly from wikipedia, and will make sense a bit later once we examine the way that the pixel array gets encoded.
+
+The tool that makes it possible for us to convert these various field values into binary sequences in such a convenient way is `Array#pack`. If you note that the calculated file size of a 2x2 bitmap is 70, it becomes clear what `pack` is actually doing for us when we examine the byte by byte values in the following example:
 
 ```ruby
-bmp = BMP::Writer.new(2,2)
-p bmp.file_size #=> 70
+header = ["BM", 70, 0, 0, 54].pack("A2Vv2V") 
+p header.bytes.map { |e| e.to_s(16).rjust(2,"0")  }
 
-p File.size("example1.bmp") #=> 70
+=begin expected output (NOTE: reformatted below for easier reading)
+  ["42", "4d", 
+   "46", "00", "00", "00", 
+   "00", "00", 
+   "00", "00", 
+   "36", "00", "00", "00"]
+=end
+```
+The sequence exactly matches that of our reference image, which indicates that the proper bitmap file header is being generated by this statement. This means that `Array#pack` is converting our Ruby strings and fixnums into their properly sized binary representations, in the format that we need them in. If we decompose the template string, it becomes easier to see where things line up:
+
+```
+  "A2" -> arbitrary binary string of width 2 (packs "BM" as: 42 4d)
+  "V"  -> a 32bit unsigned little endian int (packs 70 as: 46 00 00 00)
+  "v2" -> two 16bit unsigned little endian ints (packs 0, 0 as: 00 00 00 00)
+  "V"  -> a 32bit unsigned little endian int (packs 54 as: 36 00 00 00)
 ```
 
-To see how this number relates to the binary sequence in the raw bitmap file, we simply need to convert the decimal number `70` to its hexidecimal representation:
+While I went to the effort of expanding out the byte sequences to make it easier to see what is going on, you don't typically need to do this at all while working with `Array#pack`, provided that you craft your template strings carefully. Of course, some knowledge of the underlying binary data doesn't hurt, and our implementation of `write_dib_header` actually depends on it.
 
 ```ruby
->> 70.to_s(16)
-=> "46"
+class BMP 
+  class Writer
+    DIB_HEADER_SIZE    = 40
+    PIXELS_PER_METER   = 2835 # 2835 pixels per meter is basically 72dpi
+
+    # ... other code as before ...
+
+   def write_dib_header(file)
+      file << [DIB_HEADER_SIZE, @width, @height, 1, BITS_PER_PIXEL,
+               0, pixel_array_size, PIXELS_PER_METER, PIXELS_PER_METER, 
+               0, 0].pack("V3v2V6")
+    end
+  end
+end
 ```
 
-While this number is small enough to fit in a single byte, larger images would have larger file sizes and so the bitmap format reserves four bytes worth of space for the integer representing the file size. If we look at this field in the raw BMP file, we see `46 00 00 00`. It's worth mentioning that this is exactly how the decimal number 70 gets represented as a 32bit little-endian unsigned integer, buts it's safe for you to ignore the details for now if that isn't immediately obvious to you. 
+The DIB header itself is kind of boring, because we treat most of the fields as constants, and all the others are values that were already determined for use in the BMP file header. However, if you look closely at the file format description, you'll see that our pattern doesn't actually match the datatypes of some of the fields: width, height, and horizontal/vertical resolution are all specified as signed integers, but yet we're treating them as unsigned values. This was an intentional design decision, to work around a limitation of `pack` in Ruby versions earlier than 1.9.3.
 
-The file size field is followed by two fields which are reserved for use by the application which generates the bitmap file. This kind of reserved field is common in binary files, and typically are safe to ignore. This explains why the third and fourth field in the sample file are set to `00 00`.
+The problem is that all versions of Ruby before 1.9.3, `Array#pack` does not provide a syntax for specifying the endianness of a signed integer. While encoding negative values as unsigned integers actually seems to produce the right byte sequences for a signed integer, I'm pretty sure that's an undefined behavior. What's worse: even if you do encode the binary sequences correctly, there is no way to extract them later without [resorting to weird hacks](http://stackoverflow.com/questions/5236059/unpack-signed-little-endian-in-ruby). With this in mind, I decided to take a closer look at the particular problem to see if I had any other options.
 
+Even though the specification says that the dimensions and resolution of the image can be negative, I have no idea how that would ever be useful. It's also really unlikely that you'll have a value large enough to overflow back into negative numbers for any of these values. For this reason, it's safe to say that you can treat these values as unsigned integers without many consequences.  This is why I used the pattern `"V3v2V6"` without much fear of bad behavior. If I only cared about support Ruby 1.9.3, I could have used a different pattern which DOES take in account the endianness of signed integers: `Vl<2v2V2l<2V2"`. However, this is just trading one edge case for another, and since this is just a demo application, I went with what is more likely to work on the Ruby you're running right now.
+
+With this weirdness out of the way, I was able to move on to working on the pixel array, which was relatively straightforward to implement.
+
+```ruby
+class BMP 
+  class Writer
+    # .. other code as before ...
+
+    def write_pixel_array(file)
+      @pixels.reverse_each do |row|
+        row.each do |color|
+          file << pixel_binstring(color)
+        end
+
+        file << row_padding
+      end
+    end
+
+    def pixel_binstring(rgb_string)
+      raise ArgumentError unless rgb_string =~ /\A\h{6}\z/
+      [rgb_string].pack("h6")
+    end
+
+    def row_padding
+      "\x0" * (@width % 4)
+    end
+  end
+end
+```
+
+The most interesting thing to note about this code is that each row of pixels ends up getting padded with some null characters. This is to ensure that each row of pixels is aligned on WORD boundaries (4 byte sequences). This is a semi-arbitrary limitation that has to do with file storage constraints, but things like this are common in binary files. 
+
+The calculations below show how much padding is needed to bring rows of various widths up to a multiple of 4, and explains how I derived the computation for the `row_padding` method:
+
+```
+Width 2 : 2 * 3 Bytes per pixel = 6 bytes  + 2 padding  = 8
+Width 3 : 3 * 3 Bytes per pixel = 9 bytes  + 3 padding  = 12
+Width 4 : 4 * 3 Bytes per pixel = 12 bytes + 0 padding  = 12
+Width 5 : 5 * 3 Bytes per pixel = 15 bytes + 1 padding  = 16
+Width 6 : 6 * 3 Bytes per pixel = 18 bytes + 2 padding  = 20
+Width 7 : 7 * 3 Bytes per pixel = 21 bytes + 3 padding  = 24
+...
+```
+
+Sometimes calculations like this are provided for you in the documentation, sometimes you need to derive them yourself. However, the deeply structured nature of most binary files makes this easy enough to do, especially if you apply some constraints to your implementation. For example, this computation would get a lot more complex if we allowed for an arbitrary amount of bits per pixel as the bitmap spec allows for.
+
+While the padding code is definitely the most interesting aspect of the pixel array, there are a couple other details about this implementation worth discussing. In particular, we should take a closer look at the `pixel_binstring` method:
+
+```ruby
+def pixel_binstring(rgb_string)
+  raise ArgumentError unless rgb_string =~ /\A\h{6}\z/
+  [rgb_string].pack("h6")
+end
+```
+
+This is the method that converts the values we set in the pixel array via lines like `bmp[0,0] = "ff0000"` into actual binary sequences. It starts by matching the string with a regex to ensure that the input string is a valid sequence of 6 hexidecimal digits. If the validation succeeds, it then packs those values into a binary sequences, creating a string with three bytes in it. The irb session below show make it clear what is going on here:
+
+```
+>> ["ffa0ff"].pack("h6").bytes.to_a
+=> [255, 10, 255]
+```
+
+This makes it possible to specify color values directly in hexidecimal strings and then convert them to their numeric value just before they get written to the file.
+
+And with this last detail explained, you should now understand how to build a functional bitmap encoder for writing 24bit color images. If seeing things step by step caused you to lose as sense of the big picture, you can check out the [full source code for this object](https://gist.github.com/1351737). Feel free to play around with it a bit before moving on to the next section: the best way to learn is to actually run these code samples and try to extend them and/or break them in various ways.
 
 ### Decoding a bitmap image
 
+As you might expect, there is a nice symmetry between encoding and decoding binary files. To show just to what extent this is the case, I will walk you through the code which makes the following example run:
+
+```ruby
+bmp = BMP::Reader.new("example1.bmp")
+p bmp.width  #=> 2
+p bmp.height #=> 2
+
+p bmp[0,0] #=> "ff0000"   
+p bmp[1,0] #=> "00ff00" 
+p bmp[0,1] #=> "0000ff" 
+p bmp[1,1] #=> "ffffff" 
+```
 
 ### Reflections
