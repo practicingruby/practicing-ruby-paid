@@ -2,7 +2,7 @@ Most of us enjoy Ruby because it allows us to express our thoughts without worry
 
 In the examples that follow, we will be working with the bitmap image format. I chose this format because it has a simple structure and is well documented. Despite the fact that you'll probably never need to work with bitmap images at all in your day-to-day work, the concepts involved in both reading and writing a BMP file are pretty much the same as any other file format you'll encounter. For this reason, you're encouraged to focus on the techniques being demonstrated rather than the implementation details of the file format as you read through this article.
 
-_NOTE: This article assumes an understanding of some low level computing concepts such as the way integers are represented in binary format, including the difference between signed/unsigned integers and little/big endian byte order. You may want to watch this [introductary screencast](http://www.youtube.com/watch?v=BLnOD1qC-Vo&feature=player_detailpage#t=112s) if you don't already have a firm computer science background. I myself am not an expert in these topics, so that makes it even harder for me to explain them on the fly._
+_NOTE: This article assumes an understanding of some low level computing concepts such as the way integers are represented in binary format, including the difference between signed/unsigned integers and little/big endian byte order. You may want to watch this [introductory screencast](http://www.youtube.com/watch?v=BLnOD1qC-Vo&feature=player_detailpage#t=112s) if you don't already have a firm computer science background. I myself am not an expert in these topics, so that makes it even harder for me to explain them on the fly._
 
 ### The anatomy of a bitmap
 
@@ -143,7 +143,7 @@ class BMP
 end
 ```
 
-Out of the five fields in this header, only the file size ended up being dynamic. I was able to treat the pixel array offset as a constant because targeting 24bit images only makes it so that only the two mandatory header sections need to be implemented, and both of those sections are fixed width. The [computations I used for the file size](http://en.wikipedia.org/wiki/BMP_file_format#Pixel_storage) are taken directly from wikipedia, and will make sense a bit later once we examine the way that the pixel array gets encoded.
+Out of the five fields in this header, only the file size ended up being dynamic. I was able to treat the pixel array offset as a constant because the headers for 24 bit color images take up a fixed amount of space. The [computations I used for the file size](http://en.wikipedia.org/wiki/BMP_file_format#Pixel_storage) are taken directly from wikipedia, and will make sense a bit later once we examine the way that the pixel array gets encoded.
 
 The tool that makes it possible for us to convert these various field values into binary sequences in such a convenient way is `Array#pack`. If you note that the calculated file size of a 2x2 bitmap is 70, it becomes clear what `pack` is actually doing for us when we examine the byte by byte values in the following example:
 
@@ -168,7 +168,7 @@ The sequence exactly matches that of our reference image, which indicates that t
   "V"  -> a 32bit unsigned little endian int (packs 54 as: 36 00 00 00)
 ```
 
-While I went to the effort of expanding out the byte sequences to make it easier to see what is going on, you don't typically need to do this at all while working with `Array#pack` as long as craft your template strings carefully. Of course, some knowledge of the underlying binary data doesn't hurt, and our implementation of `write_dib_header` actually depends on it.
+While I went to the effort of expanding out the byte sequences to make it easier to see what is going on, you don't typically need to do this at all while working with `Array#pack` as long as you craft your template strings carefully. Of course, some knowledge of the underlying binary data doesn't hurt, and our implementation of `write_dib_header` actually depends on it.
 
 ```ruby
 class BMP 
@@ -247,14 +247,14 @@ def pixel_binstring(rgb_string)
 end
 ```
 
-This is the method that converts the values we set in the pixel array via lines like `bmp[0,0] = "ff0000"` into actual binary sequences. It starts by matching the string with a regex to ensure that the input string is a valid sequence of 6 hexidecimal digits. If the validation succeeds, it then packs those values into a binary sequence, creating a string with three bytes in it. The example below should make it clear what is going on here:
+This is the method that converts the values we set in the pixel array via lines like `bmp[0,0] = "ff0000"` into actual binary sequences. It starts by matching the string with a regex to ensure that the input string is a valid sequence of 6 hexadecimal digits. If the validation succeeds, it then packs those values into a binary sequence, creating a string with three bytes in it. The example below should make it clear what is going on here:
 
 ```
 >> ["ffa0ff"].pack("h6").bytes.to_a
 => [255, 10, 255]
 ```
 
-This makes it possible to specify color values directly in hexidecimal strings and then convert them to their numeric value just before they get written to the file.
+This makes it possible to specify color values directly in hexadecimal strings and then convert them to their numeric value just before they get written to the file.
 
 With this last detail explained, you should now understand how to build a functional bitmap encoder for writing 24bit color images. If seeing things broken out step by step caused you to lose a sense of the big picture, you can check out the [full source code for this object](https://gist.github.com/1351737). Feel free to play around with it a bit before moving on to the next section: the best way to learn is to actually run these code samples and try to extend them and/or break them in various ways.
 
@@ -333,11 +333,11 @@ As you might expect, the implementation of `read_dib_header` involves more of th
 
 ```ruby
 class BMP 
-  class Writer
+  class Reader
     # ... other code as before ...
 
-    PIXEL_ARRAY_OFFSET = 54
     BITS_PER_PIXEL     = 24
+    DIB_HEADER_SIZE    = 40
 
     def read_dib_header(file)
       header = file.read(40)
@@ -411,9 +411,9 @@ When you take all these code examples and glue them together into a single class
 
 The thing that makes me appreciate binary file formats is that if you just learn a few basic computer science concepts, there are few things that could be more fundamentally simple to work with. However, simple does not necessarily mean "easy", and in the process of writing this article I realized that some aspects of binary file processing are not quite as trivial or intuitive as I originally thought they were.
 
-What I can say is that this kind of work gets a whole lot easier with practice. Due to my work on [Prawn](http://github.com/sandal/prawn) I have written implementations for various different binary formats including PDF, PNG, JPG, and TTF. These formats each have their differences, but a common core of similarities makes it so that I can say with a reasonable amount of confidence that if you fully understand the examples in this article, you'd be well on your way to tackling pretty much any binary file format.
+What I can say is that this kind of work gets a whole lot easier with practice. Due to my work on [Prawn](http://github.com/sandal/prawn) I have written implementations for various different binary formats including PDF, PNG, JPG, and TTF. These formats each have their differences, but a common core of similarities makes it so that I can say with a reasonable amount of confidence that if you fully understand the examples in this article, then you are already well on your way to tackling pretty much any binary file format.
 
-There are two things that make working with binary file formats a bit challenging for the average Rubyist: the first issue that working on this kind of programming requires knowledge of some low level concepts that you might not be familiar with if you don't come from a computer science background. However, from one self-taught person to another I can tell you that this knowledge can easily be attained in a few sittings, and that it's well worth doing so. Assuming you get past that hurdle, the second challenge is to develop a level of precision and attention to detail that greatly exceeds what is typically needed for day to day Ruby application development. 
+There are two things that make working with binary file formats a bit challenging for the average Rubyist. The first issue that working on this kind of programming requires knowledge of some low level concepts that you might not be familiar with if you don't come from a computer science background. However, from one self-taught person to another I can tell you that this knowledge can easily be attained in a few sittings, and that it's well worth doing so. Assuming you get past that hurdle, the second challenge is to develop a level of precision and attention to detail that greatly exceeds what is typically needed for day to day Ruby application development. 
 
 While software development is about much more than computing, binary file processing brings you into the computer's realm and is much less forgiving than other kinds of programming. Formally trained computer science students or folks who have programmed (successfully) in C before won't have problems with developing this kind of discipline, but it was a challenge for me coming from a hack-and-slash Perl background.
 
