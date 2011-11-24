@@ -1,12 +1,12 @@
 Back in 1997, James Noble published a paper called [Arguments and Results](http://www.laputan.org/pub/patterns/noble/noble.pdf) which outlined several useful patterns for designing better object protocols. Despite the fact that this paper was written nearly 15 years ago, it addresses design problems that programmers still struggle with today. In this two part article, I will show how the patterns James came up with can be applied to modern Ruby programs.
 
-_Arguments and Results_ is written in such a way that it is natural to split the patterns it describes into two separate groups: patterns about method arguments and patterns about the results returned by methods. I've decided to split this Practicing Ruby article in the same manner in order to make it easier for me to write and easier for you to read. 
+<u>Arguments and Results</u> is written in such a way that it is natural to split the patterns it describes into two separate groups: patterns about method arguments and patterns about the results returned by methods. I've decided to split this Practicing Ruby article in the same manner in order to make it easier for me to write and easier for you to read. 
 
 In this first installment, we will explore the patterns James lays out for working with method arguments, and in Issue 2.15 we'll look into results objects. If you read this part, be sure to read the second part once it comes out, because the two concepts compliment each other nicely.
 
 ### Establishing a context 
 
-It is very difficult to study design patterns without applying them within a particular context. When I am trying to learn new patterns, I look for a scenario that the pattern might be applicable to and then examine the benefits and drawbacks of the design changes within that context. James uses a lot of graphics programming examples in his paper and this is for good reason: it's an area where designing good interfaces for your objects can easily get unwieldy.
+It is very difficult to study design patterns without applying them within a particular context. When I am trying to learn new patterns, I tend to start by looking for a realistic scenario that the pattern might be applicable to. I then examine the benefits and drawbacks of the design changes within that context. James uses a lot of graphics programming examples in his paper and this is for good reason: it's an area where designing good interfaces for your objects can quickly become challenging.
 
 I've decided to follow in James's footsteps here and use a trivial [SVG](http://www.w3.org/TR/SVG/) generator as the common theme for the examples in this article. The following code illustrates the interface that I started with before applying any special patterns:
 
@@ -99,14 +99,14 @@ class Style
 end
 ```
 
-The interesting thing about these objects is that they actually represent domain models even though their original purpose was simply to wrap up some arguments to a single method the `Drawing` object. James mentions in his paper that this phenomena is common and would call these "Found objects", i.e. objects that are part of the domain model that were found through refactoring rather than accounted for in the original design.
+The interesting thing about these objects is that they actually represent domain models even though their original purpose was simply to wrap up some arguments to a single method defined on the `Drawing` object. James mentions in his paper that this phenomena is common and would call these "Found objects", i.e. objects that are part of the domain model that were found through refactoring rather than accounted for in the original design.
 
 You might have noticed that in the previous example, I set some default values for some of the variables on the `Style` object. If you compare this to setting defaults directly within the `Drawing#line` method itself, it becomes obvious that there is a benefit here. Properties like
-the color and thickness of the lines drawn to form a shape are universal properties, not things specific to straight lines only. Centralizing the defaults makes it so that they do not need to be repeated for each new type of shape add support for in our `Drawing` object.
+the color and thickness of the lines drawn to form a shape are universal properties, not things specific to straight lines only. Centralizing the defaults makes it so that they do not need to be repeated for each type of shape that the `Drawing` object supports.
 
 ### Selector object
 
-Sometimes we end up with objects that have many methods that take similar arguments. While these methods may actually do different things, the only difference in the object protocol is the name of the message being sent. After adding method for rendering polygons to my `Drawing` object, I ended up in exactly this situation. The following example shows just how similar the `Drawing#line` interface is to the newly created `Drawing#polygon` method:
+Sometimes we end up with objects that have many methods that take similar arguments. While these methods may actually do different things, the only difference in the object protocol is the name of the message being sent. After adding a method for rendering polygons to my `Drawing` object, I ended up in exactly this situation. The following example shows just how similar the `Drawing#line` interface is to the newly created `Drawing#polygon` method:
 
 ```ruby
 drawing = Drawing.new(4,4)
@@ -158,7 +158,7 @@ class Drawing
 end
 ```
 
-To make this code more DRY, James recommends converting our arguments object into what he calls a selector object. A selector object is an object which uses similar arguments to do different things depending on the type of message it is meant to represent. James recommends using double dispatch or multi-methods to implement this pattern, but that approach is less convenient in Ruby because the language does not provide built-in semantics for function overloading. The good news is that he also mentions that inheritance can be used as an alternative, and in this case it was a perfect fit.
+To make this code more DRY, James recommends converting our arguments object into what he calls a selector object. A selector object is an object which uses similar arguments to do different things depending on the type of message it is meant to represent. James recommends using double dispatch or multi-methods to implement this pattern, but that approach is not appropriate for Ruby because the language does not provide built-in semantics for function overloading. The good news is that he also mentions that inheritance can be used as an alternative, and in this case it was a perfect fit.
 
 To simplify and clean up the previous example, I introduced `Line` and `Polygon` which inherit from `Shape`. I then combined the `Drawing#line` method and `Drawing#polygon` method into a single method called `Drawing#draw`. The following example demonstrates what the API ended up looking like as a result of this change:
 
@@ -181,7 +181,7 @@ File.write("sample.svg", drawing.to_svg)
 
 The changes to the API are small but make the code a lot easier to read. This rearrangement introduces even more objects into the system, but simplifies the protocol between those objects. In large systems, this leads to greater maintainability and learnability at the cost of having a few more moving parts.
 
-In order to implement this new interface, some non-trivial changes needed to be made under the hood. You can check out the [exact commit](https://github.com/elm-city-craftworks/pr-arguments-and-results/commit/47924901552d0509f97a3083737709980139feba) to see exactly what changed implementation-wise between this example and the last one, but the general idea is that the `Drawing#draw` method now simply asks the shape object to represent themselves as a hash which then gets converted into a SVG document later. As an example, here is what the definition for the `Line` object looks like:
+In order to implement this new interface, some non-trivial changes needed to be made under the hood. You can check out the [exact commit](https://github.com/elm-city-craftworks/pr-arguments-and-results/commit/47924901552d0509f97a3083737709980139feba) to see the details about what changed implementation-wise between this example and the last one, but most of the changes were just boring housekeeping. The general idea is that the `Drawing#draw` method now simply asks each shape object to represent itself as a hash which ultimately ends up getting converted into an XML tag within the SVG document. As an example, here is what the definition for the `Line` object looks like:
 
 ```ruby
 class Drawing
@@ -309,7 +309,7 @@ After taking a look at the finished `Turtle` object, I did wonder a little bit a
 
 Applying these various argument patterns to a realistic example made it much easier for me to see the power behind these ideas. I have gradually picked up bits and pieces of the various techniques shown here before reading this paper largely due to my trial and error work on the Prawn PDF generator. 
 
-In lots of places in Prawn, we let hash arguments grow to an insanely large size and it created a lot of problems for us. We also ignored using curried objects in a lot of places by instead placing instance variables directly on the target objects and then mutating the state within them over time to vary things. This lead to complicated transactional code and made it easy for things to end up in an inconsistent state, which was bad. The solutions to these problems tended to be refactorings that are quite similar to what you've seen in this article, even if we didn't call them by a special name.
+In lots of places in Prawn, we let hash arguments grow to an insanely large size and it created a lot of problems for us. We also ignored using curried objects in a lot of places by instead placing instance variables directly on the target objects and then mutating the state within them over time to vary things. This lead to complicated transactional code and made it easy for things to end up in an inconsistent state. The solutions to these problems tended to be refactorings that are quite similar to what you've seen in this article, even if we didn't call them by a special name at the time.
 
 Still, I do have some concern that these patterns might be overkill for any interfaces that you are reasonably sure won't get too complex over time. If we apply these patterns overzealously, you might end up needing to go through level after level of indirection just to accomplish anything useful, and that will make Ruby start to feel like Java. However, it seems like using some sort of formalized arguments object is obviously beneficial for highly complex interactions, and likely to be at least somewhat useful for medium complexity protocols as well.
 
@@ -330,3 +330,4 @@ end
 If I implemented this as a thin veneer on top of code similar to what we ended up with in this article, I think that would be a pretty well designed library. The end user gets convenience for the normal case, but the underlying system would be easier to maintain, test, and learn. It would also give the user flexibility to interact with the system in ways I didn't anticipate.
 
 Be sure to tune in next week for the second part of this article, where I'll focus on the results side of the method interface. Until then, I'd love to hear any questions or thoughts you have about this topic.
+
