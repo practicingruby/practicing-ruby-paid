@@ -316,7 +316,7 @@ class DownloadManager
   end
 
   def save(url, filename)
-    downloads << Lazy.future { File.binwrite(filename, open(url).read) }
+    downloads << Lazy.future { Download.new(url, filename) }
   end
 
   def finish_all_downloads
