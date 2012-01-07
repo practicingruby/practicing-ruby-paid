@@ -2,7 +2,7 @@ Back in 1997, James Noble published a paper called [Arguments and Results](http:
 
 <u>Arguments and Results</u> is written in such a way that it is natural to split the patterns it describes into two separate groups: patterns about method arguments and patterns about the results returned by methods. I've decided to split this Practicing Ruby article in the same manner in order to make it easier for me to write and easier for you to read. 
 
-In this first installment, we will explore the patterns James lays out for working with method arguments, and in Issue 2.15 we'll look into results objects. If you read this part, be sure to read the second part once it comes out, because the two concepts compliment each other nicely.
+In this first installment, we will explore the patterns James lays out for working with method arguments, and in Issue 2.15 we'll look into results objects. If you read this part, be sure to read the second part once it comes out, because the two concepts complement each other nicely.
 
 ### Establishing a context 
 
@@ -309,7 +309,7 @@ After taking a look at the finished `Turtle` object, I did wonder a little bit a
 
 Applying these various argument patterns to a realistic example made it much easier for me to see the power behind these ideas. I have gradually picked up bits and pieces of the various techniques shown here before reading this paper largely due to my trial and error work on the Prawn PDF generator. 
 
-In lots of places in Prawn, we let hash arguments grow to an insanely large size and it created a lot of problems for us. We also ignored using curried objects in a lot of places by instead placing instance variables directly on the target objects and then mutating the state within them over time to vary things. This lead to complicated transactional code and made it easy for things to end up in an inconsistent state. The solutions to these problems tended to be refactorings that are quite similar to what you've seen in this article, even if we didn't call them by a special name at the time.
+In lots of places in Prawn, we let hash arguments grow to an insanely large size and it created a lot of problems for us. We also ignored using curried objects in a lot of places by instead placing instance variables directly on the target objects and then mutating the state within them over time to vary things. This led to complicated transactional code and made it easy for things to end up in an inconsistent state. The solutions to these problems tended to be refactorings that are quite similar to what you've seen in this article, even if we didn't call them by a special name at the time.
 
 Still, I do have some concern that these patterns might be overkill for any interfaces that you are reasonably sure won't get too complex over time. If we apply these patterns overzealously, you might end up needing to go through level after level of indirection just to accomplish anything useful, and that will make Ruby start to feel like Java. However, it seems like using some sort of formalized arguments object is obviously beneficial for highly complex interactions, and likely to be at least somewhat useful for medium complexity protocols as well.
 
