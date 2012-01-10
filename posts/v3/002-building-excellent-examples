@@ -1,0 +1,116 @@
+### Contrived Examples
+
+For any given programming language or software library, the odds are pretty good that the first example you'll run is a contrived "Hello World" program. The following example is taken from the Sinatra web framework, but is similar in spirit to pretty much every other "Hello World" application out there:
+
+```ruby
+require 'sinatra'
+
+get '/hi' do
+  "Hello World!"
+end
+```
+
+This kind of example seems quite useless on the surface, and is neither interesting nor educational. As it turns out, these characteristics are precisely what make this "Hello World" program perfect! The contrived nature of the example makes it possible for it to be used as a simple sanity-check for someone who is trying out Sinatra for the first time.
+
+If you try to run this example and find that it doesn't work correctly, there are only a few possible points of failure. In most cases, not even getting a "Hello World" program to run correctly can be blamed on one of three things: out of date documentation, issues with your environment, or user error. The fact that there are very few moving parts makes it much easier for you to determine the source of your problem than it would be if the example was significantly more complex. This is precisely why most introductory tutorials start off with a "Hello World" program rather than something more exciting.
+
+While the most common use case for contrived examples is to construct "Hello World" applications, there are other use cases for this technique as well. In particular, contrived examples are a good fit for discussions about syntactic or structural differences between two pieces of code. As an example, consider a short tutorial which explains why a user might want to use Ruby's `attr_reader` functionality. It could start by showing a `Person` class that implements accessors explicitly:
+
+```ruby
+class Person
+  def initialize(name, email)
+    @name  = name
+    @email = email
+  end
+
+  def name
+    @name
+  end
+
+  def email 
+    @email
+  end
+end
+```
+
+A followup example could then be provided to show how to simplify the code via `attr_reader`:
+
+```ruby
+class Person
+  def initialize(name, email)
+    @name  = name
+    @email = email
+  end
+
+  attr_reader :name, :email
+end
+```
+
+This scenario is very simplisitic when compared to the class definitions we write in real projects, but the absence of complicated functionality makes it easier for the reader to focus on the syntactic differences between the two examples. This allows the novice Ruby programmer to think of the difference between explicitly defining accessors and using `attr_reader` as a simple structural transformation rather than something with complex semantic differences. While this mental model is not 100% accurate, it emphasizes the big picture which is what actually matters for a novice programmer. The simplicity of these examples makes the general pattern much easier to remember, and that justifies hiding a few things behind the curtain to be revealed later.
+
+Unfortunately, the ability of contrived examples to hide the semantics of our programming constructs is just as often a drawback as it is an asset. The more complex a concept is, the more dangerous it is to present simplistic examples rather than working through more realistic scenarios. For example, it is common for object-oriented programming tutorials to use real world objects and hierarchies to explain how class inheritance works, but the disconnect between these models and the kinds that real software projects implement is so great that this approach completely obfuscates the real power and purpose of object oriented programming. By choosing a scenario that may feel natural to the reader but does not fit naturally with the underlying programming constructs, these sorts of tutorials fail to emphasize the right details and leave the door open for a wide range of misconceptions. These incorrect assumptions end up getting in the way of learning real object-oriented programming techniques rather than helping develop an understanding of them.
+
+I could easily rant on this topic, but someone else did it for me by writing a great mailing list post entitled [Goodbye, shitty Car extends Vehicle object-orientation tutorial](http://lists.canonical.org/pipermail/kragen-tol/2011-August/000937.html). Despite the somewhat inflammatory title, it is a very insightful read and I strongly recommend reading it if you want to see a strong argument for the limitations of contrived examples as teaching tools.
+
+Figuring out where to draw the line between when it is appropriate to use a contrived example and when to use one that is based on a practical application is tricky. In general, I try to keep in mind that the purpose of a contrived example is specifically to remove context from the picture. Outside of "Hello World" programs and simple syntactic transformations, a lack of context hurts more than it helps, and so I try to avoid contrived examples as much as I can for pretty much every other use case. 
+
+### Cheap Counterfeits
+
+One of my favorite techniques for teaching programming concepts is to construct cheap counterfeits that emulate the surface level behavior of a more complicated structure. These "poor man's implementations" are similar to contrived examples in that they can hide as much complexity as they'd like from the reader, but because they are grounded by some realistic scenario, do not suffer from being totally disconnected from practical applications.
+
+I have used this technique extensively throughout Practicing Ruby and my other written works, and it almost always works out well. In fact, the issue on [Implementing Enumerable and Enumerator in Ruby](http://practicingruby.com/articles/4) was entirely based on this strategy and turned out to be one of the most popular articles I've written for this journal. While you are probably already very familiar with this pattern as a Practicing Ruby reader, I can still provide a bit of extra insight by decomposing it for you.
+
+The purpose of building a cheap counterfeit is not to gain a deep understanding of how a certain construct actually works. Instead, the purpose of a counterfeit is to teach people how to steal ideas from other interesting bits of code for their own needs. For example, take the `attr_reader` example from before:
+
+```ruby
+class Person
+  def initialize(name, email)
+    @name  = name
+    @email = email
+  end
+
+  attr_reader :name, :email
+end
+```
+
+This is a great feature, because it replaces tedious boilerplate methods with a concise declarative statement. But without some sort of explanation as to how it works, `attr_reader` feels pretty magical and might be perceived as a special case that the Ruby internals are responsible for handling. This misconception can easily be cleared up by showing how to implement a cheap counterfeit version of `attr_reader` in application code:
+
+```ruby
+class Module
+  def my_attr_reader(*args)
+    args.each do |a|
+      define_method(a) { instance_variable_get("@#{a}") }
+    end
+  end
+end
+
+class Person
+  def initialize(name, email)
+    @name  = name
+    @email = email
+  end
+
+  my_attr_reader :name, :email
+end
+```
+
+If teaching a programmer how to use `attr_reader` is like treating them to a nice fish dinner, teaching them how to implement it is like giving them a fishing pole and showing them how to catch their own meals. Seeing a practical use of `define_method` opens the doors for a huge range of other applications, all of which hinge on the simple concept of dynamic method definition. For example, a similar technique could be used to convert hideous method names like `test_a_user_must_be_able_to_log_in` into the elegant syntax shown below:
+
+```ruby
+test "A user must be able to log in" do
+  # your test code here
+end
+```
+
+There are countless other applications of dynamic method definition, many of which I expect Practicing Ruby readers are already familiar with. The point here is that a single example which demystifies a certain technique can make a huge difference in what possibilities someone sees in a given system. This is what makes cheap counterfeits such a tremendously good teaching tool.
+
+An important thing to keep in mind however is that this technique is mostly useful for teaching concepts, as opposed to showing someone how a feature is really implemented. If you actually look into the implementation of `attr_reader`, you'll find a number of edge cases that this cheap counterfeit example does not take into consideration. While these subtleties are not especially relevant if you're just trying to give a contextualized example of how `define_method` can be used, they would be important to point out if you were trying to write a specification for how `attr_reader` is meant to work. This is why cheap counterfeits are not a substitute for case studies of real code, but instead serve a different purpose entirely.
+
+### Simplified Examples
+
+### Reduced Examples
+
+### Case Studies
+
+
+
