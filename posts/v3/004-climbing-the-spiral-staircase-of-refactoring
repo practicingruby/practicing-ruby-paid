@@ -1,0 +1,217 @@
+In [Issue 3.3](http://practicingruby.com/articles/20), I presented a proof-of-concept Ruby implementation of the [Brainfuck programming language](http://en.wikipedia.org/wiki/Brainfuck) and challenged Practicing Ruby readers to improve upon it. After receiving several patches that helped move things along, I sat down once again to clean up the code even further. What I came to realize as I worked on my revisions is that the refactoring process is very similar to climbing a spiral staircase. Each structural change to the code simultaneously left the project back where it started along one vector while moving it forward on another.
+
+Because we often look at the merits of a given refactoring technique within the context of a single transition from worse code to better code, it's easy to mistakenly assume that the refactoring process is much more linear than it actually is. In this article, I've tried to capture a much wider angle view of how refactoring really works in the wild. The end result is a story which I hope will spark some good discussions about how we can improve our code quality over time.
+
+### Prologue. Everything has to start somewhere
+
+I decided to name my interpreter [Turing Tarpit](http://en.wikipedia.org/wiki/Turing_tarpit), because that term is perfectly apt for describing languages like Brainfuck. In a nutshell, the term refers to any language which is infinitely flexible, yet nearly impossible to use for anything practical. Surprisingly enough, building this sort of mind trap for programmers is quite easy to do in Ruby.
+
+My first iteration was easy enough to build, and consisted of three objects: a `Tape`, an `Interpreter`, and a `Scanner`. The rough breakdown of responsibilities was something like this:
+
+* The [Tape object](https://github.com/elm-city-craftworks/turing_tarpit/blob/starting_point/lib/turing_tarpit.rb#L103-149) implemented something similar to the storage mechanism in a [Turing machine](http://en.wikipedia.org/wiki/Turing_machine#Informal_description). It provided mechanisms for accessing and modifying numeric values in cells, as well as a way to increment and decrement the pointer that determined which cell to operate on.
+
+* The [Interpreter object](https://github.com/elm-city-craftworks/turing_tarpit/blob/starting_point/lib/turing_tarpit.rb#L7-34) served as a mapping between Brainfuck's symbolic operators and the operations provided by the `Tape` object. It also implemented the I/O functionality required by Brainfuck.
+
+* The [Scanner object](https://github.com/elm-city-craftworks/turing_tarpit/blob/starting_point/lib/turing_tarpit.rb#L36-69) was responsible for taking a Brainfuck source file as input and transforming it into a stream of operations that could be handled by the `Interpreter` object. For the most part this simply meant reading the source file one character at a time, but this object also needed to account for Brainfuck's forward and backward jump operations.
+
+While my initial implementation was reasonably clean for a proof-of-concept, it definitely had room for improvement. I decided to ask for feedback early in the hopes that folks would find and fix the things I knew were problematic while simultaneously checking my blindspots for issues that I hadn't noticed myself.
+
+### Act I. Getting a fresh perspective on the problem
+
+Some of the issues brought up by contributors were fairly obvious housekeeping chores, but nonetheless made the project nicer to work with:
+
+* Steve Klabnik [requested a way to run the whole test suite at once](https://github.com/elm-city-craftworks/turing_tarpit/pull/3) instead of file by file. He had provided a patch with a Rakefile, but since the project didn't have any immediate need for other rake tasks, we ended up deciding that a simple _test/suite.rb_ file would be sufficient. Notes were added to the README on how to run the tests.
+
+* Renato Riccieri [broke the classes out into individual files](https://github.com/elm-city-craftworks/turing_tarpit/pull/6). The original implementation had everything in _lib/turing_tarpit.rb_, simply for convenience reasons while spiking. Breaking the classes into individual files brought the project more in line with [standard Ruby packaging conventions](http://chneukirchen.github.com/rps/).
+
+* Benoit Daloze [refactored some ugly output code](https://github.com/elm-city-craftworks/turing_tarpit/pull/2) to use `putc(char)` instead of `print("" << char)`. Since the latter was obviously a hack due to my lack of awareness of the `putc` method, this was a welcome contribution.
+
+After this initial round of cleanup, we ended up thinking through a pair of more substantial problems: the inconsitent use of private accessors, and a proposed refactoring to break up the `Scanner` object into two separate objects, a `Tokenizer` and a `Scanner`.
+
+**The story behind my recent private accessor experiments**
+
+Ryan LeCompte was the one to bring up [the question about private accessors](https://github.com/elm-city-craftworks/turing_tarpit/issues/1), and was curious about why I had used them in some places but referenced instance variables directly in others. The main reason for this was simply that the use of private accessors is a new experiment for me, and so in my haste of getting a first version out the door, I remembered to use them in some places but not in others.
+
+This project in particular posed certain challenges for using private accessors conveniently. A specific example of where I ran into some weird edge cases can easily be seen in the `Tape` object:
+
+```ruby
+module TuringTarpit
+  class Tape
+    def initialize
+      self.pointer_position = 0
+      # ...
+    end
+
+    def increment_pointer
+      self.pointer_position = pointer_position + 1
+    end
+
+    # ...
+
+    private
+
+    attr_writer :pointer_position
+  end
+end
+```
+
+If you just glance quickly at this class definition, it is very tempting to try to refactor `increment_pointer` so that it uses convenient `+=` syntax, resulting in something like the code below:
+
+```ruby
+def increment_pointer
+  self.pointer_position += 1
+end
+```
+
+In most cases, this refactoring would be a good one because it makes the code slightly less verbose without sacrificing readability. However, it turns out that Ruby does not extend the same private method special casing to `self.foo += something` as it does to `self.foo = something`. This means that if you attempt to refactor this code to use `+=` it ends up raising a `NoMethodError`. Because this is definitely a downside of using private accessors, it's reasonable to ask why you'd bother to use them in the first place rather than using public accessors or simply referring to instance variables directly.
+
+The best reason I can find for making use of accessors in general vs. instance variables is simply that the former are much more flexible. New behavior such as validations or transformations can be added later by changing what used to be vanilla accessors into ordinary method definitions. Additionally, if you accidentally introduce a typo into your code, you will get a `NoMethodError` right away rather than having to track down why your attribute is `nil` when you didn't expect it to be in some completely different place in your code.
+
+The problem with making accessors public is that it hints to the consumer that it is meant to be touched and used, which is often not the case at all, especially for writers. While Ruby makes it trivial to circumvent privacy protections, a private method communicates to the user that it is meant to be treated as an implementation detail and should not be depended on. So the reason for using a private accessor is the same as the reason for using a private method: to mark the accessor as part of the internals of the object.
+
+The interesting thing I stumbled across in this particular project is that if you take this technique to the extreme, it is possible to build entire applications without ever explicitly referencing an instance variable. It comes at the cost of the occasional weird edge case when calling private methods internally, but makes it possible to treat instance variables as a whole as a _language implementation detail_, rather than an _application implementation detail_. Faced with the opportunity to at least experiment with that idea, I decided to make the entire Turing Tarpit codebase completely free of instance variables, which ended up taking very little effort.
+
+The jury is still out on whether or not this is a good idea, but I plan to keep trying the idea out in my projects and see whether I run into any more issues. If I don't experience problems, I'd say this technique is well worth it because it emphasizes message-passing rather than state manipulation in our objects. 
+
+**Splitting up the Scanner object**
+
+After helping out with a few of the general housekeeping chores, Steve Klabnik then turned his attention to one of the weakest spots in the code, the `Scanner` object. He pointed out that having an object with dependencies on a whole lot of private methods is a bit of a code smell, and focused specifically on the `Scanner#next` method. The original implementation looked like this:
+
+```ruby
+module TuringTarpit
+  class Scanner
+    # ...
+
+    def next(cell_value)
+      validate_index
+
+      element = @chars[@index]
+      
+      case element
+      when "["
+        jump_forward if cell_value.zero?
+
+        consume
+        element = @chars[@index]
+      when "]"
+        if cell_value.zero?
+          while element == "]"
+            consume
+            element = @chars[@index]
+            validate_index
+          end
+        else
+          jump_back
+          consume
+          element = @chars[@index]
+        end
+      end
+      
+      consume
+      element
+    end
+  end
+end
+```
+
+Steve pointed out that the `Scanner#next` method was really doing more of a tokenizing operation, and that most of the scanning work was actually being done by the various private methods that were being used to traverse the underlying string. He prepared a patch which made this relationship explicit by introducing a `Tokenizer` object which would provide a method to replace `Scanner#next`. His newly introduced object allowed for a re-purposing of the `Scanner` object which allowed its methods to become public:
+
+```ruby
+module TuringTarpit
+  class Tokenizer
+    # ...
+
+    def next(cell_value)
+      scanner.validate_index
+
+      element = scanner.current_char
+
+      case element
+      when "["
+        scanner.jump_forward if cell_value.zero?
+
+        scanner.consume
+        element = scanner.current_char
+      when "]"
+        if cell_value.zero?
+          while element == "]"
+            scanner.consume
+            element = scanner.current_char
+            scanner.validate_index
+          end
+        else
+          scanner.jump_back
+          scanner.consume
+          element = scanner.current_char
+        end
+      end
+
+      scanner.consume
+      element
+    end
+  end
+end
+```
+
+The thing in particular I liked about this patch is that it abstracted away some of the tedious index arithmetic that was originally present in `Scanner#next`. As much as possible I prefer to isolate anything that can cause off-by-one errors or other such nonsense, and this refactoring did a good job of addressing that issue.
+
+The interesting thing about this refactoring is that while I intended to work on the same area of the code if no one else patched it, I had planned to approach it in a very different way. My original idea was to implement some sort of generic stream datastructure and reuse it in both `Scanner` and `Tape`. However, seeing that Steve's patch at least partly addressed my concerns while possibly opening some new avenues as well, I abandoned that idea and merged his work instead.
+
+### Act II. Building a better horse
+
+After applying the various patches from the folks who participated in this challenge, the code was in a much better place than where it started. However, much work was still left to be done!
+
+In particular, the code responsible for turning Brainfuck syntax into a stream of operations still needed a lot of work. The `Tokenizer` class that Steve introduced was an improvement, but without further revisions would simply serve as a layer of indirection rather than as an abstraction. Zed Shaw describes the difference between these two concepts very eloquently in his essay [Indirection Is Not Abstraction](http://zedshaw.com/essays/indirection_is_not_abstraction.html) by stating that _"Abstraction is used to reduce complexity. Indirection is used to reduce coupling or dependence."_
+
+As far as the `Tokenizer` object goes, Steve's patch reducing coupling somewhat by pushing some of the implementation details down into the `Scanner` object. However, the procedure is pretty much identical with the exception of the lack of explicit indexing code, and so the baseline complexity actually increases because what was once done by one object is now split across two objects.
+
+To address this problem, the dividing lines between the two objects needed to be leveraged so that they could interact with each other at a higher level. It took me a while to think through the problem, but in doing so I realized that I could now push more functionality down into the `Scanner` object so that `Tokenizer#next` ended up with fewer moving parts. After some major gutting and re-arranging, I ended up with a method that looked like this:
+
+```ruby
+module TuringTarpit
+  class Tokenizer
+    # ...
+
+    def next(cell_value)
+      case scanner.next_char
+      when Scanner::FORWARD_JUMP
+        if cell_value.zero?
+          scanner.jump_forward
+        else
+          scanner.next_char
+        end
+      when Scanner::BACKWARD_JUMP
+        if cell_value.zero?
+          scanner.skip_while(Scanner::BACKWARD_JUMP)
+        else
+          scanner.jump_back
+        end
+      end
+
+      scanner.current_char
+    end
+  end
+end
+```
+
+After this refactoring, the `Tokenizer#next` method was a good deal more abstract in a number of ways:
+
+* It expected the `Scanner` to handle validations itself rather than telling it when to check the index 
+
+* It no longer referenced Brainfuck syntax and instead used constants provided by the `Scanner`
+
+* It eliminated a lot of cumbersome assignments by reworking its algorithm so that `Scanner#current_char` always referenced the right character at the end of the scanning routine.
+
+* It expected the `Scanner` to remain internally consistent, rather than handling edge cases itself.
+
+These reductions in complexity made a hugely positive impact on the readability and understandability of the `Tokenizer#next` method. While all of these changes could have technically been made before the split between the `Scanner` and `Tokenizer` happened, cutting the knot into two pieces certainly made untangling things easier. This is why indirection and abstraction often go hand in hand, despite the fact that they are very different concepts from one another.
+
+### Act III. Mountains are once again merely mountains
+
+
+
+### Epilogue. Sending the ship out to sea
+
+-- Tiny implementation 
+
+### Reflections
