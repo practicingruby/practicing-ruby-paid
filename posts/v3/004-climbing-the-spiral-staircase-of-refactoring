@@ -1,10 +1,10 @@
-In [Issue 3.3](http://practicingruby.com/articles/20), I presented a proof-of-concept Ruby implementation of the [Brainfuck programming language](http://en.wikipedia.org/wiki/Brainfuck) and challenged Practicing Ruby readers to improve upon it. After receiving several patches that helped move things along, I sat down once again to clean up the code even further. What I came to realize as I worked on my revisions is that the refactoring process is very similar to climbing a spiral staircase. Each structural change to the code simultaneously left the project back where it started along one vector while moving it forward on another.
+In [Issue 3.3](http://practicingruby.com/articles/shared/bwgflabwncjv), I presented a proof-of-concept Ruby implementation of the [Brainfuck programming language](http://en.wikipedia.org/wiki/Brainfuck) and challenged Practicing Ruby readers to improve upon it. After receiving several patches that helped move things along, I sat down once again to clean up the code even further. What I came to realize as I worked on my revisions is that the refactoring process is very similar to climbing a spiral staircase. Each structural change to the code simultaneously left the project back where it started along one vector while moving it forward along another.
 
 Because we often look at the merits of a given refactoring technique within the context of a single transition from worse code to better code, it's easy to mistakenly assume that the refactoring process is much more linear than it actually is. In this article, I've tried to capture a much wider angle view of how refactoring really works in the wild. The end result is a story which I hope will spark some good discussions about how we can improve our code quality over time.
 
 ### Prologue. Everything has to start somewhere
 
-I decided to name my interpreter [Turing Tarpit](http://en.wikipedia.org/wiki/Turing_tarpit), because that term is perfectly apt for describing languages like Brainfuck. In a nutshell, the term refers to any language which is infinitely flexible, yet nearly impossible to use for anything practical. Surprisingly enough, building this sort of mind trap for programmers is quite easy to do in Ruby.
+I decided to name my interpreter [Turing Tarpit](http://en.wikipedia.org/wiki/Turing_tarpit), because that term is perfectly apt for describing languages like Brainfuck. In a nutshell, the term refers to any language which is infinitely flexible, yet nearly impossible to use for anything practical. It turns out that building this sort of mind trap for programmers is quite easy to do.
 
 My first iteration was easy enough to build, and consisted of three objects: a `Tape`, an `Interpreter`, and a `Scanner`. The rough breakdown of responsibilities was something like this:
 
@@ -153,7 +153,7 @@ module TuringTarpit
 end
 ```
 
-The thing in particular I liked about this patch is that it abstracted away some of the tedious index arithmetic that was originally present in `Scanner#next`. As much as possible I prefer to isolate anything that can cause off-by-one errors or other such nonsense, and this refactoring did a good job of addressing that issue.
+The thing in particular I liked about this patch is that it abstracted away some of the tedious index operations that were originally present in `Scanner#next`. As much as possible I prefer to isolate anything that can cause off-by-one errors or other such nonsense, and this refactoring did a good job of addressing that issue.
 
 The interesting thing about this refactoring is that while I intended to work on the same area of the code if no one else patched it, I had planned to approach it in a very different way. My original idea was to implement some sort of generic stream datastructure and reuse it in both `Scanner` and `Tape`. However, seeing that Steve's patch at least partly addressed my concerns while possibly opening some new avenues as well, I abandoned that idea and merged his work instead.
 
@@ -208,10 +208,149 @@ These reductions in complexity made a hugely positive impact on the readability 
 
 ### Act III. Mountains are once again merely mountains
 
+After building on top of Steve's work to simplify the syntax-processing code even further, I finally felt like that part of the project was in decent shape. I then decided to turn my attention back to the `Interpreter` object, since it had not received any love from the challenge participants. The original code for it looked something like this:
 
+```ruby
+module TuringTarpit
+  class Interpreter
+    def run
+      loop do
+        case tokenizer.next(tape.cell_value)
+        when "+"
+          tape.increment_cell_value
+        when "-"
+          tape.decrement_cell_value
+        when ">"
+          tape.increment_pointer
+        when "<"
+          tape.decrement_pointer
+        when "."
+          putc(tape.cell_value)
+        when ","
+          value = STDIN.getch.bytes.first
+          next if value.zero?
+
+          tape.cell_value = value
+        end
+      end
+    end
+  end
+end
+```
+
+While this implementation wasn't too bad, there were two things I didn't like about it. The first issue was that it directly referenced Brainfuck syntax, which sort of defeated the purpose of having the tokenizer be syntax independent. The second problem was that I found the case statement to feel a bit brittle and limiting. What I really wanted was a dynamic dispatcher similar to the following method:
+
+```ruby
+def run
+  loop do
+    if operation = tokenizer.next(evaluator.cell_value)
+      tape.send(operation)
+    end
+  end
+end
+```
+
+In order to introduce this kind of functionality, I'd need to find a place to introduce a simple mapping from Brainfuck syntax to operation names. I already had the keys and values in mind, I just needed to find a place to put them:
+
+```ruby
+OPERATIONS = { "+" => :increment_cell_value,
+               "-" => :decrement_cell_value,
+               ">" => :increment_pointer,
+               "<" => :decrement_pointer,
+               "." => :output_cell_value,
+               "," => :input_cell_value }
+```
+
+Figuring out how to make this work was surprisingly challenging. I found that the extra layers of indirection between the `Tape` and the `Scanner` meant that any change made too far down the chain would need to be echoed all the way up it, and that changes made towards the top felt tacked on and out of place. This eventually led me to question what the separation between `Scanner` and `Tokenizer` was really gaining me, as well as the separation between `Interpreter` and `Tape`.
+
+After a fair amount of ruminating, I decided to take my four objects and join them together at the seams so that only two remained. The `Scanner` and `Tokenizer` ended up getting joined back together to form a new `Interpreter` class. The job of the `Interpreter` is to take Brainfuck syntax and turn it into a stream of operations. You can get a rough idea of how it all came together by checking out the following code:
+
+```ruby
+module TuringTarpit
+  class Interpreter
+    FORWARD_JUMP = "["
+    BACKWARD_JUMP = "]"
+
+    OPERATIONS = { "+" => :increment_cell_value,
+                   "-" => :decrement_cell_value,
+                   ">" => :increment_pointer,
+                   "<" => :decrement_pointer,
+                   "." => :output_cell_value,
+                   "," => :input_cell_value }
+
+    def next_operation(cell_value)
+      case next_char
+      when FORWARD_JUMP
+        if cell_value.zero?
+          jump_forward
+        else
+          skip_while(FORWARD_JUMP)
+        end
+      when BACKWARD_JUMP
+        if cell_value.zero?
+          skip_while(BACKWARD_JUMP)
+        else
+          jump_back
+        end
+      end
+
+      OPERATIONS[current_char]
+    end
+
+    # ... lots of private methods are back, but now fine-tuned.
+  end
+end
+```
+
+The old `Interpreter` object and `Tape` object were also merged together, forming a single object I ended up calling `Evaluator`. The job of the `Evaluator` object is to take a stream of operations provided by the newly defined `Interpreter` object and then execute them against a Turing Machine like data structure. In essence, the `Evaluator` object is nothing more than the original `Tape` object I implemented along with a few extra methods which account for the things the original `Interpreter` object was meant to do:
+
+```ruby
+module TuringTarpit
+  class Evaluator 
+    def self.run(interpreter)
+      evaluator = new
+
+      loop do
+        if operation = interpreter.next_operation(evaluator.cell_value)
+          evaluator.send(operation)
+        end
+      end
+    end
+
+    def output_cell_value
+      putc(cell_value)
+    end
+
+    def input_cell_value
+      value = $stdin.getch.ord
+      return if value.zero?
+
+      self.cell_value = value
+    end
+
+    # other methods same as original Tape methods
+  end
+end
+```
+
+I had mixed feelings about recombining these objects, because to some extent it felt like a step backwards to me. In particular, I think this refactoring resulted in some minor violations of the [Single Responsibility Principle](http://en.wikipedia.org/wiki/Single_responsibility_principle), and increased the overall coupling of the system somewhat. However, the independence of the four different objects the system previously consisted of seemed artificial at best. To the extent that they could be changed easily or swapped out for one another, I could not think of a single practical reason why I'd actually want that kind of flexibility. In this particular situation it turned out that recombining the objects greatly reduced their communications overhead, and so was worth the loss in generality.
 
 ### Epilogue. Sending the ship out to sea
 
--- Tiny implementation 
+I was really tempted to keep noodling on the design of this project, because even in my final version of the code I still felt that I could have done better. But at a certain point I decided that I could end up getting caught in this trap forever, and the only way to free myself from it was to wrap up my work and just ship the damn thing. This ultimately meant that I had to take care of several chores that neither I nor the various participants in this challenge bothered to work on earlier:
+
+* I added a [set of integration tests](https://github.com/elm-city-craftworks/turing_tarpit/blob/act3/test/integration/evaluator_test.rb) which ran the `Evaluator` against a couple sample Brainfuck programs to make sure we had some decent end-to-end testing support. Found a couple bugs that way.
+
+* I set up and ran [simplecov](https://github.com/colszowka/simplecov) to check whether my tests were at least *running* all the implementation code, and ended up spotting a faulty test which wasn't actually getting run.
+
+* I added a [bin/turing_tarpit](https://github.com/elm-city-craftworks/turing_tarpit/blob/act3/bin/turing_tarpit) file so that you can execute Brainfuck programs without building a Ruby shim first. 
+
+* Did the usual gemspec + Gemfile dance and pushed a 1.0.0 gem to rubygems.org. Typically I'd call a project in its early stages a 0.1.0 release, but I honestly don't see myself working on this much more so I might as well call it 'production ready'.
+
+After I wrapped up all these chores, I decided to go back and check out what my [flog](https://github.com/seattlerb/flog) complexity scores were for each stage in this process. It turns out that the final version was the least complex, with the lowest overall score, lowest average score, and lowest top-score by method. The original implementation came in second place, and the other two iterations were in a distant third and fourth place. While that gave me some reassurances, it doesn't mean much except for that Flog seems to really hate external method calls.
 
 ### Reflections
+
+This has been one of my favorite articles to write for Practicing Ruby so far. It forced me to look at the refactoring process in a much more introspective way than I have typically done in the past, and gave me a chance to interact with some of our awesome readers. I do think it ended up raising more questions and challenges in my mind than it did give me answers and reassurances, but I suppose that's a sign that learning happened.
+
+While I found it very hard to summarize the refactoring lifecycle for this project, my hope is that I've at least given you a glimpse of the spiral staircase metaphor I chose to name this article after. If it didn't end up making you feel too dizzy, I'd love to hear your thoughts about this exercise as well as what your own process is like when it comes to refactoring code.
