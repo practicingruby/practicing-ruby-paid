@@ -1,12 +1,12 @@
 Inheritance is a key concept in most object oriented languages, but applying it skillfully can be challenging in practice. Back in 1989, [M. Sakkinen](http://users.jyu.fi/~sakkinen/) wrote a paper called [Disciplined inheritance](http://scholar.google.com/scholar?cluster=5893037045851782349&hl=en&as_sdt=0,7&sciodt=0,7) that addresses these problems and offers some useful criteria for working around them. Despite being over two decades old, this paper is extremely relevant to the modern Ruby programmer. 
 
-Sakkinen's central point seems to be that most traditional uses of inheritance lead to poor encapsulation, bloated object contracts, and accidental namespace collisions. He provides two patterns for disciplined inheritance, and suggests that by normalizing the way we model things, we can apply these two patterns to a very wide range of scenarios. He goes on to show that code which conforms to these design rules can easily be modeled as ordinary object composition, exposing a solid alternative to traditional class-based inheritance.
+Sakkinen's central point seems to be that most traditional uses of inheritance lead to poor encapsulation, bloated object contracts, and accidental namespace collisions. He provides two patterns for disciplined inheritance, and suggests that by normalizing the way that we model things, we can apply these two patterns to a very wide range of scenarios. He goes on to show that code which conforms to these design rules can easily be modeled as ordinary object composition, exposing a solid alternative to traditional class-based inheritance.
 
 These topics are exactly what this two part article will cover, but before we can address them, we should establish what qualifies as inheritance in Ruby. The general term is somewhat overloaded, so a bit of definition up front will help start us off on the right foot. 
 
 ### Flavors of Ruby inheritance
 
-Although classical inheritance is centered around the concept of code sharing via class-based hierarchies, modern object oriented programming languages provide many different mechanisms for code sharing. Ruby is no exception, providing four common ways to model inheritance-based relationships between objects.
+Although classical inheritance is centered around the concept of class-based hierarchies, modern object oriented programming languages provide many different mechanisms for code sharing. Ruby is no exception, providing four common ways to model inheritance-based relationships between objects.
 
 * Classes provide a single-inheritance model similar to what is found in many other object oriented languages, albeit lacking a few privacy features.
 
@@ -32,10 +32,10 @@ The classical approach of using a class-hierarchy for code sharing is worth look
 
 ```ruby
 class EnumerableCollection
-  def size
-    count = 0
-    each { |e| count += 1 }
-    count
+  def count
+    c = 0
+    each { |e| c += 1 }
+    c
   end
 
   # Samnang's implementation from Issue 2.4
@@ -55,7 +55,7 @@ class StatisticalCollection < EnumerableCollection
   end
 
   def average
-    sum / size.to_f
+    sum / count.to_f
   end 
 end
 
@@ -80,14 +80,26 @@ end
 puts StatisticalReport.new("numbers.txt")
 ```
 
-* Using modules
+Through its inheritance-based relationships, `StatisticalReport` is able to act as a simple presenter object while relying on other reusable components to crunch the numbers for it. The `EnumerableCollection` and `StatisticalCollection` objects do most of the heavy lifting, while managing to remain useful for a wide range of different applications. The division of responsibilities between these components is reasonably well defined, and if you ignore the underlying mechanics of the style of inhertance being used here, you might even be able to see this example as a good demonstration of effective code reuse.
+
+Unfortunately, the devil is in the details. When viewed from a different angle, it's easy to see a wide range of problems that exist even in this very simple application of class based inheritance:
+
+1) It is possible to create instances of `EnumerableCollection` and `StatisticalCollection`, but not possible to do anything meaningful with them as they are currently written. While it's not necessarily a bad idea to make use of abstract classes, valid uses of that pattern typically invert the relationship shown here, with the child object filling in a missing piece so that its parent can do a complex job.
+
+2) While `StatisticalReport` only relies on two relatively generic methods from `StatisticalCollection`, and `StatisticalCollection` similarly relies on only two methods from `EnumerableCollection`, the use of class inheritance forces a rigid hierarchical relationship between the objects. Even if it's not especially awkward to say a `StatisticalCollection` is an `EnumerableCollection`, it's definitely weird to say that a `StatisticalReport` is also an `EnumerableCollection`. What makes matters worse is that this sort of modeling prevents `StatisticalReport` from inheriting from something more topically related to its domain, such as a `HtmlReport` or something similar. As my [favorite OOP rant](http://lists.canonical.org/pipermail/kragen-tol/2011-August/000937.html) proclaims, class hierarchies do not exist simply to satisfy our inner Linnaeus.
+
+3) There is no encapsulation whatsoever between the components in this system. The purely functional nature of both `EnumerableCollection` and `Statistics` make this less of a practical concern in this particular example, but is a dangerous characteristic of all code which uses class-based inheritance in Ruby. Any instance variables created within a `StatisticalReport` object will be directly accessible in method calls all the way up its ancestor chain, and the same goes for any methods that `StatisticalReport` defines. While a bit of discipline can help prevent this from becoming a problem in most simple uses of class inheritance, deep method resolution paths can make accidental collisions of method definitions or instance variable names a serious risk. Such a risk might be mitigated somewhat by the introduction of class-specific privacy controls, but they do not currently exist in Ruby. 
+
+4) As a consequence of points 2 and 3, the `StatisticalReport` object ends up with a bloated contract that isn't representative of its domain model. It'd be awkward to call `StatisticalReport#count` or `StatisticalReport#reduce`, but if those inherited methods are not explicitly marked as private in the `StatisticalReport` definition, they will still be callable by clients of the `StatisticalReport` object. Once again the stateless nature of this program make the effects less damning in this particular example, but it doesn't take much effort to imagine the inconsistencies that can arise due to this problem. In addition to real risks of unintended side effects, this kind of modeling makes it harder to document the interface of the `StatisticalReport` in a natural way, and diminishes the usefulness of Ruby's reflective capabilities.
+
+At least some of these issues can be resolved through the use of Ruby's module-based mixin functionality. The following example shows how our class-based code can be trivially refactored to use modules instead. Once again, as you read through the code, think of its strengths and weaknesses as well as how you might approach the problem differently if it were up to you to design this system.
 
 ```ruby
 module SimplifiedEnumerable
-  def size
-    count = 0
-    each { |e| count += 1 }
-    count
+  def count
+    c = 0
+    each { |e| c += 1 }
+    c
   end
 
   # Samnang's implementation from Issue 2.4
@@ -107,7 +119,7 @@ module Statistics
   end
 
   def average
-    sum / size.to_f
+    sum / count.to_f
   end 
 end
 
@@ -135,7 +147,61 @@ end
 puts StatisticalReport.new("numbers.txt")
 ```
 
-* Using aggregation
+While using module mixins does not improve the encapsulation of the components in the system or solve the problem of `StatisticalReport` inheriting methods which aren't directly related to its problem domain, it does alleviate some of the other problems that Ruby's class-based inheritance causes. In particular, it makes it so that it is no longer possible to create instances of objects that wouldn't be useful to use standalone and also loosens the dependencies between the components in the system.
+
+While the `Statistics` and `SimplifiedEnumerable` modules are still not capable of doing anything useful without being tied to some other object, the relationship between them is much looser. When the two are mixed into the `StatisticalReport` object, an implicit relationship between `Statistics` and `SimplifiedEnumerable` exists due to the calls to `reduce` and `count` from within the `Statistics` module, but this relationship is an implementation detail rather than a structural constraint. To see the difference yourself, think about how easy it would be to switch `StatisticalReport` to use Ruby's `Enumerable` module instead of the `SimplifiedEnumerable` module I provided and compare that to the class-based implementation of this scenario.
+
+The bad news is that the way that modules solve some of the problems that we discovered about class hierarchies in Ruby ends up making some of the other problems even worse. Because modules tend to provide a whole lot of functionality based on a very thin contract with the object they get mixed into, they are one of the leading causes of child obesity. For example, swapping my `SimplifiedEnumerable` module for Ruby's `Enumerable` method would cause a net increase of 42 new methods that could be directly called on `StatisticalReport`. And now, rather than having a single path to follow in `StatisticalReport` to determine its ancestry chain, there are now two. A nice feature of mixins is that they have fairly simple rules about how they get added to the method lookup path that avoid some of the complexities involved in class-based multiple inheritance, but you still need to memorize those rules and be aware of the combinatorial effects of module inclusion.
+
+As it turns out, modules are a pragmatic compromise which are convenient to use but only slightly more well-behaved than traditional class inheritance. In simple situations, they work just fine, but for more complex systems they end up requiring more and more discipline to use effectively. Nonetheless, modules tend to be used ubiquitously in Ruby programs despite these problems. A naive observer might assume that this is a sign that we don't have a better way of doing things in Ruby, but they would be mostly wrong.
+
+All the problems discussed so far with inheritance can be solved via simple aggregation techniques. For strong evidence of that claim, take a look at the refactored code shown below. As in the previous examples, keep an eye out for the pros and cons of this modeling strategy, and think about what you might do differently.
+
+```ruby
+class StatisticalCollection
+  def initialize(data)
+    self.data = data
+  end
+
+  def sum
+    data.reduce(:+) 
+  end
+
+  def average
+    sum / data.count.to_f
+  end 
+
+  private
+
+  attr_accessor :data
+end
+
+class StatisticalReport
+  def initialize(filename)
+    self.input = filename
+    
+    self.stats = StatisticalCollection.new(each)
+  end
+
+  def to_s
+    "The sum is #{stats.sum}, and the average is #{stats.average}"
+  end
+
+  private 
+
+  attr_accessor :input, :stats
+
+  def each
+    return to_enum(__method__) unless block_given?
+
+    File.foreach(input) { |e| yield(e.chomp.to_i) }
+  end
+end
+
+puts StatisticalReport.new("numbers.txt")
+```
+
+The first thing you'll notice is that the code is much shorter, as if by magic. This is because I completely cheated here and got rid of my counterfeit `Enumerable` object so that I could expose a potentially good idiom for dealing with iteration in an aggregation-friendly way. Feel free to mentally replace the object passed to `StatisticalCollection`'s constructor with something like the code shown below if you don't want me to get away with parlor tricks:
 
 ```ruby
 require "forwardable"
@@ -150,10 +216,10 @@ class EnumerableCollection
     self.data = data
   end
 
-  def size
-    count = 0
-    each { |e| count += 1 }
-    count
+  def count
+    c = 0
+    each { |e| c += 1 }
+    c
   end
 
   # Samnang's implementation from Issue 2.4
@@ -170,52 +236,25 @@ class EnumerableCollection
 
   attr_accessor :data
 end
-
-class StatisticalCollection
-  def initialize(data)
-    self.data = data
-  end
-
-  def sum
-    data.reduce(:+) 
-  end
-
-  def average
-    sum / data.size.to_f
-  end 
-
-  private
-
-  attr_accessor :data
-end
-
-class StatisticalReport
-  def initialize(filename)
-    self.input = filename
-    self.stats = StatisticalCollection.new(EnumerableCollection.new(self))
-  end
-
-  def to_s
-    "The sum is #{stats.sum}, and the average is #{stats.average}"
-  end
-
-  private 
-
-  attr_accessor :input, :stats
-
-  def each
-    File.foreach(input) { |e| yield(e.chomp.to_i) }
-  end
-end
-
-puts StatisticalReport.new("numbers.txt")
 ```
 
-While it may be a bit hard to see the benefits that aggregation offers in such a trivial scenario, they become more and more clear as systems become more complex. Most scenarios which involve incidental inheritance are actually relatively horizontal problems in nature, but the use of class based inheritance or module mixins forces a vertical method lookup path which can become very unwieldy to say the least. When taken to the extremes, you end up with objects like `ActiveRecord::Base` which has a path that is 43 levels deep, or `Prawn::Document` which has a 26 level deep path. 
+Regardless of what iteration strategy we end up using, the following points are worth noting about the way we've modeled our system this time around:
+
+1) There are three components in this system, all of which are useful and testable as standalone objects.
+
+2) The relationships between all three components are purely indirect, and the coupling between the objects is limited to the names and behavior of the methods called on them rather than their complete surfaces.
+
+3) There is strict encapsulation between the three components: each have their own namespace, and each can enforce their own privacy controls. It's possible of course to side-step these protections, but they are at least enabled by default. The issue of accidental naming collisions between methods or variables of objects is completely eliminated.
+
+4) As a result of 2 and 3, the surface of each object is kept narrowly in line with its own domain. In fact, the public interface of `StatisticalReport` has been reduced to its constructor and the `to_s` method, making it about as thin as possible while still being useful. 
+
+There are certainly downsides to using aggregation; it is not a golden hammer by any means. But when it comes to **incidental inheritance**, it seems to be the right tool for the job more often than not. I'd love to hear counterarguments to this claim though, so please do share them if you have something in mind that you don't think would gracefully fit this style of modeling.
+
+### Reflections
+
+While it may be a bit hard to see why disciplined inheritance matters in the trivial scenario we've been talking about throughout this article, it become more and more clear as systems become more complex. Most scenarios which involve incidental inheritance are actually relatively horizontal problems in nature, but the use of class based inheritance or module mixins forces a vertical method lookup path which can become very unwieldy to say the least. When taken to the extremes, you end up with objects like `ActiveRecord::Base` which has a path that is 43 levels deep, or `Prawn::Document` which has a 26 level deep path. In the case of Prawn at least, this is just pure craziness that I am ashamed to have unleased upon the world, even if it seemed like a good idea at the time.
 
 In a language like Ruby that lacks both multiple inheritance and true class-specific privacy for variables and methods, using class-based hierarchies or module mixins for complex forms of incidental inheritance requires a tremendous amount of discipline. For that reason, the extra effort involved in refactoring towards an aggregation based design seems to pale in comparison to the maintenance headaches caused by following the traditional route. For example, in both `Prawn` and `ActiveRecord`, aggregation would make it possible to flatten that chain by an order of magnitude while simultaneously reducing the chance of namespace collisions, dependencies on lookup order, and accidental side effects due to state mutations. It seems like the cost of somewhat more verbose code would be well worth it in these scenarios.
-
-## Reflections
 
 In Issue 3.8, we will move on to discuss an essential form of inheritance that Sakkinen refers to as **completely consistent inheritance**. Exploring that topic will get us closer to the concept of mathematical subtypes, which are much more interesting at the theoretical level than incidental inheritance relationships are. But because Ruby's language features make even the simple relationships described in this issue somewhat challenging to manage in an elegant way, I am still looking forward to hearing your ideas and questions about the things I've covered so far.
 
