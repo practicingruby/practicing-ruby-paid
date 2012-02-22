@@ -4,60 +4,97 @@ module Prawn
   class Article < Document
     include Measurements
 
-    def build(&block)
-      instance_eval(&block)
-    end
-
-    def save_as(filename)
-      render_file(filename)
-    end
-
     def h1(contents)
       text(contents, :size => 24)
       move_down in2pt(0.3)
     end
 
     def h2(contents)
+      move_down in2pt(0.1)
       text(contents, :size => 16)
       move_down in2pt(0.2)
     end
 
     def para(contents)
-      text(contents)
+      text(contents.gsub(/\s+/, " "))
       move_down in2pt(0.1)
     end
   end
 end
 
+Prawn::Article.generate("test.pdf") do
+  h1 "Criteria for Disciplined Inheritance"
+ 
+  para %{
+    This is an example of building a Prawn-based article
+    generator through the use of a behavioral subtype as
+    an extension. It's about as wonderful and self-referential
+    as you might expect.
+  }
+
+  h2 "Benefits of behavioral subtyping"
+
+  para %{
+    The benefits of behavioral subtyping cannot be directly
+    known without experiencing them for yourself.
+  }
+
+  para %{
+    But if you REALLY get stuck, try asking Barbara Liskov.
+  }
+end
+
+
 =begin
 module Prawn
   class Article
-    def initialize
-      self.document = Prawn::Document.new 
+    def self.generate(*args, &block)
+      Prawn::Document.generate(*args) do |pdf|
+        new(pdf).instance_eval(&block)
+      end
+    end
+
+    def initialize(document)
+      self.document = document      
       document.extend(Prawn::Measurements)
-    end
 
-    def build(&block)
-      instance_eval(&block)
-    end
-
-    def save_as(filename)
-      document.render_file(filename)
+      # set defaults so that @paragraph_font and @header_font are never nil.
+      paragraph_font "Times-Roman"
+      header_font    "Times-Roman"
     end
 
     def h1(contents)
-      text(contents, :size => 24)
-      move_down in2pt(0.3)
+      font(header_font) do
+        text(contents, :size => 24)
+        move_down in2pt(0.3)
+      end
     end
 
     def h2(contents)
-      text(contents, :size => 16)
-      move_down in2pt(0.2)
+      font(header_font) do
+        move_down in2pt(0.1)
+        text(contents, :size => 16)
+        move_down in2pt(0.2)
+      end
     end
 
     def para(contents)
-      text(contents)
-      move_down in2pt(0.1)
+      font(paragraph_font) do
+        text(contents.gsub(/\s+/, " "))
+        move_down in2pt(0.1)
+      end
+    end
+
+    def paragraph_font(font=nil)
+      return @paragraph_font = font if font
+
+      @paragraph_font
+    end
+
+    def header_font(font=nil)
+      return @header_font = font if font
+
+      @header_font
     end
 
     def method_missing(id, *args, &block)
@@ -69,67 +106,29 @@ module Prawn
     attr_accessor :document
   end
 end
-=end
 
-=begin
-module Prawn
-  class Article
-    module DocumentExtensions
-      def h1(contents)
-        text(contents, :size => 24)
-        move_down in2pt(0.3)
-      end
+Prawn::Article.generate("test.pdf") do
+  header_font    "Courier"
+  paragraph_font "Helvetica"
 
-      def h2(contents)
-        text(contents, :size => 16)
-        move_down in2pt(0.2)
-      end
-
-      def para(contents)
-        text(contents)
-        move_down in2pt(0.1)
-      end
-    end
-
-    def initialize
-      self.document = Prawn::Document.new 
-      document.extend(Prawn::Measurements)
-      document.extend(DocumentExtensions)
-    end
-
-    def build(&block)
-      document.instance_eval(&block)
-    end
-
-    def save_as(filename)
-      document.render_file(filename)
-    end
-
-    private
-
-    attr_accessor :document
-  end
-end
-=end
-
-
-article = Prawn::Article.new
-
-article.build do
-  font "Times-Roman"
-
-  h1 "Yaaay"
+  h1 "Criteria for Disciplined Inheritance"
  
   para %{
-   Awww yeaaaah.
+    This is an example of building a Prawn-based article
+    generator through the use of a behavioral subtype as
+    an extension. It's about as wonderful and self-referential
+    as you might expect.
   }
 
-  h2 "AAAAAAAA NNDFF"
+  h2 "Benefits of behavioral subtyping"
 
-  para "Blah blah blah"
-  para "fap fap fap"
+  para %{
+    The benefits of behavioral subtyping cannot be directly
+    known without experiencing them for yourself.
+  }
+
+  para %{
+    But if you REALLY get stuck, try asking Barbara Liskov.
+  }
 end
-
-article.save_as("test.pdf")
-
-`open test.pdf`
+=end

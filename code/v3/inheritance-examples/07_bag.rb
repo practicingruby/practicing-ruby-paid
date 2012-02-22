@@ -1,23 +1,25 @@
 
+ContainerFullError  = Class.new(StandardError)
+ContainerEmptyError = Class.new(StandardError)
+
+
 # Uses stack terminology for convenience, but having aliased methods in Stack
 # would be acceptable too.
 
+require "set"
+
 class Bag
-  def initialize
-    self.data = [] 
+  # other code similar to before
+
+  def ==(other)
+    [Set.new(data), limit] == [Set.new(other.data), other.limit]
   end
 
-  def push(obj)
-    data << obj
-  end
-
-  def pop
-    data.shuffle!.pop  
-  end
-
-  private
-
-  attr_accessor :data
+  protected 
+  
+  # NOTE: Implementing == is one of the few legitimate uses of 
+  # protected methods / attributes
+  attr_accessor :data, :limit
 end
 
 
@@ -26,21 +28,30 @@ end
 # just with more specific behavior.
 
 class Stack
-  def initialize
-    self.data = []
+  def initialize(limit)
+    self.data  = []
+    self.limit = limit
   end
 
   def push(obj)
+    raise ContainerFullError unless data.length < limit
+
     data.push(obj)
   end
 
   def pop
+    raise ContainerEmptyError if data.empty?
+
     data.pop
+  end
+
+  def include?(obj)
+    data.include?(obj)
   end
 
   private
 
-  attr_accessor :data
+  attr_accessor :data, :limit
 end
 
 # Introducing an equals method creates a complicated problem...
@@ -58,10 +69,17 @@ end
 # end
 #
 
-b = Bag.new
+a = Bag.new(3)
+b = Bag.new(3)
+
+a == b
+
 b.push(10)
 b.push(15)
 b.push(22)
+
+p b.include?(20) #=> false
+p b.include?(22) #=> true
 
 p b.pop
 p b.pop
