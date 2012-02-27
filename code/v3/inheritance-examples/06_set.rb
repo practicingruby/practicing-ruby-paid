@@ -22,3 +22,27 @@ end
 
 set = PersistentSet.new("sample.store")
 set.add(121)
+
+require "forwardable"
+
+class ImmutableSet
+  def initialize(set)
+    self.data = set
+  end
+
+  include Enumerable
+
+  def member?(element)
+    data.member?(element)
+  end
+
+  def each
+    data.each { |e| yield(e) }
+  end
+
+  # any other non-modifying operations can be exposed here.
+
+  private
+
+  attr_accessor :data
+end

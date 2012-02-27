@@ -378,7 +378,9 @@ class PersistentSet
 end
 ```
 
-I have prepared some commentary on the problems with these examples and their solutions, but want to give you a chance to examine the defects on your own before I describe how I'd tackle these obstacles myself. I will update this article with my notes on Tuesday 2012-02-28, but please leave comments on this article with your own answers between now and then. If you want to cheat, a huge hint is that the first problem is based on an issue discussed in [Liskov's paper](http://www.cs.cmu.edu/~wing/publications/LiskovWing94.pdf), and the second and third problems are discussed in an [article about LSP](http://www.objectmentor.com/resources/articles/lsp.pdf ) by Bob Martin. However, please note that their solutions are not exactly the most natural fit for Ruby, and so there is still room for some creativity here.
+To avoid spoiling the fun of finding and fixing the defects with these examples yourself, I've hidden my explanation of the [problems](https://gist.github.com/15b50f918c88bccd6eac) and [solutions](https://gist.github.com/3f53d4094759c0508e19) on a pair of gists. Please spend some time on this exercise before reading the spoilers, as you'll learn a lot more that way!
+
+A huge hint is that the first problem is based on an issue discussed in [Liskov's paper](http://www.cs.cmu.edu/~wing/publications/LiskovWing94.pdf), and the second and third problems are discussed in an [article about LSP](http://www.objectmentor.com/resources/articles/lsp.pdf ) by Bob Martin. However, please note that their solutions are not exactly the most natural fit for Ruby, and so there is still room for some creativity here.
 
 ### Behavioral subtyping vs. duck typing
 

@@ -2,53 +2,41 @@
 ContainerFullError  = Class.new(StandardError)
 ContainerEmptyError = Class.new(StandardError)
 
-
-# Uses stack terminology for convenience, but having aliased methods in Stack
-# would be acceptable too.
-
 require "set"
 
-class Bag
-  # other code similar to before
-
+class Bag  
   def ==(other)
-    [Set.new(data), limit] == [Set.new(other.data), other.limit]
+    [Set.new(data), limit] == [Set.new(other.send(:data)), other.send(:limit)]
   end
 
-  protected 
+  # returns true if the collection is an ordered collection,
+  # false otherwise. This defaults to returning false, but 
+  # may be overridden by subtypes to return either true or false.
+  def ordered?
+    false
+  end
+
+  private
   
-  # NOTE: Implementing == is one of the few legitimate uses of 
-  # protected methods / attributes
   attr_accessor :data, :limit
 end
 
-
-# Stack is a constrained sub-type of Bag,
-# it will work as a stand-in for Bag,
-# just with more specific behavior.
-
 class Stack
-  def initialize(limit)
-    self.data  = []
-    self.limit = limit
+  # other code similar to before
+
+  def ordered?
+    true
   end
 
-  def push(obj)
-    raise ContainerFullError unless data.length < limit
-
-    data.push(obj)
+  # use of send() is ugly here but I don't like making data public
+  def ==(other)
+    if other.ordered?
+      [other.send(:data), other.send(:limit)] == [data, limit]
+    else
+      [Set[*other.send(:data)], other.send(:limit)] == [Set[*data], limit]
+    end
   end
-
-  def pop
-    raise ContainerEmptyError if data.empty?
-
-    data.pop
-  end
-
-  def include?(obj)
-    data.include?(obj)
-  end
-
+ 
   private
 
   attr_accessor :data, :limit
@@ -70,17 +58,24 @@ end
 #
 
 a = Bag.new(3)
-b = Bag.new(3)
+b = Stack.new(3)
+c = Stack.new(3)
 
-a == b
+p a == b
 
 b.push(10)
 b.push(15)
-b.push(22)
 
-p b.include?(20) #=> false
-p b.include?(22) #=> true
+a.push(15)
 
-p b.pop
-p b.pop
-p b.pop
+p a == b
+
+a.push(10)
+
+p a == b
+
+c.push(15)
+c.push(10)
+
+p a == c
+p b == c
