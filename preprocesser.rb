@@ -2,6 +2,7 @@ text = ARGF.read
 
 text.gsub!(/(.*)=entry\s+/m,"")
 text.gsub!('<pre name="code" class="ruby">', '```ruby')
+text.gsub!('<pre name = "code" class = "ruby">', '```ruby')
 text.gsub!('<pre>','```')
 text.gsub!('</pre>','```')
 text.gsub!('<tt>','`')
