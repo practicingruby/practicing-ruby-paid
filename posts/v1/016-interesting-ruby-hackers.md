@@ -44,7 +44,7 @@ In addition to his work on Rubinius and RubySpec, Brian happens to be an incredi
 
 ### Tony Arcieri ([@bascule](http://twitter.com/bascule))
 
-Tony is another Ruby hacker interested in concurrency, particularly the Actor model of concurrency. He has built a number of concurrency tools in Ruby, including [rev](http://github.com/tarcieri/rev) and [revactor](http://github.com/tarcieri/revactor), but eventually decided that what he really wanted was the syntax of Ruby with the baked in concurrency model of Erlang. This lead him to begin work on his own language, [Reia](http://github.com/tarcieri/reia).
+Tony is another Ruby hacker interested in concurrency, particularly the Actor model of concurrency. He has built a number of concurrency tools in Ruby, including [revactor](http://github.com/tarcieri/revactor), but eventually decided that what he really wanted was the syntax of Ruby with the baked in concurrency model of Erlang. This lead him to begin work on his own language, [Reia](http://github.com/tarcieri/reia).
 
 For those who haven't seen it before, Reia is a fascinating language, even in its infancy. The syntax does look and feel like Ruby, but everything is Erlang under the hood. The functionality is mapped more towards Erlang than it is towards Ruby, which means that Reia is not aiming to be a feature complete Ruby implementation. Working in Reia is an interesting exercise in wondering what a smaller, more basic subset of Ruby's functionality might look like.
 
