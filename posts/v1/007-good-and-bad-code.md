@@ -1,5 +1,3 @@
-<small><i>Originally published as part of the Practicing Ruby newsletter on December 3, 2010. Most of these issues draw inspiration from discussions and teaching sessions at my free online school, <a href="http://university.rubymendicant.com">Ruby Mendicant University</a>. You should <a href="http://twitter.com/seacreature">follow @seacreature on twitter</a> if you want to keep up with my more recent projects.</i></small>
-
 In Issue #6, you got to see my intentionally bad implementation of Tic Tac Toe. For today, I have promised to show you some better code and the steps I took to get there. But before we move forward, let's take a quick look back at where we started.
 
 To start this exercise, I had challenged myself to implement this simple game without using any user defined classes or methods. Given that I wanted to make sure I produced *bad* code to start with, I got a little nervous when my back-of-the-napkin proof of concept didn't come out looking that bad. Here it is again below, for those who forgot about it.

@@ -1,5 +1,3 @@
-<small><i>Originally published as part of the Practicing Ruby newsletter on December 1, 2010. Most of these issues draw inspiration from discussions and teaching sessions at my free online school, <a href="http://university.rubymendicant.com">Ruby Mendicant University</a>. You should <a href="http://twitter.com/seacreature">follow @seacreature on twitter</a> if you want to keep up with my more recent projects.</i></small>
-
 In this issue and the next one, I'd like to demonstrate one of my favorite learning exercises while inviting you to follow along at home. It's something I usually do while teaching in a live, one-on-one setting, but I think we can adapt it for a broader audience and still get a lot out of it.
 
 In this exercise, the goal is to first produce some bad code, and then later steadily improve it while explaining why each change is an improvement. I usually like to start with a very simple problem but then just add some twists about how to implement it to make sure it comes out pretty bad.
@@ -90,7 +88,7 @@ loop do
 end
 ```
 
-While relatively short, you need to read through the whole script to really understand how any part of it operates. Of course, this script did not spring together fully formed, there was a thought process associated with it that drove it to this final implementation. For those curious, you can "follow my stream of consciousness notes":https://gist.github.com/24ef3c8209877c1946bb about what I was building and why in a step by step fashion.
+While relatively short, you need to read through the whole script to really understand how any part of it operates. Of course, this script did not spring together fully formed, there was a thought process associated with it that drove it to this final implementation. For those curious, you can [follow my stream of consciousness notes](https://gist.github.com/24ef3c8209877c1946bb) about what I was building and why in a step by step fashion.
 
 Seeing these notes will hopefully give you a bit of a sense of how this process might have gone if we were pair programming on this project, working in tiny iterations to push forward just a little bit farther each time. If so, you might already be catching a glimpse of what this exercise is all about. Otherwise, there is still more for us to do!
 
