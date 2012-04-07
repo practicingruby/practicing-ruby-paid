@@ -1,5 +1,3 @@
-<small><i>Originally published as part of the Practicing Ruby newsletter on December 31, 2010. Most of these issues draw inspiration from discussions and teaching sessions at my free online school, <a href="http://university.rubymendicant.com">Mendicant University</a>. You should <a href="http://twitter.com/seacreature">follow @seacreature on twitter</a> if you want to keep up with my more recent projects.</i></small>
-
 Today, I've got a handful of neat examples to share, each which demonstrates an interesting use of duck typing. We'll start by looking a feature built into Ruby's core, and then look at a few examples from other open source Ruby projects.
 
 ### Type Coercion, Ruby-style

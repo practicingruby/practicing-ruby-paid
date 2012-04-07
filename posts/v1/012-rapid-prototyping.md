@@ -1,5 +1,3 @@
-<small><i>Originally published as part of the Practicing Ruby newsletter on December 21, 2010. Most of these issues draw inspiration from discussions and teaching sessions at my free online school, <a href="http://university.rubymendicant.com">Ruby Mendicant University</a>. You should <a href="http://twitter.com/seacreature">follow @seacreature on twitter</a> if you want to keep up with my more recent projects.</i></small>
-
 Ruby makes it easy to quickly put together a proof-of-concept for almost any kind of project, as long as you have some experience in rapid application development. In this article, I will go over how I build prototypes, sharing the tricks that have worked well for me.
 
 Today we'll be walking through a bit of code that implements a small chunk of a falling blocks game that is similar to Tetris. If you're not familiar with Tetris, head over to [freetetris.org](http://freetetris.org) and play it a bit before reading this article.

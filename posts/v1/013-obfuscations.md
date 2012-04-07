@@ -1,5 +1,3 @@
-<small><i>Originally published as part of the Practicing Ruby newsletter on December 23, 2010. Most of these issues draw inspiration from discussions and teaching sessions at my free online school, <a href="http://university.rubymendicant.com">Ruby Mendicant University</a>. You should <a href="http://twitter.com/seacreature">follow @seacreature on twitter</a> if you want to keep up with my more recent projects.</i></small>
-
 Rather than always focusing on SERIOUS BUSINESS, I'd like share something a little more light hearted today. Whether you celebrate Christmas or not, I think you'll find this little holiday themed hack a great deal of fun to play with.
 
 ### Christian Neukirchen's Christmas Hack

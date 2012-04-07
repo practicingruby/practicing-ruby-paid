@@ -1,5 +1,3 @@
-<small><i>Originally published as part of the Practicing Ruby newsletter on December 21, 2010. Most of these issues draw inspiration from discussions and teaching sessions at my free online school, <a href="http://university.rubymendicant.com">Mendicant University</a>. You should <a href="http://twitter.com/seacreature">follow @seacreature on twitter</a> if you want to keep up with my more recent projects.</i></small>
-
 Type systems are a fundamental part of every programming language. In fact, the way a language designer approaches typing goes a long way towards outlining the way that thoughts are expressed in that language.
 
 Statically typed languages like C++ and Java make us tend to think of objects as abstract data structures that fit within a neatly defined hierarchy. In these languages, there isn't a major distinction between an object's class and its type, as the two concepts are tied together directly at the implementation level. But the marriage of class and type found in these languages is not a universal law shared by all object oriented programming languages.
@@ -36,7 +34,7 @@ read_data(input) #=> reads the contents of foo.txt via
                  #   the passed in file handle
 ```
   
-But things begin to fall apart a bit when we decide we'd like `read_data()` to work with a `Tempfile`, or with a `StringIO` object, or perhaps with a mock object we've defined in our tests. We have managed to bake into our logic the assumption that the input is always either a descendent of `String` or a descendent of `IO`. The purpose of duck typing is to remove these restrictions by focusing only on the messages that are being passed back and forth between objects rather than what class they belong to. The code below demonstraties one way you can do that.
+But things begin to fall apart a bit when we decide we'd like `read_data()` to work with a `Tempfile`, or with a `StringIO` object, or perhaps with a mock object we've defined in our tests. We have managed to bake into our logic the assumption that the input is always either a descendent of `String` or a descendent of `IO`. The purpose of duck typing is to remove these restrictions by focusing only on the messages that are being passed back and forth between objects rather than what class they belong to. The code below demonstrates one way you can do that.
 
 ```ruby
 def read_data(source)
