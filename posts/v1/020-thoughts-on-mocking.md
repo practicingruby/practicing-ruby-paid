@@ -1,6 +1,4 @@
-<i>Originally published as part of the first volume of the <a href="http://practicingruby.com">Practicing Ruby newsletter</a> on January 22, 2011. Most of these issues draw inspiration from discussions and teaching sessions at my free online school, <a href="http://university.rubymendicant.com">Mendicant University</a>.</i>
-
-In the [last issue](http://blog.rubybestpractices.com/posts/gregory/051-issue-19-thoughts-on-mocking.html), I encouraged everyone to read Martin Fowler's classic article [Mocks Aren't Stubs](http://martinfowler.com/articles/mocksArentStubs.html). Since this article is a bit dated and leans heavily towards Java style development practices, I also offered my own commentary to hopefully bridge the gap between Fowler's insights and the modern Ruby world. Now that we have the theories behind us, today we can focus on putting these ideas into practice.
+In the [last issue](http://practicingruby.com/articles/48), I encouraged everyone to read Martin Fowler's classic article [Mocks Aren't Stubs](http://martinfowler.com/articles/mocksArentStubs.html). Since this article is a bit dated and leans heavily towards Java style development practices, I also offered my own commentary to hopefully bridge the gap between Fowler's insights and the modern Ruby world. Now that we have the theories behind us, today we can focus on putting these ideas into practice.
 
 There is a style of behavior driven development that encourages mocking everything except the object under test. Fowler calls folks who follow this methodology _mockists_, and more-or-less presents this approach as a completely valid alternative to classic TDD, in which test doubles of any variety are only used when absolutely necessary. While I think that such an assessment is valid in the context Fowler originally wrote his article (2004/Java), I personally feel that the _mockist_ style that Fowler describes has no place in modern Ruby development.
 
@@ -190,7 +188,7 @@ def expect_broadcast(group, count)
 end
 ```
 
-We could actually go much farther here and verify the particular subject and content being passed to `broadcast()`, but as I said in [issue #18's mini-rant on testing](http://blog.rubybestpractices.com/posts/gregory/050-issues-18-testing-dogma.html), I don't particularly like testing presentation logic that needs to be hand verified due to frequent superficial change. But personal preferences aside, even with a more complex set of expectations, using a mock object here is sure to be faster than actually sending an email.
+We could actually go much farther here and verify the particular subject and content being passed to `broadcast()`, but as I said in [issue #18's mini-rant on testing](http://practicingruby.com/articles/47), I don't particularly like testing presentation logic that needs to be hand verified due to frequent superficial change. But personal preferences aside, even with a more complex set of expectations, using a mock object here is sure to be faster than actually sending an email.
 
 This is a bit contrived example, but imagine a group object with many more methods that send broadcast emails. Add to that all the email enabled features across an application, and you'll quickly see the clock ticking longer and longer even if you do have a mail server that pipes everything to _/dev/null_.
 

@@ -1,5 +1,3 @@
-<i>Originally published as part of the first volume of the <a href="http://practicingruby.com">Practicing Ruby newsletter</a> on February 5, 2011. Most of these issues draw inspiration from discussions and teaching sessions at my free online school, <a href="http://university.rubymendicant.com">Mendicant University</a>.</i>
-
 SOLID is a collection of five object oriented design principles that go nicely together. Here's a super brief summary pulled from [the wikipedia page](http://en.wikipedia.org/wiki/SOLID) on the topic:
 
  * Single responsibility principle: an object should have only a single responsibility.
@@ -330,7 +328,7 @@ I've seen a couple different interpretations of the interface segregation princi
 
 Ruby offers a lot of flexibility and its dynamic typing makes a lot of interface segregation principle violations just go away on their own. That having been said, we still see a lot of `is_a?()` and `respond_to?()` checks which are both a form of LSP violation.
 
-To protect against those violations, the best bet is to embrace duck typing as much as possible. Since this article is already super long and we've already covered duck typing extensively in issues [#14](http://blog.rubybestpractices.com/posts/gregory/046-issue-14-duck-typing.html) and [#15](http://blog.rubybestpractices.com/posts/gregory/047-issue-15-duck-typing-2.html) of Practicing Ruby, It would be sufficient to simply re-read those articles if you need a refresher and then promptly move on to the next principle. But in case you want to dig deeper, here are a couple more articles related to this topic that you should definitely read if you haven't seen them before. All three are about how to get around explicitly naming classes in case statements, which is a form of LSP violation.
+To protect against those violations, the best bet is to embrace duck typing as much as possible. Since this article is already super long and we've already covered duck typing extensively in issues [#14](http://practicingruby.com/articles/43) and [#15](http://practicingruby.com/articles/44) of Practicing Ruby, It would be sufficient to simply re-read those articles if you need a refresher and then promptly move on to the next principle. But in case you want to dig deeper, here are a couple more articles related to this topic that you should definitely read if you haven't seen them before. All three are about how to get around explicitly naming classes in case statements, which is a form of LSP violation.
 
 * [Ruby case statements and kind_of?(Sandi Metz)](http://sandimetz.com/2009/06/ruby-case-statements-and-kindof.html)
 
@@ -422,7 +420,7 @@ Dependency inversion can really come in handy, but it's important to provide sen
 
 This article is much longer than I expected it would be, but I feel like I've just scratched the surface. An interesting thing about the SOLID principles is that they all sort of play into each other, so you tend to get the most out of them by looking at all five concepts at once rather than each one in isolation.
 
-One thing I want to emphasize is that when I make use of SOLID or any other set of design principles, I tend to use them as a metric rather than a set of constructive rules. I don't typically set out designing a system with all of these different guidelines in mind, as that would give me a very clausterphobic feeling. However, when the time comes to sanity check a new design or make incremental improvements to an old one during a refactoring session, SOLID provides a good checklist for pinpointing areas of my code that might deserve some rethinking.
+One thing I want to emphasize is that when I make use of SOLID or any other set of design principles, I tend to use them as a metric rather than a set of constructive rules. I don't typically set out designing a system with all of these different guidelines in mind, as that would give me a very claustrophobic feeling. However, when the time comes to sanity check a new design or make incremental improvements to an old one during a refactoring session, SOLID provides a good checklist for pinpointing areas of my code that might deserve some rethinking.
 
 Sometimes you break these rules by accident, and that's okay. Sometimes you break them because you are making a conscious trade to avoid some other bad thing from happening, and that's okay too. As long as you're regularly checking your assumptions about things and actually caring about the overall design of your system, you shouldn't feel guilty for not following these guidelines perfectly. In fact, it is more dangerous to blindly follow design principles to the letter than it is to completely ignore them.
 
