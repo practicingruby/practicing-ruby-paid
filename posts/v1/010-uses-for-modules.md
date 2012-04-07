@@ -1,5 +1,3 @@
-<small><i>Originally published as part of the Practicing Ruby newsletter on December 14, 2010. Most of these issues draw inspiration from discussions and teaching sessions at my free online school, <a href="http://university.rubymendicant.com">Ruby Mendicant University</a>. You should <a href="http://twitter.com/seacreature">follow @seacreature on twitter</a> if you want to keep up with my more recent projects.</i></small>
-
 In the last two issues, we covered mixins and namespacing, two of the most common uses for modules. In the second half of this series, we'll look at some other ways to use modules that are not quite so obvious.
 
 Today, we'll focus on the question that caused me to write this series in the first place. Many readers were confused by my use of `extend self` within earlier Practicing Ruby articles, and this lead to a number of interesting questions on the mailing list at the time these articles were originally published. While I tried my best to answer them directly, I think we're in much better shape for studying this topic now that the last two articles have laid a bit of a foundation for us.
@@ -246,7 +244,7 @@ The techniques I've shown today can be useful in certain edge case scenarios whe
 
 Upon reflection, I wonder to myself whether the upsides of these techniques outweigh the cost of explaining them. I don't really have a definitive answer to that question, but it's really something I think about often.
 
-On the one hand, I feel that users of Ruby should have an ingrained understanding of its object system. Afterall, these are actually fairly straightforward techniques once you understand how things work under the hood. It's also true that you can't really claim to understand Ruby's object system without fully understanding these examples. Having a weak understanding of how Ruby's objects work is sure to rob you of the joy of working in Ruby, so for this reason, I feel like 'dumbing down' our code would be a bad thing.
+On the one hand, I feel that users of Ruby should have an ingrained understanding of its object system. After all, these are actually fairly straightforward techniques once you understand how things work under the hood. It's also true that you can't really claim to understand Ruby's object system without fully understanding these examples. Having a weak understanding of how Ruby's objects work is sure to rob you of the joy of working in Ruby, so for this reason, I feel like 'dumbing down' our code would be a bad thing.
 
 On the other hand, I think that for the small gains yielded by using these techniques, we require those who are reading our code to understand a whole score of details that are unique to Ruby. When you consider that by changing a couple lines of code, you can have a design which is not much worse but is understandable by pretty much anyone who has programmed in an OO language before, it's certainly tempting to cater to the lowest common denominator.
 

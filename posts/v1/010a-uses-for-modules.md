@@ -1,6 +1,4 @@
-<small><i>Originally published as part of the Practicing Ruby newsletter on December 15, 2010. Most of these issues draw inspiration from discussions and teaching sessions at my free online school, <a href="http://university.rubymendicant.com">Ruby Mendicant University</a>. You should <a href="http://twitter.com/seacreature">follow @seacreature on twitter</a> if you want to keep up with my more recent projects.</i></small>
-
-In the [last issue](http://blog.rubybestpractices.com/posts/gregory/040-issue-10-uses-for-modules.html), we discussed the use of `extend self` in great detail, but neglected to cover a pair of alternatives that seem on the surface to be functionally equivalent. While I don't want to spend too much time rehashing an old topic, I want to at least provide an example of each approach and comment on their quirks.
+In the [last issue](http://practicingruby.com/articles/38), we discussed the use of `extend self` in great detail, but neglected to cover a pair of alternatives that seem on the surface to be functionally equivalent. While I don't want to spend too much time rehashing an old topic, I want to at least provide an example of each approach and comment on their quirks.
 
 ### Defining methods at the module level
 

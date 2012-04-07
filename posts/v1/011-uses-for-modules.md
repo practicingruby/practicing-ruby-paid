@@ -1,5 +1,3 @@
-<small><i>Originally published as part of the Practicing Ruby newsletter on December 21, 2010. Most of these issues draw inspiration from discussions and teaching sessions at my free online school, <a href="http://university.rubymendicant.com">Ruby Mendicant University</a>. You should <a href="http://twitter.com/seacreature">follow @seacreature on twitter</a> if you want to keep up with my more recent projects.</i></small>
-
 Today we're going to wrap up this series on modules by looking at how mixins can be useful for implementing custom behavior on individual objects. In particular, we'll be looking at how modules can be used both as a replacement for monkey patching, as well as for constructing systems that can be extended without the need for monkey patching. While neither of these techniques are going to be something you'll use every day, they really come in handy when you run into a situation that calls for them.
 
 ### Modules instead of Monkey Patches

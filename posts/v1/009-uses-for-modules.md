@@ -1,8 +1,6 @@
-<small><i>Originally published as part of the Practicing Ruby newsletter on December 10, 2010. Most of these issues draw inspiration from discussions and teaching sessions at my free online school, <a href="http://university.rubymendicant.com">Ruby Mendicant University</a>. You should <a href="http://twitter.com/seacreature">follow @seacreature on twitter</a> if you want to keep up with my more recent projects.</i></small>
-
 ### Using Mix-ins to Augment Class Definitions
 
-Although knowing [how to use modules for namespacing](http://blog.rubybestpractices.com/posts/gregory/037-issue-8-uses-for-modules.html) is important, it's really only a small part of what you can do with modules. What modules do best is providing a convenient way to write code that be mixed into other objects, augmenting their behaviors. Because modules facilitate code sharing in a way that is distinct from both the general OO concept of class inheritance and from things like Java's interfaces, they require you to think about your design in a way that's a bit different from most other object oriented programming languages.
+Although knowing [how to use modules for namespacing](http://practicingruby.com/articles/36) is important, it's really only a small part of what you can do with modules. What modules do best is providing a convenient way to write code that be mixed into other objects, augmenting their behaviors. Because modules facilitate code sharing in a way that is distinct from both the general OO concept of class inheritance and from things like Java's interfaces, they require you to think about your design in a way that's a bit different from most other object oriented programming languages.
 
 While I imagine most of our readers are at least vaguely comfortable with using mixins, I'll refer to some basic examples of core Ruby mixins to illustrate their power before moving on to more subtle points.
 
