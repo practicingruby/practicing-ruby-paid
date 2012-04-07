@@ -1,5 +1,3 @@
-<i>Originally published as part of the first volume of the <a href="http://practicingruby.com">Practicing Ruby newsletter</a> on February 28, 2011. Most of these issues draw inspiration from discussions and teaching sessions at my free online school, <a href="http://university.rubymendicant.com">Mendicant University</a>.</i>
-
 In this two part series, I've been looking at the classical design patterns laid out by the Gang of Four and exploring their relevance to modern day Ruby programming. Rather than teaching the design patterns themselves, my goal is to give practical examples using real code so that you can consider what the strengths and weaknesses of these techniques are.
 
 In this issue, I'll be focusing on the structural design patterns, all of which have to do with the relationships between clusters of code. The seven patterns listed below are the ones we'll focus on in this article.

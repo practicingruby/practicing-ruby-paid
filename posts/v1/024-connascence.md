@@ -1,6 +1,4 @@
-<i>Originally published as part of the first volume of the <a href="http://practicingruby.com">Practicing Ruby newsletter</a> on February 11, 2011. Most of these issues draw inspiration from discussions and teaching sessions at my free online school, <a href="http://university.rubymendicant.com">Mendicant University</a>.</i>
-
-[Last week's massive article on SOLID](http://blog.rubybestpractices.com/posts/gregory/055-issue-23-solid-design.html) was inspired by a great talk I saw by Sandi Metz at GoRuCo 2009. Coincidentally, this week's article is inspired by another great talk I saw in 2009, called [The Building Blocks of Modularity](http://confreaks.net/videos/77-mwrc2009-the-building-blocks-of-modularity). This talk was given by Jim Weirich at MWRC, and if you haven't seen it yet, I urge you to stop what you're doing and head on over to Confreaks right now:
+[Last week's massive article on SOLID](http://practicingruby.com/articles/52) was inspired by a great talk I saw by Sandi Metz at GoRuCo 2009. Coincidentally, this week's article is inspired by another great talk I saw in 2009, called [The Building Blocks of Modularity](http://confreaks.net/videos/77-mwrc2009-the-building-blocks-of-modularity). This talk was given by Jim Weirich at MWRC, and if you haven't seen it yet, I urge you to stop what you're doing and head on over to Confreaks right now:
 
 In the talk, Jim jokingly claims he's presenting on the "Grand Unified Theory of Software Development". Personally, I think that isn't too far off the mark, because connascence is a fundamentally simple concept when compared to things like the SOLID principles or any of other design concepts we'll be studying in this series.
 
@@ -291,7 +289,7 @@ In this case, arguably just fully applying the DRY principle would lead us to th
 
 ### Reflections
 
-While we dug deep into some heavy theory in [last week's SOLID article](http://blog.rubybestpractices.com/posts/gregory/055-issue-23-solid-design.html), I tried to keep the connascence examples simple, practical, and common. But that is not to say that connascence isn't every bit as deep a concept as SOLID, and your investigations should not stop at the examples I've shown here.
+While we dug deep into some heavy theory in [last week's SOLID article](http://practicingruby.com/articles/52), I tried to keep the connascence examples simple, practical, and common. But that is not to say that connascence isn't every bit as deep a concept as SOLID, and your investigations should not stop at the examples I've shown here.
 
 In the two articles to follow this one, we'll be looking at particular patterns and techniques that can help you design better code. Now that you're armed with both the SOLID principles and the metrics of connascence, you have a solid basis for thinking about these problems in more specific contexts. I encourage you to re-read these first two articles as you continue on with this series, and get back to me with any questions you might have.
   

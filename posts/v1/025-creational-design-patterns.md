@@ -1,5 +1,3 @@
-<i>Originally published as part of the first volume of the <a href="http://practicingruby.com">Practicing Ruby newsletter</a> on February 22, 2011. Most of these issues draw inspiration from discussions and teaching sessions at my free online school, <a href="http://university.rubymendicant.com">Mendicant University</a>.</i>
-
 In this issue and the next one, I look at several design patterns laid out by the Gang of Four and explore their relevance to modern day Ruby programming. My goal is not so much to teach the design patterns themselves, but instead give practical examples using real code so that you can consider what their strengths and weaknesses are. 
 
 In this article, I focus on the creational design patterns, all of which have to do with instantiating new objects. They are listed below in no particular order:
