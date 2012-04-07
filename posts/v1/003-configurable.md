@@ -1,5 +1,3 @@
-<small><i>Originally published as part of the Practicing Ruby newsletter on November 16, 2010. Most of these issues draw inspiration from discussions and teaching sessions at my free online school, <a href="http://university.rubymendicant.com">Ruby Mendicant University</a>.</i></small>
-
 Ruby developers tend to prefer convention over configuration, but that doesn't mean our applications are configuration-free.  If you're doing serious software development, it's likely that at least some of your projects depend on some sort of configuration data. Whether you simply need to store database credentials, an API key, or something much more complicated, it's important to know how to do so in a way that is flexible without introducing too much administrative overhead.
 
 In this two part article series, we'll be talking about the many options Ruby provides us for working with configuration data, and what techniques work best in various common scenarios. We'll start by showing a single example of a problem and one way to solve it, and then go on to discuss various other options in Issue #4.

@@ -1,6 +1,4 @@
-<small><i>Originally published as part of the Practicing Ruby newsletter on November 18, 2010. Most of these issues draw inspiration from discussions and teaching sessions at my free online school, <a href="http://university.rubymendicant.com">Ruby Mendicant University</a>.</i></small>
-
-In Issue #3, we discussed the numerous downsides of mixing configuration code with application code. We then went on to discuss how using YAML files can eliminate many of those problems. But since nothing is perfect, we're back again today to discuss some of the downsides of YAML based configurations as well as some alternative approaches that have their own ups and downs. We'll also touch on some practices that should be followed regardless of how you implement your configuration systems.
+In [Issue #3](http://practicingruby.com/articles/31), we discussed the numerous downsides of mixing configuration code with application code. We then went on to discuss how using YAML files can eliminate many of those problems. But since nothing is perfect, we're back again today to discuss some of the downsides of YAML based configurations as well as some alternative approaches that have their own ups and downs. We'll also touch on some practices that should be followed regardless of how you implement your configuration systems.
 
 ### Dynamic Configuration
 
@@ -217,7 +215,7 @@ Some command line applications need to be context aware in order to do their job
 
 For example, git knows which repository to interact with because it knows how to work backwards to find the <i>.git/</i> configuration folder at the project root. Likewise, running `rake test` from anywhere within your project causes rake to look backwards recursively until it finds the nearest <i>Rakefile</i> to run. This general pattern can be seen in many other applications, and is worth knowing about in case you ever need to make use of it yourself.
 
-While I don't want to go into much detail about this topic, I will say that it seemed a bit magical to me until I needed to implement this sort of functionality in my own projects. The basic idea is no more complicated than working backwards from your current directory until you find the file or folder than you need to interact with, which is somthing Ruby's pathname library can make quick work of.
+While I don't want to go into much detail about this topic, I will say that it seemed a bit magical to me until I needed to implement this sort of functionality in my own projects. The basic idea is no more complicated than working backwards from your current directory until you find the file or folder than you need to interact with, which is something Ruby's pathname library can make quick work of.
 
 Here's an example pulled directly out of a project of mine which illustrates a reverse search from the current working directory back to the filesystem's root directory.
 

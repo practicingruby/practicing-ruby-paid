@@ -1,5 +1,3 @@
-> Originally published as part of the Practicing Ruby newsletter on November 9, 2010. Most of these issues draw inspiration from discussions and teaching sessions at my free online school, <a href="http://university.rubymendicant.com">Ruby Mendicant University</a>.
-
 I decided to start off this newsletter with one of the most basic but essential pieces of knowledge you can have about Ruby's object model: the way it looks up methods. Let's do a little exploration by working through a few examples.
 
 Below we have a simple report class who's job is to perform some basic data manipulations and then produce some text output.

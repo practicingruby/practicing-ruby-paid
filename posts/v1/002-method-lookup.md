@@ -1,8 +1,4 @@
-<small><i>Originally published as part of the Practicing Ruby newsletter on November 11, 2010. Most of these issues draw inspiration from discussions and teaching sessions at my free online school, <a href="http://university.rubymendicant.com">Ruby Mendicant University</a>.</i></small>
-
-### Ruby's method lookup rules at a glance
-
-In <a href="http://blog.rubybestpractices.com/posts/gregory/030-issue-1-method-lookup.html">Issue #1</a> we discussed Ruby's lookup path and proved by example that class inheritance is just a small part of the overall picture. To recap, Ruby methods are looked up in the following order:
+In [Issue #1](http://practicingruby.com/articles/29) we discussed Ruby's lookup path and proved by example that class inheritance is just a small part of the overall picture. To recap, Ruby methods are looked up in the following order:
 
 1. Methods defined in the object's singleton class (i.e. the object itself)
 1. Modules mixed into the singleton class in reverse order of inclusion
