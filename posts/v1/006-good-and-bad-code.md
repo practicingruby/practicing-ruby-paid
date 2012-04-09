@@ -6,7 +6,7 @@ One surefire way of writing bad code without resorting to intentionally writing 
 
 ### Implementing Tic-Tac-Toe as a single procedure.
 
-I've chosen the game "Tic-Tac-Toe":http://en.wikipedia.org/wiki/Tic-Tac-Toe as the problem to focus on, because it only involves a few simple rules and can be implemented by anyone who has basic programming skills.
+I've chosen the game [Tic-Tac-Toe](http://en.wikipedia.org/wiki/Tic-Tac-Toe) as the problem to focus on, because it only involves a few simple rules and can be implemented by anyone who has basic programming skills.
 
 In fact, if you ignore end game conditions and error handling, you can get a simple prompt for a two player game with just a few lines of Ruby.
 
@@ -94,7 +94,7 @@ Seeing these notes will hopefully give you a bit of a sense of how this process 
 
 ### What Happens Next?
 
-I've placed my bad tictactoe example in a <a href="https://github.com/sandal/tictactoe/tree/7fd72a33aec33f75909d8c9d59a43423b0f66b24">repository on github</a>. If you'd like to participate, please fork this repository and make one change to the code at a time, leaving detailed reasoning in each commit message as to why you're making the change. Once you're happy with what you've got, post a link in the comments section on this post so others can check out what you have done.
+I've placed my bad tictactoe example in a [repository on github](https://github.com/sandal/tictactoe/tree/7fd72a33aec33f75909d8c9d59a43423b0f66b24). If you'd like to participate, please fork this repository and make one change to the code at a time, leaving detailed reasoning in each commit message as to why you're making the change. Once you're happy with what you've got, post a link in the comments section on this post so others can check out what you have done.
 
 In the next issue, I will post my own iterative set of improvements, as well as links to some of my favorite reader submissions. I will also summarize some of the lessons that can be learned from using this technique, and provide a few suggestions for other problems to attempt in this fashion.
 
