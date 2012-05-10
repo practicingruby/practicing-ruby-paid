@@ -1,0 +1,168 @@
+While it may come as a surprise, you can learn a great deal about Ruby by building something as simple as a static website generator. Although the task itself may seem a bit dull, it provides an opportunity to practice a wide range of Ruby idioms that can be applied elsewhere whenever you need to manipulate text-based data or muck around with the filesystem. Because text and files are everywhere, most of what you can learn by working on this kind of project is likely to help you out immediately with your other projects as well.
+
+Unfortunately, there are two downsides to building a static site generator as a learning exercise: it involves a fairly large time commitment, and in the end you will probably be better off using [Jekyll](http://github.com/mojombo/jekyll) rather than maintaining your own project. But don't despair, I wrote this article specifically with those two points in mind!
+
+In order to make it easier for us to study text and file processing tricks, I broke off a small chunk of Jekyll's functionality and implemented a simplified demo app called [Jackal](http://github.com/elm-city-craftworks/jackal). Although it would be a horrible idea to attempt to use this barely functional counterfeit as a static site generator, it works great as a tiny but context-rich showcase for some very handy Ruby idioms.
+
+### A brief overview of Jackal's functionality
+
+The best way to get a feel for what Jackal can do is to [grab it from Github](https://github.com/elm-city-craftworks/jackal) and follow the instructions in the README. However, because it only implements a single feature, you should be able to get a full sense of how it works from the following overview.
+
+Similar to Jekyll, the main purpose of Jackal is to convert Markdown-formatted posts and their metadata into HTML files. For example, suppose we have a file called **_posts/2012-05-09-tiniest-kitten.markdown** with the following contents:
+
+```
+---
+category: essays
+title: The tiniest kitten
+---
+
+# The Tiniest Kitten
+
+Is not nearly as **small** as you might think she is.
+```
+
+Jackal's job is to split the metadata from the content in this file and then generate a new file called **_site/essays/2012/05/09/tiniest_kitten.html** that ends up looking like this:
+
+
+```html
+<h1>The Tiniest Kitten</h1>
+
+<p>Is not nearly as <strong>small</strong> as you might think she is.</p>
+```
+
+If it were a real static site generator, it would support all sorts of fancy features like layouts and templates, but I found that I was able to generate enough "teaching moments" without those things, and so this is pretty much all there is to it. You may want to spend a few more minutes [reading its source](http://github.com/elm-city-craftworks/jackal) before moving on, but if you feel you understand this example, you should have no trouble understanding the rest of this article.
+
+Now that you have some sense of the surrounding context, I will take you on a guided tour of through various points of interest in Jackal's implementation, highlighting the bits of code that illustrate generally useful techniques.
+
+### Idioms for text processing
+
+While working on solving this problem, I noticed a total of four text processing idioms worth mentioning.
+
+**1) Enabling multi-line mode in patterns**
+
+The first step that Jackal (and Jekyll) need to take before further processing can be done on source files is to split the YAML-based metadata from the post's content. In Jekyll, the following code is used to split things up:
+
+```ruby
+if self.content =~ /^(---\s*\n.*?\n?)^(---\s*$\n?)/m
+  self.content = $POSTMATCH
+  self.data    = YAML.load($1)
+end
+```
+
+This is a fairly vanilla use of regular expressions, and is pretty easy to read even if you aren't especially familiar with Jekyll itself. The main interesting thing about it that it uses the `/m` modifier to make it so that the pattern is evaluated in multiline-mode. In this particular example, this simply makes it so that the group which captures the YAML metadata can match multiple lines without explicitly specifying the intermediate `\n` characters. The following contrived example should help you understand what that means if you're still scratching your head:
+
+```
+>> "foo\nbar\nbaz\nquux"[/foo\n(.*)quux/, 1]
+=> nil
+>> "foo\nbar\nbaz\nquux"[/foo\n(.*)quux/m, 1]
+=> "bar\nbaz\n"
+```
+
+While this isn't much of an exciting idiom for those who have a decent understanding of regular expressions, I know that for many patterns can be a mystery, so I wanted to make sure to point this feature out. It's great to use whenever you need to match a semi-arbritrary blob of content that can span many lines.
+
+**2) Using MatchData objects rather than global variables**
+
+While it is not necessarily terrible to use variables like `$1` and `$POSTMATCH`, I tend to avoid them whenever it is not strictly necessary to use them. I find that using `String#match` feels a lot more object-oriented and is more aesthetically pleasing:
+
+```ruby
+if md = self.content.match(/^(---\s*\n.*?\n?)^(---\s*$\n?)/m)
+  self.content = md.post_match
+  self.data    = md[1]
+end
+```
+
+If you combine this with the use of Ruby 1.9's named groups, your code ends up looking even better. The following example is what I ended up using in Jackal:
+
+```ruby
+if (md = contents.match(/^(?<metadata>---\s*\n.*?\n?)^(---\s*$\n?)/m))
+  self.contents = md.post_match
+  self.metadata = YAML.load(md[:metadata])
+end
+```
+
+While this does lead to somewhat more verbose patterns, it helps quite a bit with readability and even makes it possible to directly use `MatchData` objects in a way similar to how we would work with a parameters hash.
+
+**3) Enabling free-spacing mode in patterns**
+
+I tend to be very strict about keeping my code formatted so that my lines are under 80 characters, and as a result of that I find that I am often having to think about how to break up long statements. I ended up using the `/x` modifier in one of Jackal's regular expressions for this purpose, as shown below:
+
+```ruby
+module Jackal
+  class Post
+    FILE_PAT = /\A(?<year>\d{4})-(?<month>\d{2})-(?<day>\d{2})-
+                (?<basename>.*).markdown\z/x
+
+    # ...
+  end
+end
+```
+
+This mode makes it so that patterns ignore whitespace characters, making the previous pattern functionally equivalent to the following:
+
+```ruby
+FILE_PAT = /\A(?<year>\d{4})-(?<month>\d{2})-(?<day>\d{2})-(?<basename>.*).markdown\z/x
+```
+
+However, this mode does not exist primarily to serve the needs of those with obsessive code formatting habits, but instead exists to make it possible to break up and document long regular expressions, such as in the following example:
+
+```ruby
+# adapted from: http://refactormycode.com/codes/573-phone-number-regex
+
+PHONE_NUMBER_PATTERN = /^
+  (?:
+    (?<prefix>\d)             # prefix digit
+    [ \-\.]?                  # optional separator
+  )?
+  (?:
+    \(?(?<areacode>\d{3})\)?  # area code
+    [ \-\.]                   # separator
+  )?
+  (?<trunk>\d{3})             # trunk
+  [ \-\.]                     # separator
+  (?<line>\d{4})              # line
+  (?:\ ?x?                    # optional space or 'x'
+    (?<extension>\d+)         # extension
+  )?
+$/x
+```
+
+This idiom is not extremly common in Ruby, perhaps because it is easy to use interpolation within regular expressions to accomplish similar results. However, this does seem to be a handy way to document your patterns and arrange them in a way that can be easily visually scanned without having to chain things together through interpolation.
+
+**4) Making good use of Array#join**
+
+Whenever I am building up a string from a list of elements, I tend to use `Array#join` rather than string interpolation (i.e. the `#{}` operator) if I am working with more than two elements. As an example, take a look at my implementation of the `Jackal::Post#dirname` method:
+
+```ruby
+module Jackal
+  class Post
+    def dirname
+      raise ArgumentError unless metadata["category"]
+
+      [ metadata["category"], 
+        filedata["year"], filedata["month"], filedata["day"] ].join("/")
+    end
+  end
+end
+```
+
+The reason for this is mostly aesthetic, but it gives me the freedom to format my code any way I would like, and is a bit easier to make changes to.
+
+### Idioms for working with files and folders
+
+**1) Using File.basename**
+
+Mention extension stripping
+
+**2) Using Pathname objects**
+
+Mention /foo gotcha
+
+**3) Using File.write**
+
+Mention binread and binwrite
+
+**4) Using Dir.mktmpdir and Dir.chdir**
+
+mention tempfile stdlib
+
+### Reflections
