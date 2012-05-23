@@ -1,58 +1,57 @@
-In [Issue 3.7](http://practicingruby.com/articles/24) I started to explore the criteria laid out by M. Sakkinen's
+In [Issue 3.7](http://practicingruby.com/articles/24), I started to explore the criteria laid out by Sakkinen's
 [Disciplined Inheritance](http://scholar.google.com/scholar?cluster=5893037045851782349&hl=en&as_sdt=0,7&sciodt=0,7), 
-a language-agnostic paper published over two decades ago that is surprisingly 
+a language-agnostic paper published more than two decades ago that is surprisingly 
 relevant to the modern Ruby programmer. In this issue, we continue where Issue 3.7 
-left off, with the question of how to maintain complete compatibility between
-parent and child objects in inheritance-based domain models. Or put another way,
-this article explores how to safely reuse code within a system
+left off: on the question of how to maintain complete compatibility between
+parent and child objects in inheritance-based domain models. Or, to put it another way,
+this article explores how to reuse code safely within a system—
 without it becoming a maintenance nightmare.
 
-After taking a closer look at what Sakkinen exposed about this topic, I came to
+After taking a closer look at what Sakkinen exposed regarding this topic, I came to
 realize that the ideas he presented were strikingly similar to the [Liskov Substitution
 Principle](http://en.wikipedia.org/wiki/Liskov_Substitution_Principle). In fact,
 the extremely dynamic nature of Ruby makes 
-establishing [a behavioral notion of sub-typing](http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.39.1223) (Liskov/Wing 1993)
+establishing [a behavioral notion of subtyping](http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.39.1223) (Liskov and Wing 1993)
 a prerequisite for developing disciplined inheritance practices. 
-As a result, this article refers to Liskov's work moreso than Sakkinen's, 
-even though both papers have extremely interesting things to say about this topic. 
+As a result, this article refers to Liskov's work more than Sakkinen's, 
+even though both papers have extremely interesting things to say on this topic. 
 
 ### Defining a behavioral subtype 
 
 Both Sakkinen and Liskov describe the essence of the inheritance relationship as 
-the ability for a child object to serve as a drop-in replacement wherever
-its parent object can be used. While I've greatly simplified the concept by
-stating it in such a general fashion, this is the thread which ties
+the ability of a child object to serve as a drop-in replacement wherever
+its parent object can be used. I've greatly simplified the concept by
+stating it in such a general fashion, but this is the thread that ties
 their independent works together. 
 
 Liskov goes a step farther than Sakkinen by defining two kinds of 
-behavioral subtypes: children which extend the behavior specified by their 
-parents, and children which constrain the behavior specified by their parents. 
+behavioral subtypes: children that extend the behavior specified by their 
+parents, and children that constrain the behavior specified by their parents. 
 These concepts are not mutually exclusive, but because each brings up
-its own set of challenges, it is convenient to split them out in this
+its own set of challenges, it is convenient to separate them in this
 fashion.
 
 Both Sakkinen and Liskov emphasize that the abstract concept of subtyping 
 is  much more about the observable behavior of objects than it is about
-what exactly is going on under the hood. This is a natural way of thinking
-for Rubyists, and is worth keeping in mind as you read through the rest
+what exactly is going on under the hood. This concept is a natural way of thinking
+for Rubyists, and it is worth keeping in mind as you read through the rest
 of this article. In particular, when we talk about the type of an object,
 we are focusing on what that object *does*, not what it *is*.
 
-While the concept of a behavioral subtype sound like a direct analogue for
+Although the concept of a behavioral subtype sounds like a direct analogue for
 what we commonly refer to as "duck typing" in Ruby, the former is about
-the full contract of an object, rather than how it acts under certain
+the full contract of an object rather than how it acts under certain
 circumstances. I go into more detail about the differences between
-these concepts towards the end of this article,
+these concepts toward the end of this article,
 but before we can discuss them meaningfully, we need to take a look
 at Liskov's two types of behavioral subtyping and how they can
 be implemented.
 
 ### Behavioral subtypes as extensions
 
-Whether you realize it or not, odds are you already are familiar with using behavioral subtypes as extensions. Whenever we inherit from `ActiveRecord::Base` or mix `Enumerable` into one of our objects, we're making use of this concept. In essence, the purpose
-of an extension is to bolt new behavior on top of an existing type to form a new subtype.
+Whether you realize it or not, odds are good that you are already familiar with using behavioral subtypes as extensions. Whenever we inherit from `ActiveRecord::Base` or mix `Enumerable` into one of our objects, we're making use of this concept. In essence, the purpose of an extension is to bolt new behavior on top of an existing type to form a new subtype.
 
-To ensure that our child objects maintains the substitution principle, we need to make sure that any new behavior and modifications introduced by extensions follow a few simple rules. In particular, all new functionality must either be completely transparent to the parent object or defined in terms of the parent object's functionality. Changing the signature of a method provided by the parent object would be considered an incompatible change, as would directly modifying instance variables referenced by the parent object. These strict rules may seem a bit overkill, but they are the only way to guarantee that your extended subtypes will be drop in replacements for their supertypes.
+To ensure that our child objects maintain the substitution principle, we need to make sure that any new behavior and modifications introduced by extensions follow a few simple rules. In particular, all new functionality must be either completely transparent to the parent object or defined in terms of the parent object's functionality. Changing the signature of a method provided by the parent object would be considered an incompatible change, as would directly modifying instance variables referenced by the parent object. These strict rules may seem like overkill, but they are the only way to guarantee that your extended subtypes will be drop-in replacements for their supertypes.
 
 In practice, obeying these rules is not as hard as it seems. For example, suppose we wanted to extend `Prawn::Document` so that it implements some helpers for article typesetting:
 
@@ -80,7 +79,7 @@ Prawn::Article.generate("test.pdf") do
 end
 ```
 
-The most simple way to implement this sort of DSL would be to create a subclass of `Prawn::Document`, as shown in the following example:
+The most simple way to implement this sort of domain language would be to create a subclass of `Prawn::Document`, as shown in the following example:
 
 ```ruby
 module Prawn
@@ -108,7 +107,7 @@ end
 
 As far as Liskov is concerned, `Prawn::Article` is a perfectly legitimate extension because instances of it are drop-in substitutes for `Prawn::Document` objects. In fact, this sort of extension is trivial to prove to be a behavioral subtype because it is defined purely in terms of public methods that are provided by its parents (`Prawn::Document` and `Prawn::Measurements`). Because the functionality added is so straightforward, the use of subclassing here might just be the right tool for the job. 
 
-The downside of using subclassing is that even minor alterations to program requirements can cause encapsulation-related issues to become a real concern. For example, if we decide that we want to add a pair of instance variables that control the fonts used for headers and paragraphs, it would be hard to guarantee that these variables wouldn't clash with the data contained within `Prawn::Document` objects. While we can assume that calls to public methods provided by the parent object are safe, we cannot say the same when it comes to referencing instance variables, and so a delegation-based model starts to look more appealing.
+The downside of using subclassing is that even minor alterations to program requirements can cause encapsulation-related issues to become a real concern. For example, if we decide that we want to add a pair of instance variables that control the fonts used for headers and paragraphs, it would be hard to guarantee that these variables wouldn't clash with the data contained within `Prawn::Document` objects. We can assume that calls to public methods provided by the parent object are safe, but we cannot say the same about referencing instance variables, so a delegation-based model starts to look more appealing.
 
 Suppose we wanted to support the following API, but through the use of delegation rather than subclassing:
 
@@ -204,15 +203,15 @@ module Prawn
 end
 ```
 
-Taking this approach involves writing more code and adds some complexity. However, that is a small price to pay for the peace of mind that comes along with cleanly separating the data contained within the `Prawn::Article` and `Prawn::Document` objects. This design also makes it harder for `Prawn::Article` to have name clashes with `Prawn::Document`'s private methods, and forces any private method calls to `Prawn::Document` to be done explicitly. Because transparent delegation exposes the full contract of the parent object, it is still necessary for the child object to maintain full compatibility with those methods in the same manner that a class-inheritance based model would. Nonetheless, this pattern provides a safer way to implement subtypes because it avoids incidental clashes which could otherwise occur easily.
+Taking this approach involves writing more code and adds some complexity. However, that is a small price to pay for the peace of mind that comes with cleanly separating the data contained within the `Prawn::Article` and `Prawn::Document` objects. This design also makes it harder for `Prawn::Article` to have name clashes with `Prawn::Document`'s private methods and forces any private method calls to `Prawn::Document` to be done explicitly. Because transparent delegation exposes the full contract of the parent object, it is still necessary for the child object to maintain full compatibility with those methods in the same manner that a class-inheritance-based model would. Nonetheless, this pattern provides a safer way to implement subtypes because it avoids incidental clashes, which could otherwise occur easily.
 
-While the examples we've looked at so far combined with your own experiences should give you a good sense of how to extend code via behavioral subtypes, there are some common pitfalls I have glossed over in order to keep things simple. I'll get back to those before the end of the article, but for now we will turn our attention to the other kind of subtypes Liskov describes in her paper. She refers to them as _constrained subtypes_, but I've decided to call them _restriction subtypes_ as an easy to remember mirror image of the _extension subtype_ concept.
+Although the examples we've looked at so far—combined with your own experiences—should give you a good sense of how to extend code via behavioral subtypes, there are some common pitfalls I have glossed over in order to keep things simple. I'll get back to those before the end of the article, but for now let's turn our attention to the other kind of subtypes Liskov describes in her paper. She refers to them as _constrained subtypes_, but I call them _restriction subtypes_ as an easy-to-remember mirror image of the _extension subtype_ concept.
 
 ### Behavioral subtypes as restrictions
 
 Just as subtypes can be used to extend the behavior of a supertype, they can also be used to restrict generic behaviors by providing more specific implementations of them. The example Liskov uses in her paper illustrates how a stack structure can be viewed as a restriction on the more general concept of a bag.
 
-In its most simple form, a bag is essentially nothing more than a set which can contain duplicates. Items can be added and removed from a bag, and it is possible to determine whether the bag contains a given item. However, much like a set, order is not guaranteed. While somewhat of a contrived example, the following code implements a `Bag` object similar to the one described in Liskov's paper:
+In its most simple form, a bag is essentially nothing more than a set that can contain duplicates. Items can be added and removed from a bag, and it is possible to determine whether the bag contains a given item. However, much like with a set, order is not guaranteed. The following code, which is somewhat of a contrived example, implements a `Bag` object similar to the one described in Liskov's paper:
 
 ```ruby
 ContainerFullError  = Class.new(StandardError)
@@ -248,29 +247,29 @@ class Bag
 end
 ```
 
-The challenge in determing whether a `Stack` object can meaningfully be considered a subtype of this sort of structure is that we need to find a way to describe the functionality of a bag so that it is general enough to allow for interesting subtypes to exist, but specific enough to allow the `Bag` object to be used on its own in a predictable way. Because Ruby lacks the design-by-contract features that Liskov depends on in her paper, we need to describe this specification verbally rather than relying on our tools to inforce them for us. Something like the list of rules below are roughly similar to what she describes more formally in her work:
+The challenge in determining whether a `Stack` object can meaningfully be considered a subtype of this sort of structure is that we need to find a way to describe the functionality of a bag so that it is general enough to allow for interesting subtypes to exist but specific enough to allow the `Bag` object to be used on its own in a predictable way. Because Ruby lacks the design-by-contract features that Liskov depends on in her paper, we need to describe this specification verbally rather than relying on our tools to enforce them for us. Something like the following list of rules is roughly similar to what she describes more formally in her work:
 
 1) A bag has `items` and a size `limit`.
 
-2) A bag has a `push` operation which adds a new object to the bag's `items`
+2) A bag has a `push` operation, which adds a new object to the bag's `items`.
 
 * If the current number of `items` is less than the `limit`, the new object is added to the bag's `items`.
 
 * Otherwise, a `ContainerFullError` is raised.
 
-3) A bag has a `pop` operation which removes an object from the bag's `items` and returns it as a result.
+3) A bag has a `pop` operation, which removes an object from the bag's `items` and returns it as a result.
 
 * If the bag has no `items`, a `ContainerEmptyError` is raised.
 
-* Otherwise one object is removed from the bag's `items` and returned.
+* Otherwise, one object is removed from the bag's `items` and returned.
 
-4) A bag has an `include?` operation which indicates whether the provided object is one of bag's `items`.
+4) A bag has an `include?` operation, which indicates whether the provided object is one of bag's `items`.
 
-* If the bag's `items` contains the provided object, `true` is returned
+* If the bag's `items` contains the provided object, `true` is returned.
 
 * Otherwise, `false` is returned.
 
-With these rules in mind, we can see that the following `Stack` object satisfies the definition of a bag while simultaneously introducing a predictable ordering to `items`.
+With these rules in mind, we can see that the following `Stack` object satisfies the definition of a bag while simultaneously introducing a predictable ordering to `items`:
 
 ```ruby
 ContainerFullError  = Class.new(StandardError)
@@ -304,25 +303,25 @@ class Stack
 end
 ```
 
-With the above code in mind, we can specify the behavior of a stack in the following way:
+With this example code in mind, we can specify the behavior of a stack in the following way:
 
-1) A stack is a bag
+1) A stack is a bag.
 
 2) A stack's `pop` operation follows a last-in, first-out (LIFO) order.
 
-Because the ordering requirements of a stack don't conflict with the defining characteristics of a bag, a stack can be substituted for a bag without any issues. The key thing to keep in mind here is that restriction subtypes can add additional constraints on top of what was specified by their supertypes, but cannot loosen the constraints put upon them by their ancestors in any way. For example, based on the way we defined bag objects, we would not be able to return `nil` instead of raising `ContainerEmptyError` when `pop` is called on an empty stack, even if that seems like a fairly innocuous change.
+Because the ordering requirements of a stack don't conflict with the defining characteristics of a bag, a stack can be substituted for a bag without any issues. The key thing to keep in mind here is that restriction subtypes can create additional constraints on top of what was specified by their supertypes but cannot loosen the constraints put upon them by their ancestors in any way. For example, based on the way we defined bag objects, we would not be able to return `nil` instead of raising `ContainerEmptyError` when `pop` is called on an empty stack, even if that seems like a fairly innocuous change.
 
-Once again, maintaining this sort of discipline may seem on the surface to be more trouble than it is worth. However, these kinds of assumptions are baked into useful patterns such as the [template method pattern](http://en.wikipedia.org/wiki/Template_method_pattern), and are also key to designing type hierarchies for all sorts of data structures. A good example of these concepts in action can be found in the way Ruby organizes its numeric types. The class hierarchy is shown below, but be sure to check out Ruby's documentation if you want to get a sense of how exactly these classes hang together.
+Once again, maintaining this sort of discipline may seem on the surface to be more trouble than it is worth. However, these kinds of assumptions are baked into useful patterns such as the [template method pattern](http://en.wikipedia.org/wiki/Template_method_pattern) and are also key to designing type hierarchies for all sorts of data structures. A good example of these concepts in action can be found in the way Ruby organizes its numeric types. The class hierarchy is shown here, but be sure to check out Ruby's documentation if you want to get a sense of how exactly these classes hang together.
 
 <img src="http://i.imgur.com/ObKrf.jpg" width=800/>
 
-Whether you are designing extension subtypes or restriction subtypes, it is unfortunately easier to get things wrong than it is to get them right, due to all the subtle issues that need to be considered. For that reason, we'll take a look now at a few examples of flawed behavioral subtypes, and how to go about fixing them.
+Whether you are designing extension subtypes or restriction subtypes, it is unfortunately easier to get things wrong than it is to get them right, due to all the subtle issues that need to be considered. For that reason, we'll now take a look at a few examples of flawed behavioral subtypes and how to go about fixing them.
 
 ### Examples of flawed behavioral subtypes
 
-To test your understanding of behavior subtype compatibility while simultaneously exposing some common pitfalls, I've provided three flawed examples for you to study. As you read through them, try to figure out what the subtype compatibility problem is, and how you might go about solving it.
+To test your understanding of behavior subtype compatibility while simultaneously exposing some common pitfalls, I provide the following three flawed examples for you to study. As you read through them, try to figure out what the subtype compatibility problem is and how you might go about solving it.
 
-1) Suppose we want to add an equality operator to the bag structure. A sample operator is provided below for the `Bag` object, which conforms to the following newly specified
+1) Suppose we want to add an equality operator to the bag structure. A sample operator is provided here for the `Bag` object, which conforms to the following newly specified
 feature: "Two bags are considered equal if they have equivalent items and size limits". What problems will we encounter in implementing a bag-compatible equality operator for the `Stack` object? 
 
 ```ruby
@@ -353,7 +352,7 @@ class Rectangle
 end
 ```
 
-3) Suppose we have a `PersistentSet` object which delegates all method calls to the `Set` object provided by Ruby's standard library, as shown in the following code. Why is this not a compatible subtype, even though it does not explicitly modify the behavior of any of `Set`'s operations?
+3) Suppose we have a `PersistentSet` object that delegates all method calls to the `Set` object provided by Ruby's standard library, as shown in the following code. Why is this not a compatible subtype, even though it does not explicitly modify the behavior of any of `Set`'s operations?
 
 ```ruby
 require "set"
@@ -380,18 +379,18 @@ end
 
 To avoid spoiling the fun of finding and fixing the defects with these examples yourself, I've hidden my explanation of the [problems](https://gist.github.com/15b50f918c88bccd6eac) and [solutions](https://gist.github.com/3f53d4094759c0508e19) on a pair of gists. Please spend some time on this exercise before reading the spoilers, as you'll learn a lot more that way!
 
-A huge hint is that the first problem is based on an issue discussed in [Liskov's paper](http://www.cs.cmu.edu/~wing/publications/LiskovWing94.pdf), and the second and third problems are discussed in an [article about LSP](http://www.objectmentor.com/resources/articles/lsp.pdf ) by Bob Martin. However, please note that their solutions are not exactly the most natural fit for Ruby, and so there is still room for some creativity here.
+A huge hint is that the first problem is based on an issue discussed in [Liskov's paper](http://www.cs.cmu.edu/~wing/publications/LiskovWing94.pdf) and the second and third problems are discussed in an [article about LSP](http://www.objectmentor.com/resources/articles/lsp.pdf) by Bob Martin. However, please note that their solutions are not exactly the most natural fit for Ruby, so there is still room for some creativity here.
 
-### Behavioral subtyping vs. duck typing
+### Behavioral subtyping versus duck typing
 
-Between this article and the topics discussed in [Issue 3.7](http://practicingruby.com/articles/24), this two part series has given a fairly comprehensive view of disciplined inheritance practices for the Ruby programmer. However, as I hinted at towards the beginning of this article, there is the somewhat looser concept of duck typing that deserves a mention if we really want to see the whole picture.
+Between this article and the topics discussed in [Issue 3.7](http://practicingruby.com/articles/24), this two-part series offers a fairly comprehensive view of disciplined inheritance practices for the Ruby programmer. However, as I hinted toward the beginning of this article, there is the somewhat looser concept of duck typing that deserves a mention if we really want to see the whole picture.
 
-What duck typing and behavioral subtypes have in common is that both concepts rely on what an object can do rather than what exactly it is. Where they differ is that behavioral subtypes seem to be more about the behavior of an entire object while duck typing is about how a given object behaves within a certain context. Duck typing can be a good deal more flexible than behavioral subtyping in that sense, because typically it involves an object implementing a meaningful response to a single message rather than an entire suite of behaviors. You can find a ton of examples of duck typing in use in Ruby, but perhaps the most easy to spot one is the ubiquitous use of the `to_s` method.
+What duck typing and behavioral subtypes have in common is that both concepts rely on what an object can do rather than what exactly it is. They differ in that behavioral subtypes seem to be more about the behavior of an entire object and duck typing is about how a given object behaves within a certain context. Duck typing can be a good deal more flexible than behavioral subtyping in that sense, because typically it involves an object implementing a meaningful response to a single message rather than an entire suite of behaviors. You can find a ton of examples of duck typing in use in Ruby, but perhaps the easiest to spot is the ubiquitous use of the `to_s` method.
 
-By implementing a `to_s` method in our objects, we are able to indicate to Ruby that our object has a meaningful string representation, which can then be used in a wide range of contexts. Among other things, the `to_s` method is automatically called by irb when an `inspect` method is not also provided, called by the `Kernel#puts` method on whatever object you pass to it, and called automatically on the result of any expression executed via string interpolation. Implementing a meaningful `to_s` method is not exactly a form of behavioral subtyping, but is still a very useful form of code sharing. [Issue 1.14](http://blog.rubybestpractices.com/posts/gregory/046-issue-14-duck-typing.html) and [Issue 1.15](http://blog.rubybestpractices.com/posts/gregory/047-issue-15-duck-typing-2.html) cover duck typing in great detail, but this single example is enough to point out the merits of this technique and how much more simple it is than the topics discussed in this article.
+By implementing a `to_s` method in our objects, we are able to indicate to Ruby that our object has a meaningful string representation, which can then be used in a wide range of contexts. Among other things, the `to_s` method is automatically called by irb when an `inspect` method is not also provided, called by the `Kernel#puts` method on whatever object you pass to it, and called automatically on the result of any expression executed via string interpolation. Implementing a meaningful `to_s` method is not exactly a form of behavioral subtyping but is still a very useful form of code sharing. [Issue 1.14](http://blog.rubybestpractices.com/posts/gregory/046-issue-14-duck-typing.html) and [Issue 1.15](http://blog.rubybestpractices.com/posts/gregory/047-issue-15-duck-typing-2.html) cover duck typing in great detail, but this single example is enough to point out the merits of this technique and how much simpler it is than the topics discussed in this article.
 
 ### Reflections
 
-A true challenge for any practicing Rubyist is to find a balance between the free-wheeling culture of Ruby development and the more rigorous approaches of our predecessors. Disciplined inheritance techniques will make our lives easier, and knowing what a behavioral subtype is and how to design one will be sure to come in handy on any moderately complex project. However, we should keep our eyes trained on how these issues relate to maintainability, understandability, and changeability rather than obsessing about how they can lead us to mathematically pure designs.
+A true challenge for any practicing Rubyist is finding a balance between the free-wheeling culture of Ruby development and the more rigorous approaches of our predecessors. Disciplined inheritance techniques will make our lives easier, and knowing what a behavioral subtype is and how to design one will surely come in handy on any moderately complex project. However, we should keep our eyes trained on how these issues relate to maintainability, understandability, and changeability rather than obsessing about how they can lead us to mathematically pure designs.
 
-I think there is room for another article on the practical applications of these ideas, in which I might talk about applying some design-by-contract concepts to Ruby programs, or how to develop shared unit tests which make it easier to test for compatibility when implementing subtypes. But I don't plan to work on that immediately, so for now we can sort out those issues via comments on this article. If you have any suggestions for how to tie these ideas back to real problems, or questions on how to apply them to the things you've been working on, please share your thoughts. 
+I think there is room for another article on the practical applications of these ideas, in which I might talk about applying some design-by-contract concepts to Ruby programs or how to develop shared unit tests that make it easier to test for compatibility when implementing subtypes. But I don't plan to work on that article immediately, so for now we can sort out those issues via comments on this article. If you have any suggestions for how to tie these ideas back to real problems, or questions on how to apply them to the things you've been working on, please share your thoughts. 

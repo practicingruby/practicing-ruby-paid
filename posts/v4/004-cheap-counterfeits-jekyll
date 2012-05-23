@@ -147,6 +147,8 @@ end
 
 The reason for this is mostly aesthetic, but it gives me the freedom to format my code any way I would like, and is a bit easier to make changes to.
 
+> **NOTE:** Noah Hendrix pointed out in the [comments on this article](http://practicingruby.com/articles/57#comments) that for this particular example, using `File.join` would be better because it would take platform-specific path syntax into account.
+
 ### Idioms for working with files and folders
 
 In addition to the text processing tricks that we've already gone over, I also noticed four idioms for doing various kinds of file and folder manipulation that came in handy.
