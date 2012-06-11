@@ -1,0 +1,261 @@
+> [Object-relational mapping](http://en.wikipedia.org/wiki/Object-relational_mapping) 
+> (ORM) is one of the most complex things you could ever touch, and we choose it
+> over and over again without thinking at all because everybody is doing it. It
+> is really complex! You waste an inordinate amount of your time on it, and you
+> need to look at it. -- [Rich Hickey, RailsConf 2012
+> (video)](http://www.youtube.com/watch?v=rI8tNMsozo0#t=1289s)
+
+Depending on the kind of work you do, the claim that object-relational mapping
+is _"one of the most complex things you could ever touch"_ is just 
+as likely to be shocking as it is to be blindingly obvious. Because 
+ActiveRecord (and other Ruby ORMs) provide highly abstracted ways of solving
+common problems, it is easy to ignore the underlying complexity involved in even
+the most simple things that we use ORM for. But just as there is a huge
+difference between operating an automobile and repairing one, the cost of 
+understanding ORM is much higher than simply making use of it.
+
+In this article, I will walk you through a minimal implementation 
+of the Active Record pattern so that you can more easily understand
+what we take for granted when we use this particular flavor of
+ORM in our projects.
+
+### Is the Active Record architectural pattern inherently complex?
+
+Whenever we talk about an Active Record in Ruby, it is extremely common for us
+to immediately tie our thoughts to the Rails implementation of this pattern,
+even though the concept itself was around before Rails was invented. If we 
+accept that Rails-centric view of the world, the question of whether
+ActiveRecord is a complex piece of software is trivial to answer; we only need
+to look at the `ActiveRecord::Base` object to see it has all of the following
+complecting characteristics:
+
+* Hundreds of instance methods
+* Hundreds of class methods
+* Over a dozen instance variables
+* Over a dozen class instance variables
+* Several class variables (a construct that's inherently complex!)
+* A 40 level deep lookup path for class methods
+* A 46 level deep lookup path for instance methods
+* Dozens of kinds of method_missing hacks
+* No encapsulation whatsoever between mixed in modules
+
+But if you look back at how Martin Fowler defined the concept of an Active
+Record in his 2003 book "Patterns of Enterprise Application Architecture", you
+will find that the pattern does not necessarily require such a massively complex
+implementation. In fact, Fowler's definition of an Active Record included any
+object that could do most or all of the following things:
+
+* Construct an instance of the Active Record from a SQL result set row
+* Construct a new instance for later insertion into the table
+* Use static finder methods to wrap commonly used SQL queries and return
+  Active Record objects
+* Update the database and insert data into the Active Record
+* Get and set fields
+* Implement some pieces of business logic
+
+Clearly, the Rails-based ActiveRecord library does all of these things, but it
+also does a lot more. As a result, it is easy to conflate the
+coincidental complexity of this very popular implementation with the inherent 
+complexity of its underlying architectural pattern. This is a major source of
+confounding in many discussions about software design for Rails developers, and
+is something I want to avoid in this article.
+
+With that problem in mind, I built a minimal implementation of the Active Record pattern called
+[BrokenRecord](https://github.com/elm-city-craftworks/broken_record) which will
+help you understand the fundamental design challenges involved in implementing this
+particular flavor of ORM. As long as you keep in mind that BrokenRecord exists
+primarily to facilitate thought experiments and is not meant to be used in
+production code, it should provide a much easier way for you to explore a number
+of questions about ORM in general, and the Active Record pattern in particular.
+
+### The ingredients for implementing an Active Record object
+
+Now that you know what an Active Record is in its most basic form, how would you
+go about implementing it? To answer that question, it may help to reflect upon
+an example of how Active Record objects are actually used. The following code
+is about as simple as it gets, so it is as good a place to start as any:
+
+```ruby
+## Create an article with a few positive comments.
+
+article1 = Article.create(:title => "A great article",
+                          :body  => "Short but sweet!")
+
+
+Comment.create(:body => "Angry comment!",      :article_id => article2.id)
+Comment.create(:body => "Frustrated comment!", :article_id => article2.id)
+Comment.create(:body => "Irritated comment!",  :article_id => article2.id)
+
+## Create an article with a few negative comments.
+
+article2 = Article.create(:title => "A not so great article",
+                          :body  => "Just as short")
+
+Comment.create(:body => "Supportive comment!", :article_id => article1.id)
+Comment.create(:body => "Friendly comment!",   :article_id => article1.id)
+
+## Display all the articles and their comments 
+
+Article.all.each do |article|
+  puts %{
+    TITLE: #{article.title}
+    BODY: #{article.body}
+    COMMENTS:\n#{article.comments.map { |e| "    - #{e.body}" }.join("\n")}
+  }
+end
+```
+
+While this example omits a bit of setup code, it is not hard to see that it
+produces the following output:
+
+```
+    TITLE: A great article
+    BODY: Short but sweet!
+    COMMENTS:
+    - Supportive comment!
+    - Friendly comment!
+
+
+    TITLE: A not so great article
+    BODY: Just as short
+    COMMENTS:
+    - Angry comment!
+    - Frustrated comment!
+    - Irritated comment!  
+```
+
+Despite its simple output, there is a lot going in this little 
+code sample. To gain a better sense of what is happening under
+the hood, take a look at how the `Article` and `Comment` objects
+are defined:
+
+```ruby
+class Article
+  include BrokenRecord::Mapping
+  
+  map_to_table :articles
+
+  has_many :comments, :key   => :article_id,
+                      :class => "Comment"
+end
+
+class Comment
+  include BrokenRecord::Mapping
+
+  map_to_table :comments
+
+  belongs_to :article, :key   => :article_id,
+                       :class => "Article"
+end
+```
+
+Because `BrokenRecord::Mapping` does not implement the naming 
+shortcuts that `ActiveRecord::Base` uses, the connection between 
+these objects and the underlying database schema is much more 
+explicit. If you take a look at how the `articles` and `comments` 
+tables are defined, it should be easy enough to understand how 
+this all comes together:
+
+```sql
+ create table articles ( 
+   id     INTEGER PRIMARY KEY,
+   title  TEXT,
+   body   TEXT,
+ );
+
+ create table comments (
+   id          INTEGER PRIMARY KEY,
+   body        TEXT,
+   article_id  INTEGER,
+   FOREIGN KEY(article_id) REFERENCES articles(id)
+ );
+```
+
+If you haven't been paying close attention to what kinds of things you would
+need to build in order to make this code work, go ahead and quickly re-read this
+section with that in mind. Once you've done that, examine the following grocery 
+list of Active Record ingredients and see if they match your own:
+
+* Storage and retrieval of record data in an SQL database. 
+  (e.g. `Article.create` and `Article.all`)
+* Dynamic generation of accessors for record data. (e.g. `article.body`)
+* Dynamic generation of associations methods (e.g. `article.comments`),
+  including the ability to dynamically look up the associated class.
+  (e.g. `:class => "Comments"`)
+* The ability to wrap all these features up into a single module mixin.
+
+This list easily demonstrates that a fair amount of complicated code is needed 
+to support the most basic uses of Active Record objects, even when the
+pattern is stripped down to its bare essentials. But it is one thing
+to have a rough sense that a problem is complex, and a different thing
+entirely to familiarize yourself with its nuances. The former insight leads you to
+appreciate your magical tools; the latter helps you master them.
+
+To help you dig deeper, I will now guide you through the code that handles each
+of these responsibilities in `BrokenRecord`, explaining how it all works along
+the way. This may be a good time to make a cup of coffee or go for
+a walk around the block to clear your mind, because there is a lot of 
+meta-programming ahead!
+
+### Abstracting away the database
+
+Using the Active Record pattern introduces tight coupling between classes
+containing bits of domain logic and the underlying persistence layer. However,
+this does not mean that an Active Record ought to directly tie itself to 
+a low-level database adapter. With that in mind, introducing a simple
+object to handle basic table manipulations and queries is a good way
+to reduce the brittleness of this tightly coupled design.
+
+
+
+```ruby
+## create a couple table objects
+
+articles = BrokenRecord::Table.new(:name => "articles",
+                                   :db   => BrokenRecord.database)
+
+comments = BrokenRecord::Table.new(:name => "comments",
+                                   :db   => BrokenRecord.database)
+
+## create an article with some positive comments
+
+a1 = articles.insert(:title => "A great article", 
+                     :body  => "Short but sweet")
+
+comments.insert(:body => "Supportive comment!", :article_id => a1)
+comments.insert(:body => "Friendly comment!",   :article_id => a1)
+
+
+## create an article with some negative comments
+
+a2 = articles.insert(:title => "A not so great article", 
+                     :body  => "Just as short")
+
+comments.insert(:body => "Angry comment!",      :article_id => a2_id)
+comments.insert(:body => "Frustrated comment!", :article_id => a2_id)
+comments.insert(:body => "Irritated comment!",  :article_id => a2_id)
+
+## Display the articles and their comments
+
+articles.all.each do |article|
+  responses = comments.where(:article_id => article[:id])
+
+  puts %{
+    TITLE: #{article[:title]}
+    BODY: #{article[:body]}
+    COMMENTS:\n#{responses.map { |e| "    - #{e[:body]}" }.join("\n") }
+  }
+end
+```
+
+### Encapsulating record data
+
+### Implementing associations
+
+### Stapling everything together
+
+### Reflections
+
+I am not fully convinced that object-relational mapping is _"one the most complex
+thing you could ever touch"_, but the way our popular ORM tools are implemented
+and used certainly makes it seem that way.
