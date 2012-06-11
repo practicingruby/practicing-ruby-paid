@@ -206,7 +206,10 @@ a low-level database adapter. With that in mind, introducing a simple
 object to handle basic table manipulations and queries is a good way
 to reduce the brittleness of this tightly coupled design.
 
-
+The following example shows how `BrokenRecord::Table` can be used directly to
+solve the same problem that was shown earlier. As you read through it, try to
+imagine how the `BrokenRecord::Mapping` module might be implemented using this
+object as a foundation.
 
 ```ruby
 ## create a couple table objects
@@ -224,7 +227,6 @@ a1 = articles.insert(:title => "A great article",
 
 comments.insert(:body => "Supportive comment!", :article_id => a1)
 comments.insert(:body => "Friendly comment!",   :article_id => a1)
-
 
 ## create an article with some negative comments
 
@@ -247,6 +249,13 @@ articles.all.each do |article|
   }
 end
 ```
+
+Important differences from Active Record example:
+
+- Database object is injected (show testing example)
+- Simple data structures are used (hashes, arrays, and integers)
+- Easier to test than stateful classes
+
 
 ### Encapsulating record data
 
