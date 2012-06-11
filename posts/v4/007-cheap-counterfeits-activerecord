@@ -182,7 +182,7 @@ list of Active Record ingredients and see if they match your own:
 * Dynamic generation of associations methods (e.g. `article.comments`),
   including the ability to dynamically look up the associated class.
   (e.g. `:class => "Comments"`)
-* The ability to wrap all these features up into a single module mixin.
+* The ability to wrap all these features up into a single module mix-in.
 
 This list easily demonstrates that a fair amount of complicated code is needed 
 to support the most basic uses of Active Record objects, even when the
@@ -250,16 +250,97 @@ articles.all.each do |article|
 end
 ```
 
-Important differences from Active Record example:
+Despite the superficial similarity between the features provided by
+the `BrokenRecord::Mapping` mixin and the `BrokenRecord::Table` class,
+there are several key differences that set them apart from one another:
 
-- Database object is injected (show testing example)
-- Simple data structures are used (hashes, arrays, and integers)
-- Easier to test than stateful classes
+1) `Mapping` assumes that `BrokenRecord.database` holds a
+reference to an appropriate database adapter, but `Table` requires
+the database adapter to be injected. This means that unlike `Mapping`, the
+`Table` class has no dependencies on global state. 
 
+2) Most of the methods in `Mapping` return instances of whatever
+object it gets mixed into, but `Table` always returns primitive
+values such as arrays, hashes, and integers. This means that
+`Mapping` needs to make assumptions about the interfaces of other
+objects, and `Table` does not.
+
+3) `Mapping` implements a big chunk of its functionality via class methods, 
+but `Table` does not rely on any special
+class-level behavior. This means that `Table` can be easily tested
+without generating anonymous classes or doing awkward cleanup tasks.
+
+The `Mapping` mix-in is convenient to use because it can introduce 
+persistence into any class, but it bakes in a few assumptions that you
+can't easily change. By contrast, the `Table` object expects you to wire more
+things up by hand, but is conceptually simple and very flexible. This is exactly
+the kind of tension to expect between higher and lower levels of abstraction,
+and is not necessarily a sign of a design problem.
+
+If these two components were merged into a single entity, the 
+conflict between their design priorities would quickly lead 
+to creating an object with a split-personality. Whenever that happens, 
+complexity goes through the roof, and so does the cost
+of change. By allowing `Mapping` to delegate much of its functionality to 
+a `Table` object, it is possible to sidestep these concerns and gain 
+the best of both worlds.
 
 ### Encapsulating record data
 
+One of the defining characteristics of an Active Record is that ordinary
+getters and setters can be used to retrieve and manipulate its data. As a
+result, ordinary operations on Active Record objects end up looking like 
+plain old Ruby code, such as in the following example:
+
+```ruby
+Article.all.each do |article|
+  puts %{
+    TITLE: #{article.title}
+    BODY: #{article.body}
+    COMMENTS:\n#{article.comments.map { |e| "    - #{e.body}" }.join("\n")}
+  }
+end
+```
+
+```ruby
+module BrokenRecord
+  class Row
+    def initialize(params)
+      self.data = {}
+
+      column_names = params.fetch(:column_names)
+      values       = params.fetch(:values)
+
+      column_names.each { |name| data[name] = values[name] }
+
+      build_accessors(column_names)
+    end
+
+    def to_hash
+      Marshal.load(Marshal.dump(data))
+    end
+
+    private
+
+    attr_accessor :data
+
+    def build_accessors(column_names)
+      column_names.each do |name|
+        singleton_class.send(:define_method, name) { data[name] }
+
+        singleton_class.send(:define_method, "#{name}=") do |v| 
+          data[name] = v
+        end
+      end
+    end
+  end
+end
+```
+
+Show in IRB how to build a row object
+
 ### Implementing associations
+
 
 ### Stapling everything together
 
