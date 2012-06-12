@@ -302,6 +302,24 @@ Article.all.each do |article|
 end
 ```
 
+The interesting part about getters and setters for Active Record objects 
+is that they need to be dynamically generated. To refresh your memory, take a
+second look at the class definition for `Article`, and note that it contains
+no explicit definitions for the `Article#title` and `Article#body` methods.
+
+```ruby
+class Article
+  include BrokenRecord::Mapping
+  
+  map_to_table :articles
+
+  has_many :comments, :key   => :article_id,
+                      :class => "Comment"
+end
+```
+
+
+
 ```ruby
 module BrokenRecord
   class Row
@@ -339,10 +357,14 @@ end
 
 Show in IRB how to build a row object
 
+### Stapling everything together
+
+DOES THIS NEED TWO SECTIONS?
+
+RowMapper, TableMapper/CRUD, Composite
+
 ### Implementing associations
 
-
-### Stapling everything together
 
 ### Reflections
 
