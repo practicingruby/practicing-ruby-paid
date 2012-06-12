@@ -367,6 +367,9 @@ RowMapper, TableMapper/CRUD, Composite
 
 ### Reflections
 
+We showed only some of the relevant code for implementing a single example,
+broken record actually does a little more than this.
+
 I am not fully convinced that object-relational mapping is _"one the most complex
 thing you could ever touch"_, but the way our popular ORM tools are implemented
 and used certainly makes it seem that way.
