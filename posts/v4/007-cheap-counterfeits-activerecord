@@ -357,14 +357,13 @@ end
 
 Show in IRB how to build a row object
 
+### Implementing associations
+
 ### Stapling everything together
 
 DOES THIS NEED TWO SECTIONS?
 
 RowMapper, TableMapper/CRUD, Composite
-
-### Implementing associations
-
 
 ### Reflections
 
