@@ -1,9 +1,8 @@
-> [Object-relational mapping](http://en.wikipedia.org/wiki/Object-relational_mapping) 
+
 > (ORM) is one of the most complex things you could ever touch, and we choose it
 > over and over again without thinking at all because everybody is doing it. It
-> is really complex! You waste an inordinate amount of your time on it, and you
-> need to look at it. -- [Rich Hickey, RailsConf 2012
-> (video)](http://www.youtube.com/watch?v=rI8tNMsozo0#t=1289s)
+>  is really complex! You waste an inordinate amount of your time on it, and
+>  you need to look at it. -- [Rich Hickey, RailsConf 2012 (video)](http://www.youtube.com/watch?v=rI8tNMsozo0#t=1289s)
 
 Depending on the kind of work you do, the claim that object-relational mapping
 is _"one of the most complex things you could ever touch"_ is just 
@@ -14,10 +13,10 @@ the most simple things that we use ORM for. But just as there is a huge
 difference between operating an automobile and repairing one, the cost of 
 understanding ORM is much higher than simply making use of it.
 
-In this article, I will walk you through a minimal implementation 
-of the Active Record pattern so that you can more easily understand
-what we take for granted when we use this particular flavor of
-ORM in our projects.
+In this two-part article, I will walk you through a minimal 
+implementation of the Active Record pattern so that you can more 
+easily understand what we take for granted when we use this flavor 
+of ORM in our projects.
 
 ### Is the Active Record architectural pattern inherently complex?
 
@@ -176,13 +175,13 @@ need to build in order to make this code work, go ahead and quickly re-read this
 section with that in mind. Once you've done that, examine the following grocery 
 list of Active Record ingredients and see if they match your own:
 
-* Storage and retrieval of record data in an SQL database. 
+1. Storage and retrieval of record data in an SQL database. 
   (e.g. `Article.create` and `Article.all`)
-* Dynamic generation of accessors for record data. (e.g. `article.body`)
-* Dynamic generation of associations methods (e.g. `article.comments`),
+2. Dynamic generation of accessors for record data. (e.g. `article.body`)
+3. Dynamic generation of associations methods (e.g. `article.comments`),
   including the ability to dynamically look up the associated class.
   (e.g. `:class => "Comments"`)
-* The ability to wrap all these features up into a single module mix-in.
+4. The ability to wrap all these features up into a single module mix-in.
 
 This list easily demonstrates that a fair amount of complicated code is needed 
 to support the most basic uses of Active Record objects, even when the
@@ -191,11 +190,11 @@ to have a rough sense that a problem is complex, and a different thing
 entirely to familiarize yourself with its nuances. The former insight leads you to
 appreciate your magical tools; the latter helps you master them.
 
-To help you dig deeper, I will now guide you through the code that handles each
+To help you dig deeper, I will guide you through the code that handles each
 of these responsibilities in `BrokenRecord`, explaining how it all works along
-the way. This may be a good time to make a cup of coffee or go for
-a walk around the block to clear your mind, because there is a lot of 
-meta-programming ahead!
+the way. We will start by by exploring some low level constructs that help
+simplify the implementation of Active Record objects, and then in Issue 4.9 we
+will look at how the whole system comes together.
 
 ### Abstracting away the database
 
@@ -318,7 +317,58 @@ class Article
 end
 ```
 
+In the above code, `map_to_table` ties the `Article` class to a database 
+table, and the columns in that table determine what accessors need to 
+be defined. Through a low-level call to `BrokenRecord::Table`, it 
+is possible to get back an array of column names, e.g. something 
+like `[:id, :title, :body]`.
 
+If you assume that `Article` will store field values directly, but instead
+delegate to some sort of value object, Ruby's built in `Struct` object might
+come to mind as a way to solve this problem. After all, it does make 
+dynamically generating a value object with accessors quite easy:
+
+```ruby
+  article_container = Struct.new(:id, :title, :body)
+
+  article = article_container.new
+  article.title = "A fancy article"
+  article.body  = "This is so full of class, it's silly"
+
+  # ... 
+```
+
+Using a `Struct` for this purpose is a fairly standard idiom, and it is not
+necessarily a bad idea. But despite how simple they appear to be on the surface,
+the lesser known features of `Struct` objects make them very complex. In
+addition to accessors, using a `Struct` also gives you all of the 
+following functionality:
+
+```ruby
+  # array-like indexing
+  article[1] #=> "A fancy article"
+
+  # hash-like indexing with both symbols and strings
+  article[:title] == article[1]       #=> true
+  article[:title] == article["title"] #=> true 
+
+  # Enumerability
+  article.count       #=> 3
+  article.map(&:nil?) #=> [true, false, false]
+
+  # Pair-wise iteration
+  article.each_pair { |k,v| p [k,v] }
+  
+  # Customized inspect output
+  p article #=> #<struct id=nil, title="A fancy article", 
+                # body="This is so full of class, it's silly">
+```
+
+While this broad interface makes `Struct` very useful for certain data
+processing tasks, they are much more often used in scenarios in which a simple
+object with dynamic accessors would be a much better fit. The
+`BrokenRecord::Row` class demonstrates how to implement such an
+object while maintaining a minimal API: 
 
 ```ruby
 module BrokenRecord
@@ -327,7 +377,7 @@ module BrokenRecord
       self.data = {}
 
       column_names = params.fetch(:column_names)
-      values       = params.fetch(:values)
+      values       = deep_copy(params.fetch(:values, {}))
 
       column_names.each { |name| data[name] = values[name] }
 
@@ -335,44 +385,89 @@ module BrokenRecord
     end
 
     def to_hash
-      Marshal.load(Marshal.dump(data))
+      deep_copy(data)
     end
 
     private
 
     attr_accessor :data
 
+    def deep_copy(object)
+      Marshal.load(Marshal.dump(object))
+    end
+
     def build_accessors(column_names)
       column_names.each do |name|
-        singleton_class.send(:define_method, name) { data[name] }
-
-        singleton_class.send(:define_method, "#{name}=") do |v| 
-          data[name] = v
-        end
+        define_singleton_method(name) { data[name] }
+        define_singleton_method("#{name}=") { |v| data[name] = v }
       end
     end
   end
 end
 ```
 
-Show in IRB how to build a row object
+ The most important thing to note about this code is that `BrokenRecord::Row`
+ makes it just as easy to create a dynamic value object as `Struct` does:
 
-### Implementing associations
+```ruby
+article = BrokenRecord::Row.new(:column_names => [:id, :title, :body])
+article.title = "A fancy article"
+article.body  = "This is so full of class, its silly"
 
-TableMapper provides record_class, primary_key, table object. (sort of a
-decorator)
+# ...
+```
 
-### Stapling everything together
+In addition to not implementing most of the features that `Struct` provides,
+`BrokenRecord::Row` also does not rely on an anonymous intermediate class to
+implement its functionality. This helps discourage the use of class inheritance
+for code reuse, which in turn reduces overall system complexity.
 
-DOES THIS NEED TWO SECTIONS?
+In addition to these simplifications, `BrokenRecord::Row` also attempts to 
+adapt itself a bit better to its own problem domain. Because `BrokenRecord::Row` is 
+intended to be used in conjunction with `BrokenRecord::Table`, it needs to be 
+more hash-friendly than `Struct` is. In particular, it must easy to set 
+the values of the `Row` object using a hash, and it must be easy to 
+convert a `Row` back into a hash. The following example demonstrates 
+that both of those requirements are handled gracefully:
 
-RowMapper, TableMapper/CRUD, Composite
+```ruby
+article_data = { :id    => 1,
+                 :title => "A fancy article",
+                 :body  => "This is so full of class, it's silly" }
+
+article = BrokenRecord::Row.new(:column_names => [:id, :title, :body],
+                                :values       => article_data)
+
+p article.title #=> "A fancy title"
+
+p article.to_hash == article_data #=> true
+
+article.title = "A less fancy title"
+
+p article.to_hash == article_data #=> false
+p article.to_hash[:title]         #=> "A less fancy title"
+```
+
+While it may be a bit overkill to roll your own object for the sole purpose of
+removing features from an existing well supported object, the fact that
+`BrokenRecord::Row` also introduces a few new features of its own makes it more
+reasonable to implement things this way. More could definitely be said about the
+trade-offs involved in making this kind of design decision, but they are very 
+context dependent, and that makes them a bit tricky to generalize.
 
 ### Reflections
 
-We showed only some of the relevant code for implementing a single example,
-broken record actually does a little more than this.
+The objects described in this article may seem a bit austere,
+but they are easy to reason about once you gain some familiarity with them. In
+the second part of this article (Issue 4.9), you will be able to see these
+objects in the context which they are actually used, which will help you
+understand them further.
 
-I am not fully convinced that object-relational mapping is _"one the most complex
-thing you could ever touch"_, but the way our popular ORM tools are implemented
-and used certainly makes it seem that way.
+The main theory I am trying to test out here is that I believe simple low level 
+constructs tend to make it easier to build simple higher level constructs.
+However, there is a very real tension between conceptual simplicity and
+practical ease-of-use, and that can lead to some complicated design decisions.
+What do you think about that? Are the techniques that I've shown so far more
+confusing than they are enlightening? Do you have a better idea for how to
+approach this problem? No matter what is on your mind, if you have thoughts on
+this topic, I want to hear from you!
