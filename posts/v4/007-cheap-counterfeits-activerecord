@@ -359,6 +359,9 @@ Show in IRB how to build a row object
 
 ### Implementing associations
 
+TableMapper provides record_class, primary_key, table object. (sort of a
+decorator)
+
 ### Stapling everything together
 
 DOES THIS NEED TWO SECTIONS?
