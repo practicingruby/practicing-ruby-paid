@@ -371,21 +371,21 @@ following functionality:
 While this broad interface makes `Struct` very useful for certain data
 processing tasks, they are much more often used in scenarios in which a simple
 object with dynamic accessors would be a much better fit. The
-`BrokenRecord::Row` class demonstrates how to implement such an
-object while maintaining a minimal API: 
+`BrokenRecord::FieldSet` class implements such an object while 
+maintaining a minimal API: 
 
 ```ruby
 module BrokenRecord
-  class Row
+  class FieldSet
     def initialize(params)
       self.data = {}
 
-      column_names = params.fetch(:column_names)
-      values       = deep_copy(params.fetch(:values, {}))
+      attributes  = params.fetch(:attributes)
+      values      = deep_copy(params.fetch(:values, {}))
 
-      column_names.each { |name| data[name] = values[name] }
+      attributes.each { |name| data[name] = values[name] }
 
-      build_accessors(column_names)
+      build_accessors(attributes)
     end
 
     def to_hash
@@ -400,8 +400,8 @@ module BrokenRecord
       Marshal.load(Marshal.dump(object))
     end
 
-    def build_accessors(column_names)
-      column_names.each do |name|
+    def build_accessors(attributes)
+      attributes.each do |name|
         define_singleton_method(name) { data[name] }
         define_singleton_method("#{name}=") { |v| data[name] = v }
       end
@@ -410,29 +410,30 @@ module BrokenRecord
 end
 ```
 
- The most important thing to note about this code is that `BrokenRecord::Row`
- makes it just as easy to create a dynamic value object as `Struct` does:
+ The most important thing to note about this code is that
+ `BrokenRecord::FieldSet` makes it just as easy to create 
+ a dynamic value object as `Struct` does:
 
 ```ruby
-article = BrokenRecord::Row.new(:column_names => [:id, :title, :body])
+article = BrokenRecord::FieldSet.new(:column_names => [:id, :title, :body])
 article.title = "A fancy article"
 article.body  = "This is so full of class, its silly"
 
 # ...
 ```
 
-The similarity ends there, mostly because `BrokenRecord::Row` does not 
+The similarity ends there, mostly because `BrokenRecord::FieldSet` does not 
 implement most of the features that `Struct` provides. Another important difference
-is that `BrokenRecord::Row` does not rely on an anonymous intermediate class to
+is that `BrokenRecord::FieldSet` does not rely on an anonymous intermediate class to
 implement its functionality. This helps discourage the use of class inheritance
 for code reuse, which in turn reduces overall system complexity.
 
-In addition to these simplifications, `BrokenRecord::Row` also attempts to 
-adapt itself a bit better to its own problem domain. Because `Row`
+In addition to these simplifications, `BrokenRecord::FieldSet` also attempts to 
+adapt itself a bit better to its own problem domain. Because `FieldSet`
 objects need to be used in conjunction with `Table` objects, they need to be 
 more hash-friendly than `Struct` objects are. In particular, it must easy 
-to set  the values of the `Row` object using a hash, and it must be easy to 
-convert a `Row` back into a hash. The following example demonstrates 
+to set  the values of the `FieldSet` object using a hash, and it must be easy to 
+convert a `FieldSet` back into a hash. The following example demonstrates 
 that both of those requirements are handled gracefully:
 
 ```ruby
@@ -440,8 +441,8 @@ article_data = { :id    => 1,
                  :title => "A fancy article",
                  :body  => "This is so full of class, it's silly" }
 
-article = BrokenRecord::Row.new(:column_names => [:id, :title, :body],
-                                :values       => article_data)
+article = BrokenRecord::FieldSet.new(:column_names => [:id, :title, :body],
+                                     :values       => article_data)
 
 p article.title #=> "A fancy title"
 
@@ -455,7 +456,7 @@ p article.to_hash[:title]         #=> "A less fancy title"
 
 While it may be a bit overkill to roll your own object for the sole purpose of
 removing features from an existing well supported object, the fact that
-`BrokenRecord::Row` also introduces a few new features of its own makes it more
+`BrokenRecord::FieldSet` also introduces a few new features of its own makes it more
 reasonable to implement things this way. More could definitely be said about the
 trade-offs involved in making this kind of design decision, but they are very 
 context dependent, and that makes them a bit tricky to generalize.
