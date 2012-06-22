@@ -1,0 +1,230 @@
+> This two part series explores the challenges involved in
+> building a minimal implementation of the Active Record pattern. 
+> [Issue 4.8](http://practicingruby.com/articles/60) provides
+> some basic background information of the problem and
+> walks through some of the low level structures that are
+> needed to build an ORM. This issue builds on top of
+> those structures to construct a complete Active Record
+> object.
+
+### Building object-oriented extensions
+
+One thing that makes the Active Record pattern challenging to implement is that
+involves shoehorning a bunch of persistence-related functionality into model
+objects. In the case of Rails, models inherit from `ActiveRecord::Base` which
+has dozens of modules mixed into it. This inheritance-based approach is the
+common way of doing complex implementation sharing in Ruby, but comes at a [high
+maintainence cost](http://practicingruby.com/articles/62). This is one of the
+main design challenges that
+[BrokenRecord](https://github.com/elm-city-craftworks/broken_record) attempts to solve.
+
+Because this is a tricky problem, it helps to explore the ideas in terms of an
+easier problem first. For example, suppose that you have the following trivial
+`Stack` object and you want to extend it with some `Enumerable`-like
+functionality without mixing `Enumerable` into the `Stack` object itself:
+
+```ruby
+class Stack
+  def initialize
+    @data = []
+  end
+
+  attr_reader :data
+
+  def push(obj)
+    data.push(obj)
+  end
+
+  def pop
+    data.pop
+  end
+
+  def size
+    data.size
+  end
+end
+```
+
+You could use an `Enumerator` for this purpose, as shown in the following
+example:
+
+```ruby
+stack = Stack.new
+
+stack.push(10)
+stack.push(20)
+stack.push(30)
+
+enum  = Enumerator.new { |y| stack.each { |e| y.yield(e) } }
+p enum.map { |x| "Has element: #{x}" } #=~
+# ["Has element: 30", "Has element: 20", "Has element: 10"]    
+```
+
+This is a very clean design, but it makes it so that you have to interact with
+both a `Stack` object and an `Enumerator`, which feels a bit tedious. With a
+little effort, the two could be unified under a single interface without
+sacrificing encapsulation:
+
+```ruby
+class EnumerableStack
+  def initialize
+    @stack = Stack.new
+    @enum  = Enumerator.new { |y| @stack.each { |e| y.yield(e) } }       
+  end
+
+  def respond_to_missing?(m, include_private=false)
+    [@stack, @enum].find { |e| e.respond_to?(m) }
+  end
+
+  def method_missing(m, *a, &b)
+    obj = respond_to_missing?(m)
+
+    return super unless obj
+    obj.send(m, *a, &b)
+  end
+end
+```
+
+Using this new class, you would be able to write the following code, which looks
+and feels like an ordinary `Enumerable` object:
+
+```ruby
+stack = EnumerableStack.new
+
+stack.push(10)
+stack.push(20)
+stack.push(30)
+
+p stack.map { |x| "Has element: #{x}" } #=~
+# ["Has element: 30", "Has element: 20", "Has element: 10"]  
+```
+
+However, the implementation of `EnumerableStack` is a bit tedious, and if you
+applied this kind of technique throughout your codebase without introducing some
+sort of abstraction, you would find yourself writing a ton of very boring
+`respond_to_missing?` and `method_missing` calls. What might be nicer is to have
+an object that knows how to delegate methods for you, such as in the example
+below:
+
+```ruby
+class EnumerableStack
+  def initialize
+    stack = Stack.new
+    enum  = Enumerator.new { |y| stack.each { |e| y.yield(e) } }      
+    
+    @composite = Composite.new
+    @composite << stack << enum
+  end
+
+  def respond_to_missing?(m, include_private=false)
+    @composite.handle?(m)
+  end
+
+  def method_missing(m, *a, &b)
+    @composite.dispatch(m, *a, &b)
+  end
+end
+```
+
+The neat thing about this appraoch is it makes it so that our `EnumerableStack`
+object now only needs to keep track of a single variable, even though it is
+delegating to multiple objects. With that in mind, you can safely extract some
+of this functionality into a mixin without the code becoming brittle:
+
+```ruby
+class EnumerableStack
+  include Composable
+
+  def initialize
+    stack = Stack.new
+    enum  = Enumerator.new { |y| stack.each { |e| y.yield(e) } }      
+
+    features << stack << enum
+  end
+end
+```
+
+
+```ruby
+module BrokenRecord
+  module Mapping
+    include Composable
+
+    def initialize(params)
+      features << Record.new(params)
+    end
+
+    def self.included(base)
+      base.extend(ClassMethods)
+    end
+
+    module ClassMethods
+      include Composable
+
+      def map_to_table(table_name)
+        features << Relation.new(:name         => table_name,
+                                 :db           => BrokenRecord.database,
+                                 :record_class => self)
+      end
+    end
+  end
+end
+```
+
+```ruby
+module BrokenRecord
+  module Composable
+    def features
+      @__features__ ||= Composite.new
+    end
+
+    def respond_to_missing?(m, _)
+      features.respond_to?(m)
+    end
+
+    def method_missing(m, *a, &b)
+      features.dispatch(m, *a, &b)
+    end
+  end
+end
+```
+
+```ruby
+module BrokenRecord
+  class Composite 
+    def initialize
+      self.components = []
+    end
+
+    def <<(obj)
+      components.push(obj)
+    end
+
+    def >>(obj)
+      components.shift(obj)
+    end
+
+    def respond_to?(m)
+      components.any? { |c| c.respond_to?(m) } || super
+    end
+
+    def dispatch(m, *a, &b)
+      components.each do |c|
+        return c.public_send(m, *a, &b) if c.respond_to?(m)
+      end
+
+      raise NoMethodError, "No compenent implements #{m}"
+    end
+
+    private
+
+    attr_accessor :components
+  end
+end
+```
+
+### Modeling relations
+
+### Modeling records
+
+### Reflections
