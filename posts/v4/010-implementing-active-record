@@ -7,19 +7,19 @@
 > those structures to construct a complete Active Record
 > object.
 
-### Building object-oriented extensions
+### Building object-oriented mixins
 
 One thing that makes the Active Record pattern challenging to implement is that
 involves shoehorning a bunch of persistence-related functionality into model
 objects. In the case of Rails, models inherit from `ActiveRecord::Base` which
 has dozens of modules mixed into it. This inheritance-based approach is the
-common way of doing complex implementation sharing in Ruby, but comes at a [high
+common way of doing complex behavior sharing in Ruby, but comes at a [high
 maintainence cost](http://practicingruby.com/articles/62). This is one of the
 main design challenges that
 [BrokenRecord](https://github.com/elm-city-craftworks/broken_record) attempts to solve.
 
-Because this is a tricky problem, it helps to explore the ideas in terms of an
-easier problem first. For example, suppose that you have the following trivial
+Because this is a tricky problem to solve, it helps to explore the ideas by
+solving an easier problem first. For example, suppose that you have the following trivial
 `Stack` object and you want to extend it with some `Enumerable`-like
 functionality without mixing `Enumerable` into the `Stack` object itself:
 
@@ -62,8 +62,8 @@ p enum.map { |x| "Has element: #{x}" } #=~
 
 This is a very clean design, but it makes it so that you have to interact with
 both a `Stack` object and an `Enumerator`, which feels a bit tedious. With a
-little effort, the two could be unified under a single interface without
-sacrificing encapsulation:
+little effort, the two could be unified under a single interface while keeping
+their variables and internal method calls separated:
 
 ```ruby
 class EnumerableStack
@@ -72,7 +72,7 @@ class EnumerableStack
     @enum  = Enumerator.new { |y| @stack.each { |e| y.yield(e) } }       
   end
 
-  def respond_to_missing?(m, include_private=false)
+  def respond_to_missing?(m, *a)
     [@stack, @enum].find { |e| e.respond_to?(m) }
   end
 
@@ -85,8 +85,8 @@ class EnumerableStack
 end
 ```
 
-Using this new class, you would be able to write the following code, which looks
-and feels like an ordinary `Enumerable` object:
+From the external perspective, `EnumerableStack` still looks and 
+feels like an ordinary `Enumerable` object:
 
 ```ruby
 stack = EnumerableStack.new
@@ -99,12 +99,12 @@ p stack.map { |x| "Has element: #{x}" } #=~
 # ["Has element: 30", "Has element: 20", "Has element: 10"]  
 ```
 
-However, the implementation of `EnumerableStack` is a bit tedious, and if you
+Unfortunately, it is painful to implement objects this way. If you
 applied this kind of technique throughout your codebase without introducing some
 sort of abstraction, you would find yourself writing a ton of very boring
 `respond_to_missing?` and `method_missing` calls. What might be nicer is to have
-an object that knows how to delegate methods for you, such as in the example
-below:
+an object that knows how to delegate methods for you, such as the `Composite`
+object in the example below:
 
 ```ruby
 class EnumerableStack
@@ -116,7 +116,7 @@ class EnumerableStack
     @composite << stack << enum
   end
 
-  def respond_to_missing?(m, include_private=false)
+  def respond_to_missing?(m, *a)
     @composite.handle?(m)
   end
 
@@ -126,10 +126,12 @@ class EnumerableStack
 end
 ```
 
-The neat thing about this appraoch is it makes it so that our `EnumerableStack`
+The neat thing about this approach is it makes it so that our `EnumerableStack`
 object now only needs to keep track of a single variable, even though it is
 delegating to multiple objects. With that in mind, you can safely extract some
-of this functionality into a mixin without the code becoming brittle:
+of this functionality into a mixin without the code becoming brittle. It 
+isn't hard to imagine a `Composable` module that would completely hide 
+the `Composite` object by introducing a better interface:
 
 ```ruby
 class EnumerableStack
@@ -144,6 +146,17 @@ class EnumerableStack
 end
 ```
 
+Using the `Composable` mixin to solve this particular problem is 
+massively overkill, because `Enumerable` is a well designed module which
+only depends on the existence of an `each` method in the objects it gets
+mixed into, and does not introduce any state or complicated internal 
+method calls. That said, if you understand how `Composable` works in this
+context, you already know enough to understand its use in BrokenRecord.
+
+To test whether or not you understand the basic pattern, take a look at the
+following code and see if you can piece together how it works. Don't worry about
+the exact implementation details, just compare the following code to the other
+examples in this section and think about what the purpose of this module is:
 
 ```ruby
 module BrokenRecord
@@ -171,60 +184,66 @@ module BrokenRecord
 end
 ```
 
-```ruby
-module BrokenRecord
-  module Composable
-    def features
-      @__features__ ||= Composite.new
-    end
-
-    def respond_to_missing?(m, _)
-      features.respond_to?(m)
-    end
-
-    def method_missing(m, *a, &b)
-      features.dispatch(m, *a, &b)
-    end
-  end
-end
-```
+If you guessed that mixing this module into one of your own classes will expose 
+the methods provided by `BrokenRecord::Relation` as class methods, and the methods
+provided by `BrokenRecord::Record` as instance methods, then you guessed
+correctly! If you're still stuck, recall how this mixin is used:
 
 ```ruby
-module BrokenRecord
-  class Composite 
-    def initialize
-      self.components = []
-    end
+class Article
+  include BrokenRecord::Mapping
 
-    def <<(obj)
-      components.push(obj)
-    end
-
-    def >>(obj)
-      components.shift(obj)
-    end
-
-    def respond_to?(m)
-      components.any? { |c| c.respond_to?(m) } || super
-    end
-
-    def dispatch(m, *a, &b)
-      components.each do |c|
-        return c.public_send(m, *a, &b) if c.respond_to?(m)
-      end
-
-      raise NoMethodError, "No compenent implements #{m}"
-    end
-
-    private
-
-    attr_accessor :components
-  end
+  map_to_table :articles
 end
+
+article = Article.create(:title => "Great article", :body => "Wonderful!")
+p article.title.upcase #=> "GREAT ARTICLE"
 ```
 
-### Modeling relations
+If you consider that the definition of `BrokenRecord::Mapping` above is its
+complete implementation, it becomes clear that the methods being called in this
+example need to come from somewhere. Now, it should be easier to see that
+`Relation` and `Record` are where those methods come from.
 
-### Modeling records
+You really don't need to know the exact details of how 
+the `Composable` module works, because it is built based entirely on the 
+ideas already discussed in this article. However, if `Composable` still feels magical to you, you can [take a look at its
+implementation](https://github.com/elm-city-craftworks/broken_record/blob/master/lib/broken_record/composable.rb)
+before reading on. For bonus points, pull it down and try to recreate the
+`EnumerableStack` example on your own machine.
+
+### Implementing relations as an object-oriented mixin 
+
+### Implementing records as an object-oriented mixin
 
 ### Reflections
+
+The idea of object-oriented mixins seems very promising to me, but also full of
+open questions and potential pitfalls. While they seem to work well in this toy
+implementation of Active Record, they may end up creating as many problems as
+they solve. In particular, it remains to be seen how this kind of modeling would
+impact performance, debugging, and introspection of Ruby objects. Still, the
+pattern does a good enough job of simplifying a very complex architectural
+pattern to hint that some further experimentation may be worthwhile.
+
+Going back to the original question I had hoped to answer in this two part
+article about whether or not the Active Record pattern is inherently complex, I
+suppose we have found out that there isn't an easy answer to that question. My
+BrokenRecord implementation is conceptually simpler than the Rails-based
+ActiveRecord, but only implements a tiny amount of functionality. I think that
+the closest thing to a conclusion I can come to here is that the traditional
+methods we use for object modeling in Ruby are certainly complex, and so any
+system which attempts to implement large-scale architectural patterns in Ruby
+will inherit that complexity unless it deviates from convention.
+
+That all having been said, reducing complexity is about  more than just
+preferring composition over inheritance and reducing the amount of magic in our
+code. The much deeper questions that we can ask ourselves is whether these very
+complicated systems we build are really necessary, or if they are a
+consequence of piling [abstractions on top of abstractions](http://timelessrepo.com/abstraction-creep) 
+in order to fixing some fundamental low-level problem.
+
+While this two-part article was a fun little exploration into the depths of a
+complex modeling problem in Ruby, I think its real point is to get us to
+question our own tolerance for complexity at all levels of what we do. If you
+have thoughts to share about that, I would love to hear them.
