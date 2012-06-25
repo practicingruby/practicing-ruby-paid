@@ -18,7 +18,7 @@ maintainence cost](http://practicingruby.com/articles/62). This is one of the
 main design challenges that
 [BrokenRecord](https://github.com/elm-city-craftworks/broken_record) attempts to solve.
 
-Because this is a tricky problem to solve, it helps to explore the ideas by
+Because this is a tricky problem, it helps to explore the ideas by
 solving an easier problem first. For example, suppose that you have the following trivial
 `Stack` object and you want to extend it with some `Enumerable`-like
 functionality without mixing `Enumerable` into the `Stack` object itself:
@@ -28,8 +28,6 @@ class Stack
   def initialize
     @data = []
   end
-
-  attr_reader :data
 
   def push(obj)
     data.push(obj)
@@ -42,6 +40,14 @@ class Stack
   def size
     data.size
   end
+
+  def each
+    data.reverse_each { |e| yield(e) }
+  end
+
+  private
+
+  attr_reader :data
 end
 ```
 
@@ -102,9 +108,9 @@ p stack.map { |x| "Has element: #{x}" } #=~
 Unfortunately, it is painful to implement objects this way. If you
 applied this kind of technique throughout your codebase without introducing some
 sort of abstraction, you would find yourself writing a ton of very boring
-`respond_to_missing?` and `method_missing` calls. What might be nicer is to have
+`respond_to_missing?` and `method_missing` calls. It would be better to have
 an object that knows how to delegate methods for you, such as the `Composite`
-object in the example below:
+object in the following example:
 
 ```ruby
 class EnumerableStack
@@ -126,12 +132,10 @@ class EnumerableStack
 end
 ```
 
-The neat thing about this approach is it makes it so that our `EnumerableStack`
+The neat thing about this approach is that the `EnumerableStack`
 object now only needs to keep track of a single variable, even though it is
-delegating to multiple objects. With that in mind, you can safely extract some
-of this functionality into a mixin without the code becoming brittle. It 
-isn't hard to imagine a `Composable` module that would completely hide 
-the `Composite` object by introducing a better interface:
+delegating to multiple objects. This makes it safe to extract some
+of the functionality into a mix-in without the code becoming too brittle:
 
 ```ruby
 class EnumerableStack
@@ -146,12 +150,17 @@ class EnumerableStack
 end
 ```
 
-Using the `Composable` mixin to solve this particular problem is 
-massively overkill, because `Enumerable` is a well designed module which
-only depends on the existence of an `each` method in the objects it gets
-mixed into, and does not introduce any state or complicated internal 
-method calls. That said, if you understand how `Composable` works in this
-context, you already know enough to understand its use in BrokenRecord.
+The end result looks pretty clean, but using the `Composable` 
+mixin to solve this particular problem is massively overkill. 
+Mixing the `Enumerable` module directly into the `Stack` object
+is not that hard to do, and is unlikely to have any adverse
+consequences. Still, seeing how `Composable` can be used to
+replace one of the most common applications of mixins 
+hopefully gave you a better understanding of how it 
+can be applied in more complex scenarios. The good news is 
+that as long as you have a rough idea of how `Composable` 
+works in this context, you will have no trouble understanding
+how it is used in BrokenRecord.
 
 To test whether or not you understand the basic pattern, take a look at the
 following code and see if you can piece together how it works. Don't worry about
@@ -207,14 +216,146 @@ example need to come from somewhere. Now, it should be easier to see that
 
 You really don't need to know the exact details of how 
 the `Composable` module works, because it is built based entirely on the 
-ideas already discussed in this article. However, if `Composable` still feels magical to you, you can [take a look at its
+ideas already discussed in this article. However, if `Composable` still feels
+magical to you, go ahead and [study its
 implementation](https://github.com/elm-city-craftworks/broken_record/blob/master/lib/broken_record/composable.rb)
-before reading on. For bonus points, pull it down and try to recreate the
-`EnumerableStack` example on your own machine.
+before reading on. For bonus points, pull the code down and try to 
+recreate the `EnumerableStack` example on your own machine.
+
+Once you feel that you have a good grasp on how `Composable` works, you can
+continue on to see how it can be used to implement an Active Record object.
 
 ### Implementing relations as an object-oriented mixin 
 
+```ruby
+class Article
+  def initialize(params)
+    @params = params
+  end
+
+  def to_s
+    "TITLE: #{@params[:values][:title]}\n"+
+    "BODY:  #{@params[:values][:body]}"
+  end
+end
+
+# a factory for record objects that interacts with Table
+articles = BrokenRecord::Relation.new(:record_class => Article,
+                                      :name         => "articles")
+
+articles.create(:title => "A great article",
+                :body  => "Short but sweet")
+
+articles.create(:title => "A not so great article",
+                :body  => "Just as short")
+
+
+puts articles.all.join("\n\n") #=~
+# TITLE: A great article
+# BODY:  Short but sweet
+#
+# TITLE: A not so great article
+# BODY:  Just as short
+```
+
+```ruby
+module BrokenRecord
+  class Relation
+    include Composable
+
+    def initialize(params)
+      self.table = Table.new(:name => params.fetch(:name),
+                             :db   => BrokenRecord.database)
+
+      self.record_class = params.fetch(:record_class)
+
+      features << CRUD.new(self) << Associations.new(self)
+    end
+
+    attr_reader :table, :record_class
+
+    def attributes
+      table.columns.keys
+    end
+
+    def primary_key
+      table.primary_key
+    end
+
+    private
+
+    attr_writer :table, :record_class
+  end
+end
+```
+
+```ruby
+module BrokenRecord
+  class Relation
+    class CRUD
+      def initialize(relation)
+        self.relation = relation
+      end
+
+      # ...
+
+      def create(values)
+        id = table.insert(values)    
+      
+        find(id)
+      end
+
+      def find(id)
+        values = table.where(table.primary_key => id).first
+
+        return nil unless values
+
+        record_class.new(:relation => relation,
+                         :values   => values,
+                         :key      => id)
+      end
+
+      def all
+        table.all.map do |values| 
+          record_class.new(:relation  => relation,
+                           :values    => values,
+                           :key       => values[table.primary_key])
+        end
+      end
+
+      private
+
+      attr_accessor :relation
+
+      def table
+        relation.table
+      end
+
+      def record_class
+        relation.record_class
+      end
+    end
+  end
+end
+```
+
+Leave associations as an exercise for the reader?
+"Same basic idea, just with more meta-programming"
+
 ### Implementing records as an object-oriented mixin
+
+```ruby
+class Article
+  def initialize(params)
+    @params = params
+  end
+
+  def to_s
+    "TITLE: #{title}\n"+
+    "BODY:  #{body}"
+  end
+end
+```
 
 ### Reflections
 
