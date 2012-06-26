@@ -227,6 +227,19 @@ continue on to see how it can be used to implement an Active Record object.
 
 ### Implementing relations as an object-oriented mixin 
 
+EXPERIMENT WITH TELLING THIS STORY FROM THE PERSPECTIVE OF THE CALLS,
+
+Article.find(1) #=> article <-- what has to happen for this all to work?
+
+At its heart, `BrokenRecord::Relation` is nothing more than a factory
+object that connects user-defined record objects with the low 
+level `BrokenRecord::Table` database interface. You can navigate your 
+way through a few examples to learn exactly how it works.
+
+To keep things simple, you can start with an ordinary class definition, and note
+that it does not mix in the `BrokenRecord::Mapping` module or include any other
+third party code:
+
 ```ruby
 class Article
   def initialize(params)
@@ -238,7 +251,12 @@ class Article
     "BODY:  #{@params[:values][:body]}"
   end
 end
+```
 
+From here, it is possible to tie this class to a database table and get some
+Active Record style functionality for querying and inserting data:
+
+```ruby
 # a factory for record objects that interacts with Table
 articles = BrokenRecord::Relation.new(:record_class => Article,
                                       :name         => "articles")
@@ -258,6 +276,10 @@ puts articles.all.join("\n\n") #=~
 # BODY:  Just as short
 ```
 
+If you take a look at how `BrokenRecord::Relation` is defined, you will see that
+it does not implement much functionality on its own; much of its work is 
+delegated to `Relation::CRUD` and `Relation::Associations`:
+
 ```ruby
 module BrokenRecord
   class Relation
@@ -273,14 +295,8 @@ module BrokenRecord
     end
 
     attr_reader :table, :record_class
-
-    def attributes
-      table.columns.keys
-    end
-
-    def primary_key
-      table.primary_key
-    end
+    
+    # ...
 
     private
 
@@ -288,6 +304,39 @@ module BrokenRecord
   end
 end
 ```
+
+That said, `BrokenRecord::Relation` does create an instance of
+`BrokenRecord::Table` and keeps a reference to a record class
+which can later be used to wrap the data that comes back from
+the database. This information gets injected into 
+`Relation::CRUD` and `Relation::Association` so that they can 
+build their own functionality on top of it.
+
+If you take a closer look at how `BrokenRecord::Relation` is 
+being used here, it is easy to see that it is doing simple CRUD 
+operations. In particular, the example makes calls to 
+the `#create` and `#all` methods:
+
+```ruby
+articles = BrokenRecord::Relation.new(:record_class => Article,
+                                      :name         => "articles")
+
+articles.create(:title => "A great article",
+                :body  => "Short but sweet")
+
+articles.create(:title => "A not so great article",
+                :body  => "Just as short")
+
+puts articles.all.join("\n\n") #=~ ...
+```
+
+If you don't remember how `BrokenRecord::Table` works, now might be a good time
+to skim through [Issue 4.8](http://practicingruby.com/articles/60) 
+again and refresh your memory. But regardless of whether you are familiar with
+the details of how it works or not, it should be fairly obvious that the
+following code is just a thin veneer layered on top of `BrokenRecord::Table`
+which wraps results by creating instances of the provided record class:
+
 
 ```ruby
 module BrokenRecord
@@ -344,17 +393,24 @@ Leave associations as an exercise for the reader?
 
 ### Implementing records as an object-oriented mixin
 
+
 ```ruby
 class Article
-  def initialize(params)
-    @params = params
-  end
+  include BrokenRecord::Mapping
 
   def to_s
     "TITLE: #{title}\n"+
     "BODY:  #{body}"
   end
 end
+
+Article.create(:title => "A great article",
+               :body  => "Short but sweet")
+
+Article.create(:title => "A not so great article",
+               :body  => "Just as short")
+
+puts Article.all.join("\n\n")
 ```
 
 ### Reflections
