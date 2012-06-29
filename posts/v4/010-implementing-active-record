@@ -106,11 +106,11 @@ p stack.map { |x| "Has element: #{x}" } #=~
 ```
 
 Unfortunately, it is painful to implement objects this way. If you
-applied this kind of technique throughout your codebase without introducing some
+applied this kind of technique throughout a codebase without introducing some
 sort of abstraction, you would find yourself writing a ton of very boring
 `respond_to_missing?` and `method_missing` calls. It would be better to have
-an object that knows how to delegate methods for you, such as the `Composite`
-object in the following example:
+an object that knows how to delegate methods automatically, such as 
+the `Composite` object in the following example:
 
 ```ruby
 class EnumerableStack
@@ -155,9 +155,9 @@ mixin to solve this particular problem is massively overkill.
 Mixing the `Enumerable` module directly into the `Stack` object
 is not that hard to do, and is unlikely to have any adverse
 consequences. Still, seeing how `Composable` can be used to
-replace one of the most common applications of mixins 
-hopefully gave you a better understanding of how it 
-can be applied in more complex scenarios. The good news is 
+replace one of the most common applications of mixins makes
+it much easier to understand how this technique can be 
+applied in more complex scenarios. The good news is 
 that as long as you have a rough idea of how `Composable` 
 works in this context, you will have no trouble understanding
 how it is used in BrokenRecord.
@@ -193,7 +193,7 @@ module BrokenRecord
 end
 ```
 
-If you guessed that mixing this module into one of your own classes will expose 
+If you guessed that mixing this module into a class will expose 
 the methods provided by `BrokenRecord::Relation` as class methods, and the methods
 provided by `BrokenRecord::Record` as instance methods, then you guessed
 correctly! If you're still stuck, recall how this mixin is used:
@@ -216,8 +216,8 @@ example need to come from somewhere. Now, it should be easier to see that
 
 You really don't need to know the exact details of how 
 the `Composable` module works, because it is built based entirely on the 
-ideas already discussed in this article. However, if `Composable` still feels
-magical to you, go ahead and [study its
+ideas already discussed in this article. However, if `Composable` still feels a
+bit too magical, go ahead and [study its
 implementation](https://github.com/elm-city-craftworks/broken_record/blob/master/lib/broken_record/composable.rb)
 before reading on. For bonus points, pull the code down and try to 
 recreate the `EnumerableStack` example on your own machine.
@@ -225,60 +225,90 @@ recreate the `EnumerableStack` example on your own machine.
 Once you feel that you have a good grasp on how `Composable` works, you can
 continue on to see how it can be used to implement an Active Record object.
 
-### Implementing relations as an object-oriented mixin 
+### Implementing basic CRUD operations
 
-EXPERIMENT WITH TELLING THIS STORY FROM THE PERSPECTIVE OF THE CALLS,
+The complex relationships that Active Record objects depend upon make them a bit
+challenging to understand and analyze. But like any complicated system,
+you can gain some foundational knowledge by starting with a very simple example as an
+entry point and digging deeper from there.
 
-Article.find(1) #=> article <-- what has to happen for this all to work?
-
-At its heart, `BrokenRecord::Relation` is nothing more than a factory
-object that connects user-defined record objects with the low 
-level `BrokenRecord::Table` database interface. You can navigate your 
-way through a few examples to learn exactly how it works.
-
-To keep things simple, you can start with an ordinary class definition, and note
-that it does not mix in the `BrokenRecord::Mapping` module or include any other
-third party code:
+In the case of BrokenRecord, a good place to start is with a somewhat trivial
+model definition:
 
 ```ruby
 class Article
-  def initialize(params)
-    @params = params
-  end
+  include BrokenRecord::Mapping
 
-  def to_s
-    "TITLE: #{@params[:values][:title]}\n"+
-    "BODY:  #{@params[:values][:body]}"
+  map_to_table :articles
+
+  def published?
+    status == "published"
   end
 end
 ```
 
-From here, it is possible to tie this class to a database table and get some
-Active Record style functionality for querying and inserting data:
+You found out earlier when you looked at `BrokenRecord::Mapping` exists
+primarily to extend classes with functionality provided by
+`BrokenRecord::Relation` at the class level, and `BrokenRecord::Record` at the
+instance level. Because `BrokenRecord::Mapping` provides an `initialize` method,
+it is safe to assume that `Article` will not be instantiated directly by its
+users, but instead be created by factory methods provided by
+`BrokenRecord::Relation`. The following code demonstrates how `Article` is meant
+to be used:
+
 
 ```ruby
-# a factory for record objects that interacts with Table
-articles = BrokenRecord::Relation.new(:record_class => Article,
-                                      :name         => "articles")
+Article.create(:title  => "A great article",
+               :body   => "The rain in Spain...",
+               :status => "draft")
 
-articles.create(:title => "A great article",
-                :body  => "Short but sweet")
+Article.create(:title  => "A mediocre article",
+               :body   => "Falls mainly in the plains",
+               :status => "published")
 
-articles.create(:title => "A not so great article",
-                :body  => "Just as short")
+Article.create(:title  => "A bad article",
+               :body   => "Is really bad!",
+               :status => "published")
 
-
-puts articles.all.join("\n\n") #=~
-# TITLE: A great article
-# BODY:  Short but sweet
-#
-# TITLE: A not so great article
-# BODY:  Just as short
+Article.all.each do |article|
+  if article.published?
+    puts "PUBLISHED: #{article.title}"
+  else
+    puts "UPCOMING: #{article.title}"
+  end
+end
 ```
 
-If you take a look at how `BrokenRecord::Relation` is defined, you will see that
-it does not implement much functionality on its own; much of its work is 
-delegated to `Relation::CRUD` and `Relation::Associations`:
+If you ignore what is going on inside the `each` block for the moment, it is
+easy to spot two factory methods being used in the previous example:
+`Article.create` and `Article.all`. To track down where these methods are coming
+from, you need to take a look at `BrokenRecord::Relation`, because that is where
+class-level method calls on `Article` are forwarded to if `Article` does not
+handle them itself. But before you do that, keep in mind that this is how
+that object gets created in the first place:
+
+```ruby
+  def map_to_table(table_name)
+    features << Relation.new(:name         => table_name,
+                             :db           => BrokenRecord.database,
+                             :record_class => self)
+  end
+```
+
+If you note that `map_to_table :articles` is called within the `Article`
+class, you can visualize the call to `Relation.new` in the previous example as
+being essentially the same as what you see below:
+
+```ruby
+features << Relation.new(:name          => :articles,
+                         :db            => BrokenRecord.database,
+                         :record_class  => Article)
+```
+
+Armed with this knowledge, it should be easier to make sense of the
+`BrokenRecord::Relation` class, which is shown in its entirety below. Pay
+particular attention to the `initialize` method, and just skim the rest of the
+method definitions; it isn't important to fully understand them until later.
 
 ```ruby
 module BrokenRecord
@@ -287,56 +317,44 @@ module BrokenRecord
 
     def initialize(params)
       self.table = Table.new(:name => params.fetch(:name),
-                             :db   => BrokenRecord.database)
+                             :db   => params.fetch(:db))
 
       self.record_class = params.fetch(:record_class)
 
       features << CRUD.new(self) << Associations.new(self)
     end
 
-    attr_reader :table, :record_class
-    
-    # ...
+    attr_reader :table
+
+    def attributes
+      table.columns.keys
+    end
+
+    def new_record(values)
+      record_class.new(:relation => self,
+                       :values   => values,
+                       :key      => values[table.primary_key])
+    end
+
+    def define_record_method(name, &block)
+      record_class.send(:define_method, name, &block)
+    end
 
     private
 
+    attr_reader :record_class
     attr_writer :table, :record_class
   end
 end
 ```
 
-That said, `BrokenRecord::Relation` does create an instance of
-`BrokenRecord::Table` and keeps a reference to a record class
-which can later be used to wrap the data that comes back from
-the database. This information gets injected into 
-`Relation::CRUD` and `Relation::Association` so that they can 
-build their own functionality on top of it.
-
-If you take a closer look at how `BrokenRecord::Relation` is 
-being used here, it is easy to see that it is doing simple CRUD 
-operations. In particular, the example makes calls to 
-the `#create` and `#all` methods:
-
-```ruby
-articles = BrokenRecord::Relation.new(:record_class => Article,
-                                      :name         => "articles")
-
-articles.create(:title => "A great article",
-                :body  => "Short but sweet")
-
-articles.create(:title => "A not so great article",
-                :body  => "Just as short")
-
-puts articles.all.join("\n\n") #=~ ...
-```
-
-If you don't remember how `BrokenRecord::Table` works, now might be a good time
-to skim through [Issue 4.8](http://practicingruby.com/articles/60) 
-again and refresh your memory. But regardless of whether you are familiar with
-the details of how it works or not, it should be fairly obvious that the
-following code is just a thin veneer layered on top of `BrokenRecord::Table`
-which wraps results by creating instances of the provided record class:
-
+The main thing to notice about `BrokenRecord::Relation` is that its main purpose
+is to glue together a `BrokenRecord::Table` object with a user-defined record
+class, such as the `Article` class we've been working with in this example. The
+rest of its functionality is provided by the `Relation::CRUD` and
+`Relation::Associations` objects via composition. Because `Article.create` and
+`Article.all` are both easily identifiable as CRUD operations, the `Relation::CRUD` 
+object is the next stop on your tour:
 
 ```ruby
 module BrokenRecord
@@ -346,7 +364,9 @@ module BrokenRecord
         self.relation = relation
       end
 
-      # ...
+      def all
+        table.all.map { |values| relation.new_record(values) }
+      end
 
       def create(values)
         id = table.insert(values)    
@@ -359,19 +379,11 @@ module BrokenRecord
 
         return nil unless values
 
-        record_class.new(:relation => relation,
-                         :values   => values,
-                         :key      => id)
+        relation.new_record(values)
       end
 
-      def all
-        table.all.map do |values| 
-          record_class.new(:relation  => relation,
-                           :values    => values,
-                           :key       => values[table.primary_key])
-        end
-      end
-
+      # ... other irrelevant CRUD operations omitted
+      
       private
 
       attr_accessor :relation
@@ -379,39 +391,293 @@ module BrokenRecord
       def table
         relation.table
       end
-
-      def record_class
-        relation.record_class
-      end
     end
   end
 end
 ```
 
-Leave associations as an exercise for the reader?
-"Same basic idea, just with more meta-programming"
+At this point, you should have noticed that both `Relation::CRUD#create` and
+`Relation::CRUD#all` are defined, and it is ultimately these methods that get
+called whenever you call `Article.create` and `Article.all`. You've found your
+destination, and now you just need to walk your way back home.
 
-### Implementing records as an object-oriented mixin
+Whether you trace `Relation::CRUD#create` or `Relation::CRUD#all`, you'll find
+that they both interact with the `Table` object provided by `Relation`, and that
+they both call `Relation#new_record`, and don't do much more than that. To keep
+things simple, follow the path that `Relation::CRUD#all` takes:
 
+```ruby
+  def all
+    table.all.map { |values| relation.new_record(values) }
+  end
+```
+
+This method calls `BrokenRecord::Table#all`, which as you saw in 
+[Issue 4.8](http://practicingruby.com/articles/60) returns an
+array of hashes representing the results returned from the 
+database when a trivial `select * from articles` query is issued. 
+For this particular data set, the following results get 
+returned:
+
+```ruby
+[
+ { :id     => 1, 
+   :title  => "A great article", 
+   :body   => "The rain in Spain...", 
+   :status => "draft" }, 
+
+  {:id     => 2, 
+   :title  => "A mediocre article", 
+   :body   => "Falls mainly in the plains", 
+   :status => "published"}, 
+
+ { :id     => 3, 
+   :title  => "A bad article", 
+   :body   => "Is really bad!", 
+   :status => "published" }
+]
+```
+
+Taking a second look at the `Relation::CRUD#all` method, it is easy to
+see that this is being transformed by a simple `map` call which passes each of
+these hashes to `Relation#new_record`. I had asked you to skim over that
+method earlier, but now would be a good time to take a second look at its
+definition:
+
+```ruby
+module BrokenRecord
+  class Relation
+    def new_record(values)
+      record_class.new(:relation => self,
+                       :values   => values,
+                       :key      => values[table.primary_key])
+    end
+  end
+end
+```
+
+If you recall that in this context `record_class` is a reference to `Article`,
+it becomes easy to visualize this call as something similar to what is 
+shown below:
+
+```ruby
+values = { :id     => 1, 
+           :title  => "A great article", 
+           :body   => "The rain in Spain...", 
+           :status => "draft" }
+
+Article.new(:relation => some_relation_obj,
+            :values   => values,
+            :key      => 1)
+```
+
+As you discovered before, `Article` does not provide its own `initialize`
+method, and instead inherits the definition provided by 
+`BrokenRecord::Mapping#initialize`:
+
+```ruby
+module Mapping
+  include Composable
+
+  def initialize(params)
+    features << Record.new(params)
+  end
+end
+```
+
+If you haven't lost your way, you will see from this definition that a call to
+to `Article.all` or `Article.create` will return instances of `Article`, but
+those instances will be imbued with functionality provided by the `Record`
+class, which holds a reference to the `Relation` object that ties everything
+back to the database. Admittedly, the Active Record pattern is a bit of 
+a [Rube Goldberg machine](http://www.youtube.com/watch?v=qybUFnY7Y8w), but the 
+next section should help tie everything together for you.
+
+### Implementing the Active Record object itself
+
+Earlier, I had asked you to ignore what was going on in the `each` block of the
+original example that kicked off this exploration, because I wanted to show you
+how Article instances get created before discussing how they work. Now that you
+have worked through that process, you can drop down to the instance level to
+complete the journey. Using the same code reading strategy as what you used
+before, you can start with the `Article#published?` and `Article#title` 
+calls in the following example and see where they take you:
+
+```ruby
+Article.all.each do |article|
+  if article.published?
+    puts "PUBLISHED: #{article.title}"
+  else
+    puts "UPCOMING: #{article.title}"
+  end
+end
+```
+
+A second look at the `Article` class definition reveals that it implements
+the `published?` method but does not implement the `title` method; the latter call gets 
+passed along to `BrokenRecord::Record` automatically. Similarly, the internal call 
+to `status` gets delegated as well:
 
 ```ruby
 class Article
   include BrokenRecord::Mapping
 
-  def to_s
-    "TITLE: #{title}\n"+
-    "BODY:  #{body}"
+  map_to_table :articles
+
+  def published?
+    status == "published"
+  end
+end
+```
+
+To understand what happens next, take a look at how the `BrokenRecord::Record` class works:
+
+```ruby
+module BrokenRecord
+  class Record
+    include Composable
+
+    def initialize(params)
+      self.key      = params.fetch(:key, nil)
+      self.relation = params.fetch(:relation)
+
+      # NOTE: FieldSet (formally called Row) is a simple Struct-like object
+      features << FieldSet.new(:values     => params.fetch(:values, {}),
+                               :attributes => relation.attributes)
+    end
+
+    # ... irrelevant functionality omitted ...
+
+    private
+
+    attr_accessor :relation, :key
+  end
+end
+```
+
+By now you should be able to quickly identify `BrokenRecord::FieldSet` as the object that
+receives any calls that `Record` does not answer itself. The good
+news is that you already know how `FieldSet` works, because it was discussed in
+detail in [Issue 4.8](http://practicingruby.com/articles/60). But if you need a
+refresher, check out the following code:
+
+```ruby
+values = { :id     => 1, 
+           :title  => "A great article", 
+           :body   => "The rain in Spain...", 
+           :status => "draft" }
+
+fieldset = BrokenRecord::FieldSet.new(:values     => values,
+                                      :attributes => values.keys)
+
+p fieldset.title  #=> "A great article"
+p fieldset.status #=> "draft"
+```
+
+If you read back through the last few examples, you should be able to see how
+the data provided by `Relation` gets shoehorned into one of these `FieldSet`
+objects, and from there it becomes obvious how the `Article#title` and `Article#status`
+messages are handled.
+
+If `FieldSet` is doing all the heavy lifting, you may be wondering why the
+`Record` class needs to exist at all. Those details were omitted from the
+original example, so it is definitely a reasonable question to ask. To find your
+answer, consider the following example of updating database records:
+
+```ruby
+articles = Article.where(:status => "draft")
+
+articles.each do |article|
+  article.status = "published"
+  article.save
+end
+```
+
+In the example you worked through earlier, data was being read and not written,
+and so it was hard to see how `Record` offered anything more than a layer of
+indirection on top of `FieldSet`. However, the example shown above changes that
+perspective significantly by giving a clear reason for `Record` to hold a
+reference to a `Relation` object. While `Article#status=` is provided by
+`FieldSet`, the `Article#save` method is provided by `Record`, and is defined as
+follows:
+
+```ruby
+module BrokenRecord
+  class Record
+    
+    # ... other details omitted ...
+
+    def save
+      if key
+        relation.update(key, to_hash)
+      else
+        relation.create(to_hash)
+      end
+    end 
+  end
+end
+```
+
+From this method (and others like it), it becomes clear that `Record` is
+essentially a persistent `FieldSet` object, which forms the essence of what an
+Active Record object is in its most basic form.
+
+### EXERCISE: Implementing minimal association support 
+
+The process of working through the low level foundations built up in [Issue
+4.8](http://practicingruby.com/articles/60) combined with this article's 
+extensive walkthrough of how BrokenRecord implements some basic CRUD 
+functionality probably gave you enough learning moments to quit while you're
+ahead. That said, if you are looking to dig a little deeper, I'd recommend
+trying to work your way through BrokenRecord's implementation of associations
+and see if you can make sense of it. The following example should serve as a
+good starting point:
+
+```ruby
+class Article
+  include BrokenRecord::Mapping
+
+  map_to_table :articles
+
+  has_many :comments, :key   => :article_id, 
+                      :class => "Comment"
+
+  def published?
+    status == "published"
   end
 end
 
-Article.create(:title => "A great article",
-               :body  => "Short but sweet")
+class Comment
+  include BrokenRecord::Mapping
 
-Article.create(:title => "A not so great article",
-               :body  => "Just as short")
+  map_to_table :comments
 
-puts Article.all.join("\n\n")
+  belongs_to :article, :key   => :article_id,
+                       :class => "Article"
+end
+
+
+Article.create(:title  => "A great articles",
+               :body   => "The Rain in Spain",
+               :status => "draft")
+
+
+Comment.create(:body => "A first comment",  :article_id => 1)
+Comment.create(:body => "A second comment", :article_id => 1)
+
+
+article = Article.find(1)
+
+puts "#{article.title} -- #{article.comments.count} comments"
+puts article.comments.map { |e| "  * #{e.body}" }.join("\n")
 ```
+
+Because not all the features in the example above are covered in this article,
+you will definitely need to directly reference the [full source of
+BrokenRecord](https://github.com/elm-city-craftworks/broken_record) to complete
+this exercise. But don't worry, by now you should be familiar with most of its
+code, and that will help you find your way around. If you attempt this 
+exercise, please let me know your thoughts and questions about it!
 
 ### Reflections
 
