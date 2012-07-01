@@ -415,7 +415,7 @@ end
  a dynamic value object as `Struct` does:
 
 ```ruby
-article = BrokenRecord::FieldSet.new(:column_names => [:id, :title, :body])
+article = BrokenRecord::FieldSet.new(:attributes => [:id, :title, :body])
 article.title = "A fancy article"
 article.body  = "This is so full of class, its silly"
 
@@ -441,7 +441,7 @@ article_data = { :id    => 1,
                  :title => "A fancy article",
                  :body  => "This is so full of class, it's silly" }
 
-article = BrokenRecord::FieldSet.new(:column_names => [:id, :title, :body],
+article = BrokenRecord::FieldSet.new(:attributes => [:id, :title, :body],
                                      :values       => article_data)
 
 p article.title #=> "A fancy title"
