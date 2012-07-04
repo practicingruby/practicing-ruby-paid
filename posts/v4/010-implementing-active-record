@@ -1,7 +1,7 @@
-> This two part series explores the challenges involved in
+> This two part article explores the challenges involved in
 > building a minimal implementation of the Active Record pattern. 
 > [Part 1 (Issue 4.8)](http://practicingruby.com/articles/60) provides
-> some basic background information of the problem and
+> some basic background information about the problem and
 > walks through some of the low level structures that are
 > needed to build an ORM. Part 2 (this issue) builds on top of
 > those structures to construct a complete Active Record
@@ -18,7 +18,7 @@ maintainence cost](http://practicingruby.com/articles/62). This is one of the
 main design challenges that
 [BrokenRecord](https://github.com/elm-city-craftworks/broken_record) attempts to solve.
 
-Because this is a tricky problem, it helps to explore the ideas by
+Because this is a tricky problem, it helps to explore these ideas by
 solving an easier problem first. For example, suppose that you have the following trivial
 `Stack` object and you want to extend it with some `Enumerable`-like
 functionality without mixing `Enumerable` directly into the `Stack` object:
@@ -145,6 +145,7 @@ class EnumerableStack
     stack = Stack.new
     enum  = Enumerator.new { |y| stack.each { |e| y.yield(e) } }      
 
+    # features is a simple attribute containing a Composite object
     features << stack << enum
   end
 end
@@ -163,7 +164,7 @@ works in this context, you will have no trouble understanding
 how it is used in BrokenRecord.
 
 To test whether or not you understand the basic pattern, take a look at the
-following code and see if you can piece together how it works. Don't worry about
+following code and see if you can figure out how it works. Don't worry about
 the exact implementation details, just compare the following code to the other
 examples in this section and think about what the purpose of this module is:
 
@@ -216,7 +217,7 @@ example need to come from somewhere. Now, it should be easier to see that
 `Relation` and `Record` are where those methods come from.
 
 You really don't need to know the exact details of how 
-the `Composable` module works, because it is built based entirely on the 
+the `Composable` module works, because it is based entirely on the 
 ideas already discussed in this article. However, if `Composable` still feels a
 bit too magical, go ahead and [study its
 implementation](https://github.com/elm-city-craftworks/broken_record/blob/master/lib/broken_record/composable.rb)
@@ -251,11 +252,10 @@ end
 You found out earlier when you looked at `BrokenRecord::Mapping` that it exists
 primarily to extend classes with functionality provided by
 `BrokenRecord::Relation` at the class level, and `BrokenRecord::Record` at the
-instance level. Because `BrokenRecord::Mapping` provides an `initialize` method,
-it is safe to assume that `Article` will not be instantiated directly by its
-users, but instead be created by factory methods provided by
-`BrokenRecord::Relation`. The following code demonstrates how `Article` 
-can be used:
+instance level. Because `BrokenRecord::Mapping` provides a fairly complicated 
+`initialize` method, it is safe to assume that `Article` objects should be
+created by factory methods rather than instantiated directly. The following 
+code demonstrates how that works:
 
 
 ```ruby
@@ -400,10 +400,7 @@ end
 At this point, you should have noticed that both `create()` and
 `all()` are defined by `Relation::CRUD`, and it is ultimately these 
 methods that get called whenever you call `Article.create` 
-and `Article.all`. You've found your destination, and now you 
-just need to walk your way back home.
-
-Whether you trace `Relation::CRUD#create` or `Relation::CRUD#all`, you'll find
+and `Article.all`. Whether you trace `Relation::CRUD#create` or `Relation::CRUD#all`, you'll find
 that they both interact with the `Table` object provided by `Relation`, and that
 they both call `Relation#new_record`, and they don't do much more than that. 
 To keep things simple, we'll follow the path that `Relation::CRUD#all` takes:
@@ -690,7 +687,7 @@ questions and potential pitfalls. While they seem to work well in this toy
 implementation of Active Record, they may end up creating as many problems as
 they solve. In particular, it remains to be seen how this kind of modeling would
 impact performance, debugging, and introspection of Ruby objects. Still, the
-pattern does a good enough job of simplifying a very complex architectural
+pattern does a good enough job of handling a very complex architectural
 pattern to hint that some further experimentation may be worthwhile.
 
 Going back to the original question I had hoped to answer in the first part of
@@ -708,7 +705,7 @@ preferring composition over inheritance and reducing the amount of magic in our
 code. The much deeper questions that we can ask ourselves is whether these very
 complicated systems we build are really necessary, or if they are a
 consequence of piling [abstractions on top of abstractions](http://timelessrepo.com/abstraction-creep) 
-in order to fixing some fundamental low-level problem.
+in order to fix some fundamental low-level problem.
 
 While this article was a fun little exploration into the depths of a
 complex modeling problem in Ruby, I think its real point is to get us to

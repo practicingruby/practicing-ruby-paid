@@ -1,6 +1,7 @@
 Writing robust code is always challenging, even when dealing with extremely well controlled environments. But when you enter the danger zone where software failures can result in data loss or extended service interruptions, coding for robustness becomes essential even if it is inconvenient to do so. 
 
-In this article, I will share some of the lessons I've learned about building stable software through my work on the [Newman mail framework](https://github.com/mendicant-university/newman). While the techniques I've discovered so far are fairly ordinary, it was easy to underestimate their importance in the early stages of the project's development. My hope is that by exposing my stumbling points, it will save others from making the same mistakes.
+In this article, I will share some of the lessons I've learned about building
+stable software through my work on the [Newman mail framework](https://github.com/mendicant-original/newman). While the techniques I've discovered so far are fairly ordinary, it was easy to underestimate their importance in the early stages of the project's development. My hope is that by exposing my stumbling points, it will save others from making the same mistakes.
 
 ### Lesson 1: Collect enough information about your workflow.
 
@@ -105,7 +106,8 @@ While it may be possible to recover from some of the errors that occur at the se
 
 ### Lesson 3: Reduce the impact of catastrophic failures. 
 
-A few days before this article was published, I accidentally introduced an infinite send/receive loop into the experimental Newman-based mailing list system [MailWhale](https://github.com/mendicant-university/mail_whale). I caught the problem right away, but not before my email provider banned me for 1 hour for exceeding my send quota. In the few minutes of chaos before I figured out what was going wrong, there was a window of time in which any incoming emails would simply be dropped, resulting in data loss.
+A few days before this article was published, I accidentally introduced an
+infinite send/receive loop into the experimental Newman-based mailing list system [MailWhale](https://github.com/mendicant-original/mail_whale). I caught the problem right away, but not before my email provider banned me for 1 hour for exceeding my send quota. In the few minutes of chaos before I figured out what was going wrong, there was a window of time in which any incoming emails would simply be dropped, resulting in data loss.
 
 It's painful to imagine what would have happened if this failure occured while someone wasn't actively babysitting the server. While the process was crashing with a `Net::SMTPFatalError` each time cron ran it, this happened after reading all incoming mail. As a result, the incoming mail would get dropped from the inbox without any response, failing silently. Once the quota was lifted, a single email would cause the server to start thrashing again, eventually leading to a permanent ban. In addition to these problems, anyone using the mailing list would be bombarded with at least a few duplicate emails before the quota kicked in each time. Although I was fortunate to not live out this scenario, the mere thought of it sends chills down my spine.
 
