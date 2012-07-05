@@ -1,4 +1,6 @@
-*TODO: ADD GREG'S BIO HERE*
+Greg Moeck is a software craftsman who has been working with Ruby for
+over 7 years. He is currently employed by Facebook where he does
+primarily mobile JavaScript work.
 
 Given that Ruby is an object oriented programming language, all Ruby
 programs are going to be composed of many objects. However, techniques 
@@ -7,10 +9,10 @@ vary from programmer to programmer. In this article I'm going to walk
 through two common approaches to driving that design at a high level:
 **data-centric design** and **responsibility-centric design**. I will
 briefly sketch the key ideas of each of the design methodologies,
-illustrating how one might structure a simple e-commerce application
-using each of the methods. I'll then follow up with some advice about
-where I've found the different approaches to be particularly helpful
-or unhelpful.
+illustrating how one might structure parts of a simple e-commerce
+application using each of the methods. I'll then follow up with some 
+advice about where I've found the different approaches to be particularly
+helpful or unhelpful.
 
 > **NOTE:** The terms data-centric design and
 responsibility-centric design are purposefully similar to
@@ -91,13 +93,13 @@ accomplish some tasks.
 
 ### Responsibility-centric design
 
-In a responsibility-centric design, systems are divided up the system by
-the behaviors that they must implement. The goal of this division is
+In a responsibility-centric design, systems are divided by the
+collection of behaviors that they must implement. The goal of this division is
 to formulate the description of the behavior of the system in terms of
-multiple interacting processes, with each process playing a 
-separate **role**. For example, in an e-commerce application with a 
-responsibility-centric design, you would be likely to find objects 
-such as a purchase processor, an inventory tracker, and a user 
+multiple interacting processes, with each process playing a
+separate **role**. For example, in an e-commerce application with a
+responsibility-centric design, you would be likely to find objects
+such as a payment processor, an inventory tracker, and a user
 authenticator.
 
 The relationships between objects become very similar to the
@@ -109,59 +111,175 @@ of the server by the client. Both objects must fulfill this contract,
 in that the client can only make the requests specified by the API, and
 the server must respond by fulfilling those requests when told.
 
+So for example, in our e-commerce application you might find an order
+processor that looks something like the following:
+
+```ruby
+class StandardOrderProcessor
+  def initialize(payment_processor, shipment_scheduler)
+    @payment_processor = payment_processor
+    @shipment_scheduler = shipment_scheduler
+  end
+
+  def process_order(order)
+    @payment_processor.debit_accout(order.payment_method, order.amount)
+    @shipment_scheduler.schedule_delivery(order.delivery_address,
+                                          order.items)
+  end
+end
+```
+
 The goal of describing relationships between objects in this way is that
-it forces the API for the server object to describe what it does for
-the client rather than how it accomplishes it. This means that by its
+it forces the API for the server object to describe **what** it does for
+the client rather than *how* it accomplishes it. This means that by its
 very nature the implementation of the server must be encapsulated, and
 locked away from the client. This means that the client object is only
 coupled to the public API of its server objects, which allows developer
-to freely change server internals as long as the client still has an 
+to freely change server internals as long as the client still has an
 object to talk to that fulfills the contract.
+
+So for example the above standard order processor implements the order
+processor interface, but so does the following order validation processor:
+
+```ruby
+class OrderValidationProcessor
+  def initialize(order_processor, error_handler)
+    @order_processor = order_processor
+    @error_handler = error_handler
+  end
+
+  def process_order(order)
+    if is_valid_order(order)
+      @order_processor.process_order(order)
+    else
+      @error_handler.invalid_order(order)
+    end
+  end
+
+  private
+  def is_valid_order(order)
+    #does some checking for if the order is valid
+  end
+end
+```
+
+The client of the order processor does not need to know which sort of
+order processor it is talking to, it just needs to tell it to process
+the order. In the case where it was given a standard order processor it
+wouldn't go through validation, but in the case where it was given an
+order processor validator it would. But the key is that the client
+wouldn't know how that processing was going to take place, decoupling
+the actual processing of the order.
+
+These objects would generally be composed with a factory that might look
+something like this:
+
+```ruby
+class OrderProcessorFactory
+  ...
+
+  def order_processor_with_validation
+    OrderValidationProcessor.new(order_processor_without_validation,
+                                error_handler)
+  end
+
+  def order_processor_without_validation
+    StandardOrderProcessor.new(payment_processor, shipment_scheduler)
+  end
+
+  ...
+end
+```
 
 This analogy of client and server is not to say however that there
 are some objects within the system that are clients, and some objects
 that are servers. Any object can act as either a client or a server at
 any given time. The notions of client and server are only applicable
 to the description of the contract. For example, going back to our
-e-commerce application, the object playing the role of a purchase
+e-commerce application, the object playing the role of a payment
 processor may act as a client, and consume the API of an object playing
-the role of a credit card processor, while at the same time playing the
-role of a server, and having its API consumed by an object playing the
-role of a checkout processor.
+the role of a credit card processor, while at the same time, as above,
+playing the role of a server, and having its API consumed by a
+standard order processor. In the case of the credit card processor, it
+would be the client, whereas in the case of the standard order processor
+it would be the server.
+
+The key thing to notice in this client server relationship though is
+that the client should only be coupled to the server's API, which
+defines the role that the server is playing. The actual server that it's
+talking to doesn't matter, just that it implements the contact.
 
 As you've probably already noticed, because these objects represent the
 behavior of the system rather than the data, the objects are not
 generally named after "real world" entities. The roles that an object
 plays often represent real world processes, and the implementation of
-these roles are often named after how they implement the desired role.
+these roles are often named after *how* they implement the desired role.
 So for example, within our system there might be two objects which
-can play the role of a delivery scheduler. One might schedule
+can play the role of a shipment scheduler. One might schedule
 deliveries by FedEx, and one might schedule deliveries by UPS. So
 although they would both implement the API of the delivery scheduler,
 one might be called `FedExDeliveryScheduler`, and the other
 `UPSDeliveryScheduler`. The client consuming the object wouldn't
 know which delivery scheduler it was talking to, only the API of its
-server's role.
+server's role, with the actual object dependency being passed into its
+constructor.
 
 Another primary idea of these kinds of systems is that data flows
 through the system rather than being centrally managed within the 
 system. As a result, data typically takes the form of immutable 
-value objects. For example, in order to be able to actually schedule a delivery, 
-the delivery scheduler is going to need to be given a bill of lading 
-containing the items to be shipped and the destination location. 
-When it has completed the scheduling of the delivery it might then 
-emit an event containing a scheduled delivery receipt. The data 
-for the system is contained within the bill of lading, and the 
-scheduled delivery receipt, which is really encapsulated in the 
-messages that flow between objects rather than inside the objects 
-themselves.
+value objects. For example, in the above order processors, the processes
+were being passed an order object, which contained the data for a given
+order. The objects within the system are not mutating or persisting this
+data directly, but passing values around the sytem. And so an object
+responsible for tracking the current order might look like this:
+
+```ruby
+class CurrentOrderTracker
+  def initialize
+    @order = Order.new
+  end
+
+  def item_selected(item)
+    @order = order.add_item(item)
+  end
+
+  class Order
+    attr_accessor :items
+
+    def initialize(items)
+      @items = items || []
+    end
+
+    def add_item(item)
+      Order.new(@items + item)
+    end
+  end
+end
+```
+Since any reference to one of these values is guaranteed to be
+immutable, any process can read from it at any time without worrying
+that it might have been modified by another process.
 
 This is not to say however that this data is never persisted. When it is
 necessary to persist this data, an object playing the role of a
 persister must be created, and it must receive messages containing these
 values just like any other part of the system. In this way, the
 persistance logic generally lives on the boundaries of the system rather
-than in the center.
+than in the center. Such an object might look something like this:
+
+```ruby
+class SQLOrderPersister
+  #assuming that AROrder is an active record object
+  def persist_order(order)
+    order = AROrder.find(order.id)
+    if order
+      order.update_attributes(order.attributes)
+    else
+      AR.Order.new(order.attributes).save
+    end
+  end
+end
+```
 
 The last thing to note is that in this sort of system using inheritance
 as a form of classification doesn't really make much sense. Historically
@@ -267,28 +385,46 @@ end
 
 Rails has proved how the data centric approach can lead to quickly
 building an application that can create, read, update and destroy data.
-And for applications that center primarily around data, the ActiveRecord
-pattern works extremely well. However as some large legacy Rails
-codebases show, modeling your application domain which is largely about
-behavior in a data centric way intrinsically leads to problems over time.
+And for applications whose domain complexity lies primarily in data types,
+and the actions that can be taken on those data types, the pattern works
+extremely well. Adding or updating data types is fast and easy since the
+system is cohesive around its data.
 
-When you have a domain layer whose complexity lies not in it's many data
-formats, but in the rules that need to be applied for every user action,
-it might be worth exploring a responsibility-centric design.
+However as some large legacy Rails codebases show, when the complexity
+of the domain lies primarily in the behvaiors or rules of the domain
+then organizing around data leads to a lot of jumbled code. The models
+end up needing to have many methods on them in order to process all of
+the potential actions that can be taken on them, and many of these
+actions end up being similar accross data types. As such the cohesion of
+the system suffers, and extending or modifying the behavior becomes more and
+more difficult over time.
 
-At the same time, if the domain that one is working in finds it's
-complexity primarily in the many different data types that one has to
-work with attempting to use a responsibility-centric design is going to
-cause severe problems. Every time you need to change the structure of
-the data, you will have to tweak things in many places throughout the
-code.
+The oppisite of course is true as well in my experience. In a system
+whose domain complexity lies primarily in its behavior, decomposing the
+system around those behaviors makes extending or modifying the behavior
+of the system over time to be much faster and easier. However the cost
+is that extending or modifying the data of the system can become more
+and more difficult over time.
+
+As with most design methods, it comes down to an engineering decision,
+which often means you have to guess, and evolve over time. There is no
+magic system that will be the right way to model things regardless of
+the application. There might even be some subsets of an application
+that might be better modeled in a data-centric way, whereas other
+sections of the system might be better modeled in a behavior-centric way.
+The key thing I've found is to be sensitve to the "thrash" smell, where
+you notice that things are becoming more and more difficult to extend or
+modify, and be open to refactor the design based on the feedback your
+getting from the system.
 
 ### Further references
 
-1) Object-oriented design: a responsibility-driven approach, R. Wirfs-Brock, B. Wilkerson, OOPSLA '89 Conference proceedings on Object-oriented programming systems, languages and applications
+1) Growing Object Oriented Software Guided By Tests, Steve Freeman, Nat Pryce
 
-2) The object-oriented brewery: a comparison of two object-oriented development methods, Robert C. Sharble, Samuel S. Cohen, ACM SIGSOFT Software Engineering Notes, Volume 18 Issue 2, April 1993
+2) Object-oriented design: a responsibility-driven approach, R. Wirfs-Brock, B. Wilkerson, OOPSLA '89 Conference proceedings on Object-oriented programming systems, languages and applications
 
-3) Mock Roles, Not Objects, Steve Freeman, Tim Mackinnon, Nat Pryce, Joe Walnes, OOPSLA '04 Companion to the 19th annual ACM SIGPLAN conference on Object-oriented programming systems, languages, and applications
+3) The object-oriented brewery: a comparison of two object-oriented development methods, Robert C. Sharble, Samuel S. Cohen, ACM SIGSOFT Software Engineering Notes, Volume 18 Issue 2, April 1993
 
-4) A Laboratory For Teaching Object-Oriented Thinking, Kent Beck, Ward Cunningham, OOPSLA '89 Conference proceedings on Object-oriented programming systems, languages and applications
+4) Mock Roles, Not Objects, Steve Freeman, Tim Mackinnon, Nat Pryce, Joe Walnes, OOPSLA '04 Companion to the 19th annual ACM SIGPLAN conference on Object-oriented programming systems, languages, and applications
+
+5) A Laboratory For Teaching Object-Oriented Thinking, Kent Beck, Ward Cunningham, OOPSLA '89 Conference proceedings on Object-oriented programming systems, languages and applications
