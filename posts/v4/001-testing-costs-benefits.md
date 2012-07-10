@@ -52,7 +52,7 @@ following common assumptions about TDD stood out:
 - Steep learning curve due to so many different testing tools / methodologies
 - Increased cost of test maintenance as projects get larger
 - Some time wasted on fixing "brittle tests"
-- Effectiveness is highly dependent on experience/disciple of dev team
+- Effectiveness is highly dependent on experience/discipline of dev team
 - Difficulty figuring out where to get started on new projects
 - Reduced ability to quickly produce quick and dirty prototypes
 - Difficulty in evaluating how much time TDD costs vs. how much it saves

@@ -378,15 +378,15 @@ extremely well. Adding or updating data types is fast and easy since the
 system is cohesive around its data.
 
 However as some large legacy Rails codebases show, when the complexity
-of the domain lies primarily in the behvaiors or rules of the domain
+of the domain lies primarily in the behaviors or rules of the domain
 then organizing around data leads to a lot of jumbled code. The models
 end up needing to have many methods on them in order to process all of
 the potential actions that can be taken on them, and many of these
-actions end up being similar accross data types. As such the cohesion of
+actions end up being similar across data types. As such the cohesion of
 the system suffers, and extending or modifying the behavior becomes more and
 more difficult over time.
 
-The oppisite of course is true as well in my experience. In a system
+The opposite of course is true as well in my experience. In a system
 whose domain complexity lies primarily in its behavior, decomposing the
 system around those behaviors makes extending or modifying the behavior
 of the system over time to be much faster and easier. However the cost
@@ -399,7 +399,7 @@ magic system that will be the right way to model things regardless of
 the application. There might even be some subsets of an application
 that might be better modeled in a data-centric way, whereas other
 sections of the system might be better modeled in a behavior-centric way.
-The key thing I've found is to be sensitve to the "thrash" smell, where
+The key thing I've found is to be sensitive to the "thrash" smell, where
 you notice that things are becoming more and more difficult to extend or
 modify, and be open to refactor the design based on the feedback your
 getting from the system.
