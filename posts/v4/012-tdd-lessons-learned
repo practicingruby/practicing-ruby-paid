@@ -1,0 +1,54 @@
+Test-driven development (TDD) is a topic that never gets old among programmers, 
+even though we can hardly agree on what its costs and benefits are. While 
+there are no shortage of neatly packaged expert viewpoints on this topic,
+very few of their claims are backed up by solid evidence. Formal research
+indicates that TDD does tend to produce code with fewer defects, but no other
+significant effects have been found. What these results tell us is that we 
+ought to be a bit more skeptical about what TDD has to offer, especially 
+when it comes to perceived benefits that have nothing to do with 
+regression testing.
+
+
+### LESSON 1: Spiking is a double edged sword
+
+Read through notes
+
+- kent beck example
+- GOOS recommendation of writing on index cards
+
+### LESSON 2: End-to-end application testing is essential
+
+https://github.com/elm-city-craftworks/ruby-examples/blob/master/tic_tac_toe/test/acceptance.rb
+
+Contrast Evo, and Blind
+
+### LESSON 3: Refactoring is not redesign
+
+https://github.com/mendicant/mendicantuniversity.org/wiki/TDD-study-session-%282012-May-03%29
+
+http://devblog.avdi.org/2012/06/25/every-day-in-every-way/
+
+> If there’s an area of the code that everyone has recognized as painful 
+> for weeks, the time for refactoring has been and gone. That battle is lost.
+> It’s not called “Red Green Red Green Red Green Spend A Whole Day Refactoring”. 
+> We’re not talking about refactoring anymore; we’re in [Code
+> Refurbishment](http://java.dzone.com/articles/code-refurbishment) 
+> territory now.
+
+### LESSON 4: Mock objects are tricky to use correctly
+
+https://github.com/elm-city-craftworks/broken_record/blob/master/test/record_test.rb
+
+### LESSON 5: Disciplined TDD comes at a high cost
+
+Evo + Capybara
+Blind / TicTacToe + Ray
+
+Harder to evaluate statement:
+
+- What are the costs of NOT doing TDD, or only doing a little TDD?
+(some evidence that they're quite real and problematic)
+
+- What are the benefits of TDD?
+
+http://www.infoq.com/articles/virtual-panel-tdd-bdd
