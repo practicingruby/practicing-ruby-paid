@@ -1,0 +1,145 @@
+Use etherpad tomorrow
+
+### LESSON 2: Refactoring is not redesign
+
+https://github.com/mendicant/mendicantuniversity.org/wiki/TDD-study-session-%282012-May-03%29
+
+code that needs redesign is not necessarily messy, just no longer correct
+testing eases refactoring but has a complicated effect on redesign
+
+http://devblog.avdi.org/2012/06/25/every-day-in-every-way/
+
+A refactoring is an atomic and safe change that can be described in a sentence
+or two. Refactorings represent ways to transform your code, they are not
+patterns to describe "good code"
+
+Redesign is the process of evolving a structure so that it can better fulfill
+its responsibilities. Applying a redesign may involve several refactorings, or
+may involve completely replacing components / subsystems.
+
+http://refactoring.com/catalog/index.html
+
+> If there’s an area of the code that everyone has recognized as painful 
+> for weeks, the time for refactoring has been and gone. That battle is lost.
+> It’s not called “Red Green Red Green Red Green Spend A Whole Day Refactoring”. 
+> We’re not talking about refactoring anymore; we’re in [Code
+> Refurbishment](http://java.dzone.com/articles/code-refurbishment) 
+> territory now.
+
+I frequently experienced crushing failures to redesign code because I
+miscategorized my actions as refactoring.
+
+https://github.com/elm-city-craftworks/broken_record/commit/2999998cc0d5ae6ddce759625b7a272260542fa9
+https://github.com/elm-city-craftworks/broken_record/commit/42927afddb0682ec6cf91c6d257bfd0c3897ffda
+https://github.com/elm-city-craftworks/broken_record/commit/890b7356f3ee2499cc83c076a00d169725249df8
+
+Tell the table redesign story
+
+
+"The Rails 3 Refactor" holy shit
+
+---
+
+Wanted to split functionality, extend public interface, and modify behaviors
+(maybe I didn't realize this all at the time)
+
+Doing a refactoring can easily lead to realizing some other design changes that
+can be made, which are tempting to tack on to a single changeset / coding
+session. However, this leads to confusion / churn.
+
+
+* Rename Table to RecordTable to allow tests to stay green while replacing Table
+(No units make class extraction scarier)
+
+* Convert Table into an object that is a primitive layer on top of the DB
+
+* Convert Row object into something not struct-based
+
+* Add Composable mixin
+
+* Add TableMapper, which takes a table object and a record class (imbued with row features)
+
+* Make record objects automap fields rather than explicitly map them
+
+* Remove RecordTable and RowBuilder
+
+---
+
+# Show full version (no rename here -- too simple)
+https://github.com/elm-city-craftworks/broken_record/blob/0e04d5d22e60eb44e3c4ce08d1e68cf391fb1cea/lib/broken_record/row.rb
+
+
+https://github.com/elm-city-craftworks/broken_record/commit/5cb9c5190ca7ae1a28a155711e788d667bfa248f
+
+```diff
+ module BrokenRecord
+   class Row
+-    def initialize(table, params)
+-      @table = table
+-      @data  = Struct.new(*params.keys.map(&:to_sym)).new(*params.values)
++    def initialize(params)
++      @table  = params.fetch(:table)
++      @key    = params.fetch(:key, nil)
++      @fields = params.fetch(:fields, {})
++
++      @data  = Struct.new(*@table.columns.keys).new
++
++      @fields.each do |k,v|
++        @data[k] = v
++      end
+     end
+ 
+     def save
+-      params = Hash[@data.each_pair.to_a]
+-      id     = params.delete(:id)
++      fields = Hash[@data.members.zip(@data.values)]
+ 
+-      @table.update(id, params)
++      if @key
++        # FIXME: should use primary key from Table
++        @table.update(:where  => { :id => @key },
++                      :fields => fields)
++      else
++        @table.insert(fields)
++      end
+     end
+ 
+     def method_missing(m, *a, &b)
+-      @data.public_send(m, *a, &b)
++      return super unless @table.columns.key?(m[/(.*?)=?\z/,1].to_sym)
++      
++      @data.send(m, *a, &b)
+     end
+   end
+ end
+ ```
+
+Added a bunch of tests
+
+
+
+# Show an abridged version of the original `Table` object:
+https://github.com/elm-city-craftworks/broken_record/blob/8d85aa454b7cdc26176c7d058b327008b23608e6/lib/broken_record/record_table.rb
+
+Table -> RecordTable
+https://github.com/elm-city-craftworks/broken_record/commit/8d85aa454b7cdc26176c7d058b327008b23608e6
+
+
+# blame
+https://github.com/elm-city-craftworks/broken_record/blame/2603c684d41dde6de8df198be516bfdb26a0ae5d/test/integration_test.rb
+
+```diff
+     @article_model = Class.new do
+       include BrokenRecord::Mapping
+-
+-      define_table :articles do 
+-        columns do
+-          integer :id
+-          text    :title
+-          text    :body
+-        end
+-      end
++      
++      map_to_table :articles
+     end
+```
