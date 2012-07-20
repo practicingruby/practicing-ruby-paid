@@ -1,42 +1,225 @@
-Use etherpad tomorrow
+> **NOTE***: This is one of [five lessons learned](http://practicingruby.com/articles/65) 
+from my [90 day self-study on test-driven development](http://practicingruby.com/articles/28). 
+If this topic interests you,  be sure to check out the other lessons! 
 
-### LESSON 2: Refactoring is not redesign
+If you think that refactoring is the same thing as redesign, there is a good chance that 
+you have been doing both of those things wrong.
 
+### What is refactoring?
+
+Refactoring in the traditional sense has to do with making [small and safe 
+transformations](http://refactoring.com/catalog/index.html) to a codebase 
+without altering its external behavior. Because refactorings are designed to be atomic 
+and almost trivial, you can apply them whenever you feel that they will make life
+ easier for you down the road. For example, it is rarely a bad idea to clean up messy
+ code by introducing a couple helper methods:
+ 
+```diff
+       def belongs_to(parent, params)
+-        mapper.record_class.send(:define_method, parent) do
+-          Object.const_get(params[:class]).find(send(params[:key]))
++        define_association(parent) do
++          BrokenRecord.string_to_constant(params[:class])
++                      .find(send(params[:key]))
+         end
+       end
+ 
+       def has_many(children, params)
+         table_primary_key = mapper.primary_key
+ 
+-        mapper.record_class.send(:define_method, children) do
+-          Object.const_get(params[:class])
+-                .where(params[:key] => send(table_primary_key))
++        define_association(children) do
++          BrokenRecord.string_to_constant(params[:class])
++            .where(params[:key] => send(table_primary_key))
+         end
+       end
+ ```
+ 
+On the surface, this change is very superficial, as a proper refactoring ought
+to be. However, it has several immediate advantages worth pointing out:
+
+* The `define_association` helper makes the code reveal its 
+intentions much more clearly by hiding some awkward metaprogramming.
+
+* The `BrokenRecord.string_to_constant` method makes it easy
+to extend this code so that it handles fully qualified constant names 
+(i.e. `SomeProject::Person`), without the need to add a bunch of extra 
+noise in multiple places.
+
+* Both helper methods cut down on duplication, eliminating the connascence
+of algorithm that was present in the original code.
+
+* Both helper methods reduce the amount of implementation details that
+the `belongs_to` and `has_many` methods need to be directly aware of,
+making them more adaptive to future changes.
+
+The important thing to notice here is that while making this change opens
+a lot of doors for us, and has some immediate tangible benefits, it does 
+not introduce any observable functional changes, both from the external
+perspective, and from the perspective of the object's collaborators.
+
+### What is redesign?
+
+While the concept of refactoring is easy to define and categorize, the
+process of redesigning code is not nearly as straightforward. Rather
+than attempting to provide an awkard definition for it, I will
+demonstrate what makes redesign different from refactoring by
+showing you a real example from my study.
+
+When working on BrokenRecord (my toy implementation of 
+the Active Record pattern), I initially designed it so that a 
+single object was responsible for running queries against
+the database and mapping their results to user-defined 
+models. This worked fine as a proof of concept, and the
+[code was pretty easy to follow](https://github.com/elm-city-craftworks/broken_record/blob/e5bd9fb676361b97c9c27d46efd812b826eecbf6/lib/broken_record/table.rb).
+
+However, designing things this way lead to very high
+coupling between the query API and the underlying
+database implementation, as you can see in the following
+code:
+
+```ruby
+module BrokenRecord
+  class Table
+  
+   #...
+
+    def create(params)
+      escapes = params.count.times.map { "?" }.join(", ") 
+      fields  = params.keys.join(", ")
+
+      BrokenRecord.database.execute(
+        "insert into #{@table_name} (#{fields}) values (#{escapes})",
+        params.values
+      )
+    end
+
+    def find(id)
+      BrokenRecord.database.execute( "select * from #{@table_name} where id = ?", [id] )
+                           .map { |r| @row_builder.build_row(self, r) }.first
+    end
+  end
+end
+```
+
+Even though I had no intentions of making BrokenRecord into a 
+library that could be used for practical applications, this design was
+fundamentally inconsistent with what it means to be an 
+object-relational mapper; the lack of abstraction made any sort
+of query optimization impossible, and also prevented the 
+possibility of introducing support for multiple database backends.
+
+In addition to these concerns about future extensibility, the current
+design made it much harder to test this code, and much harder
+to do some common queries without directly hijacking the global 
+reference to the underlying database adapter. All these things 
+combined meant that a redesign was clearly in order.
+
+Taking a first glance at the implementation of 
+[BrokenRecord::Table](https://github.com/elm-city-craftworks/broken_record/blob/e5bd9fb676361b97c9c27d46efd812b826eecbf6/lib/broken_record/table.rb),
+it was tempting to think that all that was needed here was to [extract
+a class](http://refactoring.com/catalog/extractClass.html) to encapsulate the 
+database interactions. But because this class had come into existence as
+a result of a [broad-based integration test](https://github.com/elm-city-craftworks/broken_record/blob/e5bd9fb676361b97c9c27d46efd812b826eecbf6/test/integration.rb)
+ rather than a series of focused unit tests, I was hesitant to perform an extraction 
+ without writing a few more tests first.
+ 
+ Thinking about the problem a little more, I noticed that the changes I wanted
+ were deeper than just putting together an internal object to hide
+ some implementation details and reduce coupling. The fact that `Table` was
+ the best name I could think of for my extracted object even though that was
+ the name of the original class was a sign that I was in the process of 
+ changing some responsibilities in the system, not just grouping related
+ bits of functionality together.
+ 
+### Taking a TDD-friendly approach to redesign
+  
+ 1. Cheat by renaming
+ 2. Implement the low-level object, complete with unit tests
+ 3. Improve peer level objects / collaborators
+ 4. Produce a replacement for the original object based on the new materials
+ 5. Remove original objects
+ 
+ 
+ ```ruby
+module BrokenRecord
+  class TableMapper
+
+   # ...
+    
+    def create(params)
+      id = @table.insert(params)    
+    
+      find(id)
+    end
+
+    def find(id)
+      fields = @table.where(:id => id).first
+
+      return nil unless fields
+
+      @record_class.new(:table => @table,
+                        :fields => fields,
+                        :key    => id)
+    end
+  end
+end
+```
+
+---------------
+
+Consider cutting all of this. VVVVVVV
+
+On the other hand, redesign requires careful thought. While a refactoring is a
+"cleanup activity" for the most part, a redesign is an intentional change made
+to evolve a structure so that it can take on new responsibilities. Redesign is
+typically triggered by the introduction of a new requirement, or by noticing
+a flaw in an existing requirement.
+
+Refactoring and redesign are easy to confound with one another, because 
+they aren't completely independent activities. The act of cleaning up code
+through incremental refactorings often reveals design issues that need 
+addressing; similarly, redesign tasks are often simplified by refactoring 
+code until it becomes easier to change.
+
+What I learned by examining my own habits is that I frequently 
+underestimate the cost of making internal changes. I am keenly 
+aware of how risky making a major sweeping change to my 
+codebase can be, but I am much less mindful of how quickly a
+small modification can spiral into a big one. As a result, I frequently
+attempt very complex transformations without thinking about
+what their overall impact on the system will be.
+
+The worst kinds of changes are the ones that require nested 
+modifications, in which making a change at the high level 
+necessitates a lower level change, which in turn calls for an 
+even lower level change. Failure cascades are inevitable 
+whenever I take this approach, which makes my test suite 
+almost useless until I work my way all the way back up to 
+the surface.
+
+---
+
+http://refactoring.com/catalog/index.html
 https://github.com/mendicant/mendicantuniversity.org/wiki/TDD-study-session-%282012-May-03%29
 
-code that needs redesign is not necessarily messy, just no longer correct
-testing eases refactoring but has a complicated effect on redesign
-
-http://devblog.avdi.org/2012/06/25/every-day-in-every-way/
+----
 
 A refactoring is an atomic and safe change that can be described in a sentence
 or two. Refactorings represent ways to transform your code, they are not
 patterns to describe "good code"
 
-Redesign is the process of evolving a structure so that it can better fulfill
-its responsibilities. Applying a redesign may involve several refactorings, or
-may involve completely replacing components / subsystems.
-
-http://refactoring.com/catalog/index.html
-
-> If there’s an area of the code that everyone has recognized as painful 
-> for weeks, the time for refactoring has been and gone. That battle is lost.
-> It’s not called “Red Green Red Green Red Green Spend A Whole Day Refactoring”. 
-> We’re not talking about refactoring anymore; we’re in [Code
-> Refurbishment](http://java.dzone.com/articles/code-refurbishment) 
-> territory now.
-
 I frequently experienced crushing failures to redesign code because I
 miscategorized my actions as refactoring.
 
+---
 https://github.com/elm-city-craftworks/broken_record/commit/2999998cc0d5ae6ddce759625b7a272260542fa9
 https://github.com/elm-city-craftworks/broken_record/commit/42927afddb0682ec6cf91c6d257bfd0c3897ffda
 https://github.com/elm-city-craftworks/broken_record/commit/890b7356f3ee2499cc83c076a00d169725249df8
 
 Tell the table redesign story
-
-
-"The Rails 3 Refactor" holy shit
 
 ---
 
@@ -45,7 +228,7 @@ Wanted to split functionality, extend public interface, and modify behaviors
 
 Doing a refactoring can easily lead to realizing some other design changes that
 can be made, which are tempting to tack on to a single changeset / coding
-session. However, this leads to confusion / churn.
+session. However, this leads to confusion.
 
 
 * Rename Table to RecordTable to allow tests to stay green while replacing Table
@@ -143,3 +326,5 @@ https://github.com/elm-city-craftworks/broken_record/blame/2603c684d41dde6de8df1
 +      map_to_table :articles
      end
 ```
+
+

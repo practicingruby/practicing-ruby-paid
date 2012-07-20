@@ -401,7 +401,7 @@ that might be better modeled in a data-centric way, whereas other
 sections of the system might be better modeled in a behavior-centric way.
 The key thing I've found is to be sensitive to the "thrash" smell, where
 you notice that things are becoming more and more difficult to extend or
-modify, and be open to refactor the design based on the feedback your
+modify, and be open to refactor the design based on the feedback you're
 getting from the system.
 
 ### Further references
