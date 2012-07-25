@@ -1,22 +1,3 @@
-### LESSON 3: Mock objects deeply influence design 
-
-* Only mock types you own
-* Don't use getters
-* Be explicit about what should not happen
-* Specify as little as possible in a test
-* Don't use mocks to test boundary objects
-* Don't add behavior to mocks
-* Only mock your immediate neighbors
-* Don't create too many mocks
-* Inject all dependencies
-
-https://github.com/elm-city-craftworks/broken_record/blob/master/test/record_test.rb
-
-I tried to make use of mock objects in many projects and many contexts
-and rarely found a good way to work with them. This may be because I still
-have a hard time thinking in terms of responsibility-driven design. It
-also may be because I mostly worked on small projects throughout this study.
-
 ### LESSON 4: Spiking is inevitable but dangerous 
 
 discuss alternatives / softer forms of spiking
