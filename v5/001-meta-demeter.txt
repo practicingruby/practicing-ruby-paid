@@ -37,8 +37,7 @@ A lot of further thought and work, evidently, went into the law between 1988 and
 
 I'm going to put the two taxonomies, and the differences between them, under a
 microscope -- at least, a medium-powered microscope. I won't recapitulate
-everything in the two articles; they're both readily available and you're
-encouraged to look at them yourself. But I'll go into enough detail to set the
+everything in the two articles, but I'll go into enough detail to set the
 stage for some reflective and interpretive observations about why the law might
 have evolved in the ways it did in a relatively short time. 
 
@@ -76,47 +75,52 @@ There follows an extensive treatment of the motivation for and implications of
 the law. Included in this treatment is consideration of a case where strict
 adherence to the law nonetheless runs contrary to its intended effect. Consider
 a case where there's a kind of circular structure to the instance variable types
-of a set of classes. The following example is adapted from the article, using a
-home-made pseudo-code notation and imagining a language with statically-typed
-instance variables:
+of a set of classes. The following example is adapted from the article, and while Ruby doesn't enforce instance variable classes, the code illustrates the basic difficulty the authors identify: 
 
   class A
-    B first     // instance variable "first", of type B
-    C second
-    D third
-    E fourth
+    def initialize
+      @b, @c, @d, @e = B.new, C.new, D.new, E.new
+    end
+
+    def bad_style
+      b.d.e
+    end
+
+    attr_reader :b, :c, :d, :e
   end
 
   class B
-    C fifth
-    D sixth
+    def initialize
+      @c, @d = C.new, D.new
+    end
+
+    attr_reader :c, :d
   end
+
+  class C; end
 
   class D
-    E seventh
-  end
-
-Now do some message sending:
-
-  class A
-    def bad_style
-      self.send(:first).send(:sixth).send(:seventh)
+    def initialize
+      @e = E.new
     end
+
+    attr_reader :e
   end
 
-You send the message :first to self, which returns a B object. You then send the
-message :sixth to that B object, which is OK because B is one of the instance
-variable classes of A. That returns a D object. You send :sixth to that D object
--- which is also OK, because D is an instance variable class of A. That returns
-an E object, to which you send the message :seventh. That, too, is OK, for the
-same reason. 
+  class E; end
 
-So you've only "talked to" objects belonging to instance variable classes of A,
-but, as the article states, "the method looks two levels deep into the structure
-of instance variable first, violating the ideals of information-hiding and
-maintainability." The authors propose a second formulation of the law as a way
-around this problem. Note that here the law is stated in terms of objects, not
-classes:
+  a = A.new
+  a.bad_style
+
+The bad_style instance method in class A, called at the end of the example, triggers a series of calls. The first, a call to the reader method b, returns a's instance variable @b, which is an instance of class B. Then the message "d" is sent to that B instance; the result is an instance of D, namely the instance held in the instance variable @d of the B instance. Sending "d" to a B instance is legal, Demeter-wise, because one of *a's* instance variables is of class B. Then the D instance gets the message "e"; this is also OK for the same reason. 
+
+So you've only "talked to" objects belonging to classes corresponding to
+instance variables of your instance of A, but, as the article states, "the
+method looks two levels deep into the structure of instance variable first,
+violating the ideals of information-hiding and maintainability." 
+
+The authors propose a second formulation of the law as a way around this
+problem. Note that here the law is stated in terms of objects, not classes:
 
   For all classes C, and for all methods M attached to C, all objects to which M
   sends a message must be:
@@ -127,13 +131,13 @@ classes:
   (Objects created by M, or by functions or methods which M calls, and objects
   in global variables are considered as arguments of M.) 
 
-  (p. 327)
+  (327)
 
 The downside to this object version of the Law of Demeter is that it makes it
 hard to do compile-time checking. The conclusion of the authors is that "to
 retain easy compile-time checking we require the Law's formulation in terms of
 types. We feel that such path[o]logical cases as the one above will not occur
-often enough to cause problems."
+often enough to cause problems" (327).
 
 Still, the object version of the law serves as an important guide for
 programmers. Toward the end of the article, the authors provide formulations of
@@ -145,7 +149,7 @@ should be restricted to:
    * an argument object of [the method] M including objects in pseudo variables
      "self" and "super" or
    * an instance variable object of the class to which M is attached. 
-   (p. 332)
+   (332)
 
 As before, newly-created objects and objects in global variables count as
 argument objects.
@@ -189,24 +193,26 @@ supplier (sometimes called a "friend"). Preferred suppliers, in brief, include:
   * the class of an instance variable (or a superclass)
   * the class of an argument to the method (or a superclass)
 
-L&H summarize the two sub-versions of the class version of the law as follows:
+The article summarizes the two sub-versions of the class version of the law as follows:
 
   Minimization version: Minimize the number of acquaintance classes of all
   methods.
 
   Strict version: All methods may have only preferred-supplier classes. 
+  (40-41)
 
 As you can see, the 1989 taxonomy involves more terms and definitions than the
 1988 taxonomy. It's a denser account of the law. But there's something gained
 for the added complexity. Everything is organized from the root of the structure
-upward, including newly created objects and global variables, both of which are
-literally added via parenthetical addenda to the 1988 versions of the law. As of
-1989, every imaginable object that might be sent a message falls somewhere on
-one consistent spectrum, ranging from mere acquaintance (to be avoided) to
-preferred acquaintance (acceptable but still flagged as not quite a full
-"friend") to preferred supplier (the real "friends"). I have found that the 1989
-taxonomy requires longer and deeper study than the 1988 taxonomy, but that it
-repays careful reading. 
+upward. The categories of newly created objects and global variables, both of
+which were literally added via parenthetical addenda to the 1988 versions of the
+law, are more smoothly integrated into the model in 1989. Every imaginable
+object that might be sent a message falls somewhere on one consistent spectrum,
+ranging from mere acquaintance (to be avoided) to preferred acquaintance
+(acceptable but still flagged as not quite a full "friend") to preferred
+supplier (the real "friends"). I have found that the 1989 taxonomy requires
+longer and deeper study than the 1988 taxonomy, but that it repays careful
+reading.
 
 And that's just the class version of the law. As before, there's also an object
 version, summarized as follows:
@@ -215,12 +221,12 @@ version, summarized as follows:
 
 Note the shift, subtle but important, from "classes" to "objects", as compared
 with the strict version of the class version of the law. Focusing on objects
-allows for inclusion of such constructs as self and super. Moreover, L&H make
-the following interesting point about the object version of the law:
+allows for inclusion of such constructs as self and super. Moreover, the authors
+make the following interesting point about the object version of the law:
 
   While the object version of the law expresses what is really wanted, it cannot
   be enforced at compile time. The object version serves as an additional guide
-  in addition to the class version of the law. (p. 42)
+  in addition to the class version of the law (42).
 
 There's a kind of "bend before you break" principle at work here. The Law of
 Demeter is not all-or-nothing, as regards the ability to do compile-time
@@ -235,7 +241,7 @@ C++ recommends the strict version of the class form of the law -- whereas in
 the 1989 guidelines refer to the object version, though there's some explanatory
 text suggesting that in any statically-typed language (including Eiffel), "the
 class form is most useful because it can be checked by a modified compiler"
-(page 47). 
+(47). 
 
 Once again, the Smalltalk-80 criteria come the closest to what we might
 formulate for Ruby:
@@ -246,10 +252,9 @@ formulate for Ruby:
       Super,
     * an immediate part of Self, or
     * an object that is either an object created directly by M or an object in a
-      global variable.
+      global variable (47).
 
-(An "immediate part of Self" can be an instance variable. In a related paper,
-the authors also suggest it may be, for example, elements of a list.)
+(An "immediate part of Self" can be an instance variable. It is not explicitly stated in the article whether or not the concept of "immediate part" can also include collection elements.) 
 
 The salient point here is that the framers of the Law of Demeter were at pains
 to welcome dynamic languages to the fold. This is directly related to the
@@ -278,19 +283,19 @@ The 1989 article describes a programming technique that the authors call
 "lifting". To illustrate lifting, here's an example of an acquaintance class,
 and a Demeter violation:
 
-class Plane
-  attr_accessor :name
-end
-
-class Flight
-  attr_accessor :plane
-end
-
-class Person
-  def itinerary_for(flight)
-    "Flight on #{flight.plane.name}"
+  class Plane
+    attr_accessor :name
   end
-end
+
+  class Flight
+    attr_accessor :plane
+  end
+
+  class Person
+    def itinerary_for(flight)
+      "Flight on #{flight.plane.name}"
+    end
+  end
 
 Here, Plane is an acquaintance class of Person. Flight isn't; Flight is a
 preferred supplier class, because it's the class of an argument. Flight is a
@@ -300,22 +305,22 @@ outside of the Law of Demeter.
 You can fix this Demeter violation by "lifting" the method that provides the
 information into the external class:
 
-class Plane
-  attr_accessor :name
-end
-
-class Flight
-  attr_accessor :plane
-  def plane_name
-    plane.name
+  class Plane
+    attr_accessor :name
   end
-end
 
-class Person
-  def itinerary_for(flight)
-    "Flight on #{flight.plane_name}"
+  class Flight
+    attr_accessor :plane
+    def plane_name
+      plane.name
+    end
   end
-end
+
+  class Person
+    def itinerary_for(flight)
+      "Flight on #{flight.plane_name}"
+    end
+  end
 
 Note that this code is longer than the original. It's not uncommon for
 Demeter-compliant code to have more methods than non-compliant code. The gain,
@@ -337,10 +342,10 @@ the view. Instance variables always belong to self, and self in the controller
 is different from self in the view -- yet the instance variables resurface. 
 
 In case you've ever wondered, this is brought about by an explicit assignment
-mechanism: the view's self iterates through the controller's instance variables,
-and copies them over individually. So we've got a domain-specific and kind of
-hybrid situation: two self objects sharing, or appearing to share, instance
-variables. 
+mechanism: when a view object is created, it copies over the controller's
+instance variables one by one into instance variables of its own. So we've got a
+domain-specific and kind of hybrid situation: two self objects sharing, or
+appearing to share, instance variables.
 
 So where does "lifting" come in, in any sense reminiscent of the Law of Demeter?
 
@@ -395,12 +400,32 @@ original ActiveRecord objects handed off by the controller.
 That's the extent of my metademeter musings. Meanwhile I hope you'll continue to
 study and contemplate the Law of Demeter, and explore the many writings and
 discussions and debates that you'll find surrounding it. I've presented no more
-than a subset of what's been said -- but I hope that this trip back to the
-original statements on the law has been engaging and worthwhile. 
+than a subset of what has been or can be said; but I hope that this trip back
+to the original statements on the law has been engaging and worthwhile.
+
 
 REFERENCES AND FURTHER READING
+
+The 1988 article (in special OOPSLA issue of SIGPLAN Notices):
+
+http://www.ccs.neu.edu/research/demeter/papers/law-of-demeter/oopsla88-law-of-demeter.pdf
+
+
+The 1989 article, available through IEEE:
+
+http://ieeexplore.ieee.org/xpl/login.jsp?tp=&arnumber=35588&url=http%3A%2F%2Fieeexplore.ieee.org%2Fxpls%2Fabs_all.jsp%3Farnumber%3D35588
+
+
+A somewhat different version of the 1989 article, in PostScript form: 
+
+ftp://ftp.ccs.neu.edu/pub/research/demeter/documents/papers/LH89-law-of-demeter.ps
+
+
+Another 1988 document, with some further/interim reflections on the Law of Demeter, by Lieberherr and Holland:
+
 http://www.ccs.neu.edu/research/demeter/papers/law-of-demeter/law-formulations/ss.tex
 
-Alternate version of 1989 article (ftp)
 
+An excellent account of the Law of Demeter and its use in Ruby, by David Bock:
 
+http://www.ccs.neu.edu/research/demeter/demeter-method/LawOfDemeter/paper-boy/demeter.pdf
