@@ -1,55 +1,213 @@
-METADEMETER
+David A. Black, Lead Developer at Cyrus Innovation, is a long-time Ruby
+developer, author, trainer, speaker, and community event organizer. He was one
+of the founding directors of Ruby Central, and has been involved in the
+organization of every annual RubyConf since the event started in 2001. David is
+a Ruby standard library contributor, a frequent speaker at technical conferences
+and user groups in the U.S. and abroad, and the author of _The Well-Grounded
+Rubyist_ (Manning Publications, 2009). David can be reached at
+dblack@cyrusinnovation.com, and on Twitter at @david_a_black.
 
-The Law of Demeter speaks to some very specific issues and techniques inside a
-very specific problem space: essentially, which objects should or should not
-call methods on which other objects in the course of program execution. The law
-serves the purposes of more abstract goals like good code organization and
-maintainability. But it's not a catch-all recipe for good code. It's pretty
-nuts-and-bolts: it's about who gets to call what methods. 
 
-Still, I'm intrigued by the possibility of applying lessons learned from
-studying and following the Law of Demeter to other areas of programming. Of
-course we can't point to random good programming practices and claim that they
-owe their existences to the Law of Demeter. There are plenty of principles and
-techniques of code organization that are not Demeter-related at all. But I will
-hypothesize, at least for purposes of this article, that the Law of Demeter
-might nudge us in the direction of some useful practices which, if not literal
-applications of the law, are distinctly Demeter-inspired. 
+THE LAW OF DEMETER
+some archaeological notes
 
-Thus the notion of "Metademeter". 
+David A. Black
+Lead Developer, Cyrus Innovation
 
-I'm going to present one major example of thinking along metademeter lines, but
-I'm going to take a running leap at that example by starting out with a look at
-one of the early articles about the law. In addition to the general historical
-and technical interest of the article, I believe it also illustrates a kind of
-spirit of adaptability and flexibility in the law from which I take my cue in
-exploring metademeter terrain. 
 
-A lot has been written and said about the Law of Demeter. I'd read and heard a
-lot about the law before I ever went back and looked at the seminal, original
-papers that described it. In spite of how much I thought I knew about the law, I
-found those original papers quite enlightening and absorbing. 
+INTRODUCTION
 
-I've been particularly absorbed in the 1989 article "Assuring Good Style for
-Object-Oriented Programs" by Karl J. Lieberherr and Ian M. Holland (henceforth
-L&H). The article consists largely of a kind of taxonomy of different versions
-of the Law of Demeter. While the law boils down, famously, to the dictum "Talk
-only to your friends," L&H offers a kind of exploded diagram of the inner
-workings of the law, going step by step through a number of its manifestations. 
+First things first: I'm not going to provide a definition of the Law of Demeter here. For a solid and effective introduction to the law in a Ruby context, see the blog post by David Bock listed in the references at the end of this article. I will say, however, that I find the law of Demeter both compelling and interesting. It seems to me to deliver, at least in the main, on its promise to aid with code organization and maintenance, and to reduce code coupling and interdependencies among classes. It's not surprising that it's still very much a topic of study and discussion among object-oriented programmers, more than twenty years after its introduction. 
 
-I won't recapitulate the whole article, but I'll try to give the flavor of the
-taxonomy. The law, 1989-style, comes in two major versions: the class version
-and the object version. The class version, in turn, is broken down into the
-minimization version and the strict version. 
+And speaking of its introduction: I'd read and heard a lot about the law before
+I ever went back and looked at the seminal, original papers that described it.
+In spite of how much I thought I knew about the law, I found those original
+papers quite enlightening and absorbing. 
 
-The whole thing rests on the notion of clients and suppliers. Clients are
+In this article, I'm going to take a close look at two early papers on the Law
+of Demeter: the 1988 OOPSLA paper "Object-Oriented Programming: An Objective
+Sense of Style" by Karl J. Lieberherr, Ian M. Holland, and Arthur J.Riel, and
+the 1989 article "Assuring Good Style for Object-Oriented Programs" by
+Lieberherr and Holland. The two papers are of course closely related. But what
+I've found interesting, aside from just the process of studying and absorbing
+information about the Law of Demeter at its source, is considering the ways in
+which the two papers differ.
+
+Both papers posit that there are different versions of the Law of Demeter. But
+the taxonomies they construct for the law differ considerably from each other.
+A lot of further thought and work, evidently, went into the law between 1988 and
+1989. 
+
+I'm going to put the two taxonomies, and the differences between them, under a
+microscope -- at least, a medium-powered microscope. I won't recapitulate
+everything in the two articles, but I'll go into enough detail to set the
+stage for some reflective and interpretive observations about why the law might
+have evolved in the ways it did in a relatively short time. 
+
+My goal here is in part "archaeological": this article is a study in the history of an idea. But I hope you'll find, as I have found in reading the original papers, that there's more than historical interest in a close look at the early statements of the Law of Demeter. 
+
+After discussing the two papers, I'll conclude with a couple of speculative,
+open-ended thoughts about the Law of Demeter as it relates to general problems
+of code organization and best practices in programming -- a probably small-scale
+but hopefully interesting perspective that I've dubbed "Metademeter".
+
+Let's start with how the law looked in 1988. 
+
+
+THE 1988 TAXONOMY
+
+In 1988's "Object-Oriented Programming: An Objective Sense of Style", the three
+authors present two related but still distinct versions of the Law of Demeter: a
+class-based form and an object-based form. The class-based form, introduced
+first, is described as follows:
+
+  For all classes C, and for all methods M attached to C, all objects to which M
+  sends a message must be instances of classes associated with the following
+  classes: 
+
+    1. The argument classes of M (including C).
+    2. The instance variable classes of C.
+
+  (Objects created by M, or by functions or methods which M calls, and objects
+  in global variables are considered as arguments of M.) (325)
+
+There follows an extensive treatment of the motivation for and implications of
+the law. Included in this treatment, and a good reminder of the fragility of the
+law in practice, is consideration of a case where strict adherence to the law
+nonetheless runs contrary to its intended effect. I'm going to delve into this case because it actually illustrates the law nicely by illustrating the negative, and because it leads directly to the object version of the law. 
+
+Imagine some code where there's a kind of circular structure to the instance
+variable types of a set of classes. The following example is adapted from an
+example in the article, and while Ruby doesn't enforce instance variable
+classes, the code illustrates the basic difficulty the authors identify. (You
+don't have to memorize the code in place; just refer back to it as you read the
+explanation.)
+
+  class A
+    attr_reader :b, :c, :d
+
+    def initialize
+      @b, @c, @d = B.new, C.new, D.new
+    end
+
+    def bad_style
+      b.c.d
+    end
+  end
+
+  class B
+    attr_reader :c
+  
+    def initialize
+      @c = C.new
+    end
+  end
+
+  class C
+    attr_reader :d
+  
+    def initialize
+      @d = D.new
+    end
+  end
+
+  a = A.new
+  a.bad_style
+
+The bad_style instance method in class A, called at the end of the example, triggers a series of calls. The first call is to the reader method b; this call returns a's instance variable @b, which is an instance of class B. Then the message "c" is sent to that B instance; the result is an instance of C, namely the instance held in the instance variable @c of the B instance. 
+
+Now we send the message "d" to the instance of C. Doing this is legal, Demeter-wise, because one of the instance variables of a is of class C. But note that we're not sending the "d" message to *that* instance of C; we're sending it to an instance of C belonging, as an instance variable, to b, not to a. 
+
+We've obeyed the law in that we've only "talked to" objects belonging to classes
+corresponding to instance variables of our instance of A. However, as the
+article states, "the method looks two levels deep into the structure of instance
+variable first, violating the ideals of information-hiding and maintainability." 
+
+Here's where the object version of the law kicks in, and here's how it's formulated:
+
+  For all classes C, and for all methods M attached to C, all objects to which M
+  sends a message must be:
+
+    * M's argument objects, including the self object or
+    * The instance variable objects of C. 
+
+  (Objects created by M, or by functions or methods which M calls, and objects
+  in global variables are considered as arguments of M.) (327)
+
+We're now restricted to the actual instance variables of the current object, not
+any old object that shares a class with those instance variables. 
+
+The downside to this object version of the Law of Demeter is that it makes it
+hard to do compile-time checking. The conclusion of the authors is that "to
+retain easy compile-time checking we require the Law's formulation in terms of
+types. We feel that such path[o]logical cases as the one above will not occur
+often enough to cause problems" (327). 
+
+Still, the object version of the law serves as an important guide for
+programmers. Toward the end of the article, the authors provide formulations of
+the law for several specific object-oriented languages, using the law's object
+version. Of the languages for which they offer such formulations, the closest to
+Ruby is Smalltalk-80. In that language, the authors state that message-sending
+should be restricted to:
+
+   * an argument object of [the method] M including objects in pseudo variables
+     "self" and "super" or
+   * an instance variable object of the class to which M is attached. (332)
+
+As before, newly-created objects and objects in global variables count as
+argument objects.
+
+The object version of the law casts a somewhat wider net, as far as languages
+are concerned, than the first, "class" version. Certainly for a dynamic language
+like Ruby, where static code analysis can do relatively little for you and
+compile-time checking doesn't exist, the object version makes sense. It also
+makes sense in languages where there's no such thing as the "type" of an
+instance variable; Ruby instance variables, for example, can be assigned any
+object and even different objects at different times. The object version of the
+law of Demeter, as laid out in 1988, doesn't specifically address the matter of
+reassigning to instance variables but might provide enough structure and
+discipline to give you pause if you find yourself doing that. 
+
+(In addition to the type and object versions of the law described here,
+the 1988 article talks about the "strong" and "weak" versions of the law. That
+distinction has to do with whether or not it's considered permissible to send
+messages to inherited instance variables. The strong version says no; the weak
+version says yes. I'm not going to go into detail about that aspect of the 1988
+taxonomy, but it's certainly worth a look at the original article.)
+
+Let's move a year forward. 
+
+
+THE 1989 TAXONOMY
+
+Like the 1988 article, the 1989 article presents the Law of Demeter in two major
+versions: the class version and the object version. Here, though, the
+definitions of the two versions have changed in interesting ways, and the class
+version, in turn, is broken down into the minimization version and the strict
+version. 
+
+There's more new terminology present in the 1989 paper than in the 1988 paper
+(and you'll see a good bit of it shortly). In some respects it's a thicker, more
+dense description of the Law of Demeter. But it's also a more unified
+description. For example, where we saw parenthetical addenda to the descriptions
+of the law like this in 1988:
+
+  (Objects created by M, or by functions or methods which M calls, and objects
+  in global variables are considered as arguments of M.)  
+
+the 1989 version integrates all possible cases into a single model -- a somewhat complex model, but a single model. 
+
+Let's dive into some of the terminology. Don't worry if you don't memorize it all on first reading. The payoff comes later, anyway, when we circle back to looking at how the law plays out in different languages. 
+
+The 1989 taxonomy rests on the notion of clients and suppliers. Clients are
 methods; suppliers are classes. If method M calls method N on an instance of
 class C (or on class C itself), then M is a client of both the method N and the
-class C. In turn, C is a supplier to M. 
+class C. In turn, C is a supplier to M. (There are some further subtleties but
+this is the thrust of how clients and suppliers relate to each other.)
 
 In the client/supplier relationship, the supplier class may be an "acquaintance"
 class (what's often paraphrased as a "stranger"), or it may be a preferred
-supplier (a "friend"). Preferred suppliers, in brief, include:
+supplier (sometimes called a "friend"). Preferred suppliers, in brief, include:
 
   * the subcategory "preferred acquantaince", consisting of:
     * the class(es) of object(s) instantiated inside the client method
@@ -57,55 +215,59 @@ supplier (a "friend"). Preferred suppliers, in brief, include:
   * the class of an instance variable (or a superclass)
   * the class of an argument to the method (or a superclass)
 
-L&H summarize the two sub-versions of the class version of the law as follows:
+The article summarizes the two sub-versions of the class version of the law as follows:
 
   Minimization version: Minimize the number of acquaintance classes of all
   methods.
 
   Strict version: All methods may have only preferred-supplier classes. 
+  (40-41)
 
-Thus, in brief, the class version of the Law of Demeter, 1989-style. Clearly,
-all of this policing is easiest in situations where compile-time checking is
-possible. If you're going to enforce the class version of the law in Ruby, you
-have to do it yourself. 
+Again, everything is integrated into a single model. Every imaginable object
+that might be sent a message falls somewhere on one consistent spectrum, ranging
+from mere acquaintance (to be avoided) to preferred acquaintance (acceptable but
+still flagged as not quite a full "friend") to preferred supplier (the real
+"friends").
 
-But one of the most intriguing things about the 1989 article, as well as other
-more or less official statements of the law, is that it by no means slams the
-door on dynamic languages. In fact, L&H go out of their way to make the law as
-useful as possible to a maximum number of programmers using a variety of
-object-oriented languages. 
-
-The first way in which this breadth of application manifests itself is in the
-"object version" of the law. L&H summarize the object version as follows:
+And that's just the class version of the law. As before, there's also an object
+version, summarized as follows:
 
   All methods may have only preferred-supplier objects. 
 
-Note the shift, subtle but important, from "classes" to "objects", as compared
-with the strict version of the class version of the law. Focusing on objects
-allows for inclusion of such constructs as self and super. Moreover, L&H make
-the following interesting point about the object version of the law:
+The authors make the following interesting point about the object version of the
+law:
 
   While the object version of the law expresses what is really wanted, it cannot
   be enforced at compile time. The object version serves as an additional guide
-  in addition to the class version of the law. (p. 42)
+  in addition to the class version of the law (42).
 
 There's a kind of "bend before you break" principle at work here. The Law of
 Demeter is not all-or-nothing, as regards the ability to do compile-time
 checking. It's also something that you can, and in some cases must, bake into
 your programming habits as you go along. 
 
-[The list of languages is a kind of payoff for exploding the law into so much
-detail; you buy the ability to reckon quickly with this or that specific
-language, based on selecting from the layer-cake or taxonomy.]
+As in 1988, the 1989 authors present a kind of checklist of how to enforce the
+law in the cases of several specific languages (C++, CLOS, Eiffel, Flavors, and
+Smalltalk-80). Interestingly, the 1989 account of how to apply the language to
+C++ recommends the strict version of the class form of the law -- whereas in
+1988, the C++ guidelines suggested the object version. For the other languages,
+the 1989 guidelines refer to the object version, though there's some explanatory
+text suggesting that in any statically-typed language (including Eiffel), "the
+class form is most useful because it can be checked by a modified compiler"
+(47). 
 
-In some respects, the object version of the law is a kind of escape valve that
-makes the law fully extensible to dynamic languages. L&H go even further in this
-direction. They present a kind of checklist of how to enforce the law in the
-cases of several specific languages (C++, CLOS, Eiffel, Flavors, and
-Smalltalk-80). The Smalltalk-80 criteria come the closest, as you might expect,
-to what we might want for Ruby:
+Once again, the Smalltalk-80 criteria come the closest to what we might
+formulate for Ruby:
 
-[Smalltalk-80 list]
+  Smalltalk-80, object form. In all message expressions inside method M the
+  receiver must be one of the following objects:
+    * an argument object of M, including objects in the pseudovariables Self and
+      Super,
+    * an immediate part of Self, or
+    * an object that is either an object created directly by M or an object in a
+      global variable (47).
+
+(An "immediate part of Self" can be an instance variable. It is not explicitly stated in the article whether or not the concept of "immediate part" can also include collection elements.) 
 
 The salient point here is that the framers of the Law of Demeter were at pains
 to welcome dynamic languages to the fold. This is directly related to the
@@ -116,61 +278,63 @@ rationale and logic. In the end, though, everything converges back on the
 original purpose: providing programmers using object-oriented languages with a
 set of principles that reduce inter-class dependencies. 
 
-At this point I'm going to pivot to what I am calling "Metademeter". I'm taking
-my cue from what I see as the flexibility and adaptability of the law. That
-adaptability, as described above, pertains largely to the law's ability to
-encompass and embrace a wide variety of object-oriented languages. In pivoting
-on the concept of adaptability, I'd like to consider the possibility (or
-meta-possibility, if I may) that the law itself might present us with one or
-more principles that can be extrapolated into situations very different from the
-situation the law itself addresses. 
 
-In other words, I'm looking for metademeter, or Demeter-inspired, ways of
-looking at programming. 
+"METADEMETER"
 
-Our starting point will be a technique described in L&H and given the name
+The Law of Demeter is engineered to help programmers using object-oriented
+languages gain a lot of clarity of code for a relatively small price. Of course,
+there's a whole world of refactoring out there; the Law of Demeter is not the
+only guideline, or set of guidelines, for making code better, clearer, and more
+maintainable. It would be a mistake to lump all refactorings as "Demeter-ish";
+that does justice neither to the Law of Demeter nor to the other refactorings. 
+
+And yet... I'm intrigued by the possibility that recognizable aspects of the Law
+of Demeter might surface in contexts other than those for which the law was
+originally formulated. I'm not going to push this point very far. I've got one
+example that I find suggestive, and I'll leave it at that. See what you think. 
+
+The 1989 article describes a programming technique that the authors call
 "lifting". To illustrate lifting, here's an example of an acquaintance class,
 and a Demeter violation:
 
-class Plane
-  attr_accessor :name
-end
-
-class Flight
-  attr_accessor :plane
-end
-
-class Person
-  def itinerary_for(flight)
-    "Flight on #{flight.plane.name}"
+  class Plane
+    attr_accessor :name
   end
-end
+
+  class Flight
+    attr_accessor :plane
+  end
+
+  class Person
+    def itinerary_for(flight)
+      "Flight on #{flight.plane.name}"
+    end
+  end
 
 Here, Plane is an acquaintance class of Person. Flight isn't; Flight is a
 preferred supplier class, because it's the class of an argument. Flight is a
 friend; Plane isn't, and by calling name on a plane object we're operating
 outside of the Law of Demeter. 
 
-You can fix this Demeter violation by using a technique that L&H call "lifting".
-Lifting involves putting the method that provides the information into the
-external class:
+You can fix this Demeter violation by "lifting" the method that provides the
+information into the external class:
 
-class Plane
-  attr_accessor :name
-end
-
-class Flight
-  attr_accessor :plane
-  def plane_name
-    plane.name
+  class Plane
+    attr_accessor :name
   end
-end
 
-class Person
-  def itinerary_for(flight)
-    "Flight on #{flight.plane_name}"
+  class Flight
+    attr_accessor :plane
+    def plane_name
+      plane.name
+    end
   end
-end
+
+  class Person
+    def itinerary_for(flight)
+      "Flight on #{flight.plane_name}"
+    end
+  end
 
 Note that this code is longer than the original. It's not uncommon for
 Demeter-compliant code to have more methods than non-compliant code. The gain,
@@ -183,29 +347,99 @@ version of the plane code, you'd have to dig deep into every class in the
 program, since you have no guidelines for figuring out where Plane#name is
 likely to be called or not called. 
 
-The notion of lifting suggests something intriguing about the Law of Demeter,
-namely, how the Law or principles arising from it might be used in contexts that
-the original law doesn't address. The Law of Demeter is very specifically about
-classes and methods (functions). But the spirit of the law points to some
-slightly off-beat applications, or adaptations, that can help our code fall into
-place in other contexts. 
+Now for the part about aspects of Demeter cropping up outside the original
+context. I'm thinking specifically of programming controllers and view templates
+in Rails. Templates are already a bit of an oddity, in terms of object-oriented
+programming, because of the way they share instance variables with controller
+actions: assign something to @buyer in the controller, and you can use @buyer in
+the view. Instance variables always belong to self, and self in the controller
+is different from self in the view -- yet the instance variables resurface. 
 
-Just as the Law of Demeter can be extrapolated for usage in languages that do
-not conform, as Ruby does not, to the assumptions about OO languages represented
-in the original notation of the Demeter system, so the Law can be extrapolated
-for usage in situations that do not exactly correspond to the situations
-originally envisioned. You can't just transplant a principle pertaining to class
-relations to a situation that doesn't involve class relations -- but that's not
-to say that there aren't such situations. 
+In case you've ever wondered, this is brought about by an explicit assignment
+mechanism: when a view object is created, it copies over the controller's
+instance variables one by one into instance variables of its own. So we've got a
+domain-specific and kind of hybrid situation: two self objects sharing, or
+appearing to share, instance variables.
 
-A good example is what happens in Rails view templates. Here, we're already
-dealing with a somewhat unusual situation, because of the way instance variables
-are shared. The notion of "self" is adapted here to become useful in a situation
-where there are actually two selfs. Keeping a flexibility of mind, we can see
-Demeter-like opportunities in how we organize data and data structures as
-between the controller and the view. 
+So where does "lifting" come in, in any sense reminiscent of the Law of Demeter?
 
-[Example]
+Consider a view snippet like this:
 
-Lessons learned: the version of Demeter that applies to Ruby is the object
-version. There's a whole world of Demeter relevance that isn't relevant to Ruby. 
+  <% @user.friends.each do |friend| %>
+    <% friend.items.each do |iitem| %>
+      <%= friend.name %> has a(n) <%= item.description %>
+    <% end %>
+  <% end %>
+
+I don't want to get into a whole debate here about whether or not it's ever
+acceptable to hit the database from the views. My philosophy has always been
+that you should be allowed to send a message to any object that the controller
+shares with the view. By that reckoning, @user.friends would be acceptable, and
+it's up to the controller to eager-load the friends if it wants to. 
+
+But what about friend.items? Here we're wandering out on a limb; we're an extra
+level of remove from the original object. I can't claim that this is exactly the
+situation envisioned by the framers of the Law of Demeter -- but it reminds me
+strongly of Demeter-ish situations. And I would propose a Demeter-ish solution,
+based on the "lifting" technique: "lift" one of the method calls back into the
+controller. Here's a simple version:
+
+  def show
+    @user = current_user
+    @friends = @user.friends
+  end
+
+And then in the view:
+
+  <% @friends.each do |friend| %>
+    <% friend.items.each do |item| %>
+      <%= friend.name %> has a(n) <%= item.description %>
+    <% end %>
+  <% end %>
+
+In "metademeter" terms, we're talking only to the immediate parts of the
+@friends object -- in this case, the elements of a collection. I believe there's
+room for debate, within discussions of the law itself, on whether or not
+collection elements count as "immediate parts" of an object. But here it seems a
+good fit. Again, keep in mind that this is just an observation of what I would
+call a Demeter-ish way of thinking about code. The Rails controller/view
+relation is not the same as the relation between and among classes and methods
+that the Law of Demeter directly addresses. And the object whose "immediate
+parts" I'm restricting myself to is not the self object; it is, itself, an
+instance variable object. Still, I think we could do worse in a situation like
+this than to be inspired to think of a motto like "talk only to your friends",
+understanding "friends" to be objects that lie one method call away from the
+original ActiveRecord objects handed off by the controller. 
+
+That's the extent of my metademeter musings. Meanwhile I hope you'll continue to
+study and contemplate the Law of Demeter, and explore the many writings and
+discussions and debates that you'll find surrounding it. I've presented no more
+than a subset of what has been or can be said; but I hope that this trip back
+to the original statements on the law has been engaging and worthwhile.
+
+
+REFERENCES AND FURTHER READING
+
+The 1988 article (in special OOPSLA issue of SIGPLAN Notices):
+
+http://www.ccs.neu.edu/research/demeter/papers/law-of-demeter/oopsla88-law-of-demeter.pdf
+
+
+The 1989 article, available through IEEE:
+
+http://ieeexplore.ieee.org/xpl/login.jsp?tp=&arnumber=35588&url=http%3A%2F%2Fieeexplore.ieee.org%2Fxpls%2Fabs_all.jsp%3Farnumber%3D35588
+
+
+A somewhat different version of the 1989 article, in PostScript form: 
+
+ftp://ftp.ccs.neu.edu/pub/research/demeter/documents/papers/LH89-law-of-demeter.ps
+
+
+Another 1988 document, with some further/interim reflections on the Law of Demeter, by Lieberherr and Holland:
+
+http://www.ccs.neu.edu/research/demeter/papers/law-of-demeter/law-formulations/ss.tex
+
+
+An excellent account of the Law of Demeter and its use in Ruby, by David Bock:
+
+http://www.ccs.neu.edu/research/demeter/demeter-method/LawOfDemeter/paper-boy/demeter.pdf
