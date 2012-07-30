@@ -17,18 +17,21 @@ Lead Developer, Cyrus Innovation
 
 INTRODUCTION
 
-A lot has been written and said about the Law of Demeter. I'd read and heard a
-lot about the law before I ever went back and looked at the seminal, original
-papers that described it. In spite of how much I thought I knew about the law, I
-found those original papers quite enlightening and absorbing. 
+First things first: I'm not going to provide a definition of the Law of Demeter here. For a solid and effective introduction to the law in a Ruby context, see the blog post by David Bock listed in the references at the end of this article. I will say, however, that I find the law of Demeter both compelling and interesting. It seems to me to deliver, at least in the main, on its promise to aid with code organization and maintenance, and to reduce code coupling and interdependencies among classes. It's not surprising that it's still very much a topic of study and discussion among object-oriented programmers, more than twenty years after its introduction. 
 
-I've been particularly absorbed in two articles: the 1988 OOPSLA paper
-"Object-Oriented Programming: An Objective Sense of Style" by Karl J.
-Lieberherr, Ian M. Holland, and Arthur J.Riel, and the 1989 article "Assuring
-Good Style for Object-Oriented Programs" by Lieberherr and Holland. 
-The two papers are of course closely related. But what I've found interesting,
-aside from just the process of studying and absorbing information about the Law
-of Demeter at its source, is considering the ways in which they differ. 
+And speaking of its introduction: I'd read and heard a lot about the law before
+I ever went back and looked at the seminal, original papers that described it.
+In spite of how much I thought I knew about the law, I found those original
+papers quite enlightening and absorbing. 
+
+In this article, I'm going to take a close look at two early papers on the Law
+of Demeter: the 1988 OOPSLA paper "Object-Oriented Programming: An Objective
+Sense of Style" by Karl J. Lieberherr, Ian M. Holland, and Arthur J.Riel, and
+the 1989 article "Assuring Good Style for Object-Oriented Programs" by
+Lieberherr and Holland. The two papers are of course closely related. But what
+I've found interesting, aside from just the process of studying and absorbing
+information about the Law of Demeter at its source, is considering the ways in
+which the two papers differ.
 
 Both papers posit that there are different versions of the Law of Demeter. But
 the taxonomies they construct for the law differ considerably from each other.
@@ -41,23 +44,22 @@ everything in the two articles, but I'll go into enough detail to set the
 stage for some reflective and interpretive observations about why the law might
 have evolved in the ways it did in a relatively short time. 
 
-I'll then conclude with a couple of speculative, open-ended thoughts about the
-Law of Demeter as it relates to general problems of code organization and best
-practices in programming -- a probably small-scale but hopefully interesting
-perspective that I've dubbed "Metademeter". 
+My goal here is in part "archaeological": this article is a study in the history of an idea. But I hope you'll find, as I have found in reading the original papers, that there's more than historical interest in a close look at the early statements of the Law of Demeter. 
+
+After discussing the two papers, I'll conclude with a couple of speculative,
+open-ended thoughts about the Law of Demeter as it relates to general problems
+of code organization and best practices in programming -- a probably small-scale
+but hopefully interesting perspective that I've dubbed "Metademeter".
+
+Let's start with how the law looked in 1988. 
 
 
 THE 1988 TAXONOMY
 
-(Note: In addition to the type and object versions of the law described here,
-the 1988 article talks about the "strong" and "weak" versions of the law. That
-distinction has to do with whether or not it's considered permissible to send
-messages to inherited instance variables. The strong version says no; the weak
-version says yes. I'm not going to go into detail about that aspect of the 1988
-taxonomy, but it's certainly worth a look at the original article.)
-
-In 1988, the three authors state the Law of Demeter, initially, in the following
-terms: 
+In 1988's "Object-Oriented Programming: An Objective Sense of Style", the three
+authors present two related but still distinct versions of the Law of Demeter: a
+class-based form and an object-based form. The class-based form, introduced
+first, is described as follows:
 
   For all classes C, and for all methods M attached to C, all objects to which M
   sends a message must be instances of classes associated with the following
@@ -67,60 +69,61 @@ terms:
     2. The instance variable classes of C.
 
   (Objects created by M, or by functions or methods which M calls, and objects
-  in global variables are considered as arguments of M.) 
-
-  (p. 325)
+  in global variables are considered as arguments of M.) (325)
 
 There follows an extensive treatment of the motivation for and implications of
-the law. Included in this treatment is consideration of a case where strict
-adherence to the law nonetheless runs contrary to its intended effect. Consider
-a case where there's a kind of circular structure to the instance variable types
-of a set of classes. The following example is adapted from the article, and while Ruby doesn't enforce instance variable classes, the code illustrates the basic difficulty the authors identify: 
+the law. Included in this treatment, and a good reminder of the fragility of the
+law in practice, is consideration of a case where strict adherence to the law
+nonetheless runs contrary to its intended effect. I'm going to delve into this case because it actually illustrates the law nicely by illustrating the negative, and because it leads directly to the object version of the law. 
+
+Imagine some code where there's a kind of circular structure to the instance
+variable types of a set of classes. The following example is adapted from an
+example in the article, and while Ruby doesn't enforce instance variable
+classes, the code illustrates the basic difficulty the authors identify. (You
+don't have to memorize the code in place; just refer back to it as you read the
+explanation.)
 
   class A
+    attr_reader :b, :c, :d
+
     def initialize
-      @b, @c, @d, @e = B.new, C.new, D.new, E.new
+      @b, @c, @d = B.new, C.new, D.new
     end
 
     def bad_style
-      b.d.e
+      b.c.d
     end
-
-    attr_reader :b, :c, :d, :e
   end
 
   class B
+    attr_reader :c
+  
     def initialize
-      @c, @d = C.new, D.new
+      @c = C.new
     end
-
-    attr_reader :c, :d
   end
 
-  class C; end
-
-  class D
+  class C
+    attr_reader :d
+  
     def initialize
-      @e = E.new
+      @d = D.new
     end
-
-    attr_reader :e
   end
-
-  class E; end
 
   a = A.new
   a.bad_style
 
-The bad_style instance method in class A, called at the end of the example, triggers a series of calls. The first, a call to the reader method b, returns a's instance variable @b, which is an instance of class B. Then the message "d" is sent to that B instance; the result is an instance of D, namely the instance held in the instance variable @d of the B instance. Sending "d" to a B instance is legal, Demeter-wise, because one of *a's* instance variables is of class B. Then the D instance gets the message "e"; this is also OK for the same reason. 
+The bad_style instance method in class A, called at the end of the example, triggers a series of calls. The first call is to the reader method b; this call returns a's instance variable @b, which is an instance of class B. Then the message "c" is sent to that B instance; the result is an instance of C, namely the instance held in the instance variable @c of the B instance. 
 
-So you've only "talked to" objects belonging to classes corresponding to
-instance variables of your instance of A, but, as the article states, "the
-method looks two levels deep into the structure of instance variable first,
-violating the ideals of information-hiding and maintainability." 
+Now we send the message "d" to the instance of C. Doing this is legal, Demeter-wise, because one of the instance variables of a is of class C. But note that we're not sending the "d" message to *that* instance of C; we're sending it to an instance of C belonging, as an instance variable, to b, not to a. 
 
-The authors propose a second formulation of the law as a way around this
-problem. Note that here the law is stated in terms of objects, not classes:
+We've obeyed the law in that we've only "talked to" objects belonging to classes
+corresponding to instance variables of our instance of A. However, as the
+article states, "the method looks two levels deep into the structure of instance
+variable first, violating the ideals of information-hiding and maintainability." 
+
+Here's where the object version of the law kicks in, and here's how it's formulated:
 
   For all classes C, and for all methods M attached to C, all objects to which M
   sends a message must be:
@@ -129,15 +132,16 @@ problem. Note that here the law is stated in terms of objects, not classes:
     * The instance variable objects of C. 
 
   (Objects created by M, or by functions or methods which M calls, and objects
-  in global variables are considered as arguments of M.) 
+  in global variables are considered as arguments of M.) (327)
 
-  (327)
+We're now restricted to the actual instance variables of the current object, not
+any old object that shares a class with those instance variables. 
 
 The downside to this object version of the Law of Demeter is that it makes it
 hard to do compile-time checking. The conclusion of the authors is that "to
 retain easy compile-time checking we require the Law's formulation in terms of
 types. We feel that such path[o]logical cases as the one above will not occur
-often enough to cause problems" (327).
+often enough to cause problems" (327). 
 
 Still, the object version of the law serves as an important guide for
 programmers. Toward the end of the article, the authors provide formulations of
@@ -148,8 +152,7 @@ should be restricted to:
 
    * an argument object of [the method] M including objects in pseudo variables
      "self" and "super" or
-   * an instance variable object of the class to which M is attached. 
-   (332)
+   * an instance variable object of the class to which M is attached. (332)
 
 As before, newly-created objects and objects in global variables count as
 argument objects.
@@ -165,6 +168,13 @@ law of Demeter, as laid out in 1988, doesn't specifically address the matter of
 reassigning to instance variables but might provide enough structure and
 discipline to give you pause if you find yourself doing that. 
 
+(In addition to the type and object versions of the law described here,
+the 1988 article talks about the "strong" and "weak" versions of the law. That
+distinction has to do with whether or not it's considered permissible to send
+messages to inherited instance variables. The strong version says no; the weak
+version says yes. I'm not going to go into detail about that aspect of the 1988
+taxonomy, but it's certainly worth a look at the original article.)
+
 Let's move a year forward. 
 
 
@@ -176,12 +186,24 @@ definitions of the two versions have changed in interesting ways, and the class
 version, in turn, is broken down into the minimization version and the strict
 version. 
 
-The 1989 taxonomy of the law rests on the notion of clients and suppliers.
-Clients are methods; suppliers are classes. If method M calls method N on an
-instance of class C (or on class C itself), then M is a client of both the
-method N and the class C. In turn, C is a supplier to M. (There are some further
-subtleties but this is the thrust of how clients and suppliers relate to each
-other.) 
+There's more new terminology present in the 1989 paper than in the 1988 paper
+(and you'll see a good bit of it shortly). In some respects it's a thicker, more
+dense description of the Law of Demeter. But it's also a more unified
+description. For example, where we saw parenthetical addenda to the descriptions
+of the law like this in 1988:
+
+  (Objects created by M, or by functions or methods which M calls, and objects
+  in global variables are considered as arguments of M.)  
+
+the 1989 version integrates all possible cases into a single model -- a somewhat complex model, but a single model. 
+
+Let's dive into some of the terminology. Don't worry if you don't memorize it all on first reading. The payoff comes later, anyway, when we circle back to looking at how the law plays out in different languages. 
+
+The 1989 taxonomy rests on the notion of clients and suppliers. Clients are
+methods; suppliers are classes. If method M calls method N on an instance of
+class C (or on class C itself), then M is a client of both the method N and the
+class C. In turn, C is a supplier to M. (There are some further subtleties but
+this is the thrust of how clients and suppliers relate to each other.)
 
 In the client/supplier relationship, the supplier class may be an "acquaintance"
 class (what's often paraphrased as a "stranger"), or it may be a preferred
@@ -201,28 +223,19 @@ The article summarizes the two sub-versions of the class version of the law as f
   Strict version: All methods may have only preferred-supplier classes. 
   (40-41)
 
-As you can see, the 1989 taxonomy involves more terms and definitions than the
-1988 taxonomy. It's a denser account of the law. But there's something gained
-for the added complexity. Everything is organized from the root of the structure
-upward. The categories of newly created objects and global variables, both of
-which were literally added via parenthetical addenda to the 1988 versions of the
-law, are more smoothly integrated into the model in 1989. Every imaginable
-object that might be sent a message falls somewhere on one consistent spectrum,
-ranging from mere acquaintance (to be avoided) to preferred acquaintance
-(acceptable but still flagged as not quite a full "friend") to preferred
-supplier (the real "friends"). I have found that the 1989 taxonomy requires
-longer and deeper study than the 1988 taxonomy, but that it repays careful
-reading.
+Again, everything is integrated into a single model. Every imaginable object
+that might be sent a message falls somewhere on one consistent spectrum, ranging
+from mere acquaintance (to be avoided) to preferred acquaintance (acceptable but
+still flagged as not quite a full "friend") to preferred supplier (the real
+"friends").
 
 And that's just the class version of the law. As before, there's also an object
 version, summarized as follows:
 
   All methods may have only preferred-supplier objects. 
 
-Note the shift, subtle but important, from "classes" to "objects", as compared
-with the strict version of the class version of the law. Focusing on objects
-allows for inclusion of such constructs as self and super. Moreover, the authors
-make the following interesting point about the object version of the law:
+The authors make the following interesting point about the object version of the
+law:
 
   While the object version of the law expresses what is really wanted, it cannot
   be enforced at compile time. The object version serves as an additional guide
@@ -264,6 +277,7 @@ checked at compile time, as well as other details and underpinnings of the law's
 rationale and logic. In the end, though, everything converges back on the
 original purpose: providing programmers using object-oriented languages with a
 set of principles that reduce inter-class dependencies. 
+
 
 "METADEMETER"
 
