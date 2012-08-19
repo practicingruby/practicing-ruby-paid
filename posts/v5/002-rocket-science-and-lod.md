@@ -144,7 +144,8 @@ Implications:
   - when to use block-based callbacks 
 
 - talk about areas where violations were necessary:
-  - collections, low level data
+  - collections, low level data (i.e. make an exception for core objects, apply
+    law to domain objects)
 
 [[[[[[ SEE ALSO, UNCLE BOB, DATA STRUCTURES VS. OBJECTS ]]]]
 http://blog.objectmentor.com/articles/2007/11/02/active-record-vs-objects
