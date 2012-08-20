@@ -82,58 +82,79 @@ of the Law of Demeter has to offer.
 
 ### The implications of Smyth's Law of Demeter
 
------
+Smyth's unique interpretation of how to apply LoD eventually 
+caught the eye of Karl Lieberherr, an active member of the
+Demeter project who had published some of the earliest papers
+on the topic. Lieberherr took an interest in Smyth's approach 
+because it was clearly different than what the Demeter 
+researchers had intended, but potentially useful nonetheless. 
+A correspondence between the two led Smyth to share his 
+thoughts about what his definition of LoD brings to 
+the table. His six key points from the [original discussion](http://www.ccs.neu.edu/research/demeter/demeter-method/LawOfDemeter/Smyth/LoD-revisited2) 
+are listed in an abridged form below:
 
+```
+There are actually several wonderful properties that fall out 
+from this definition of LoD:
 
-This means that you can only make direct calls to objects stored in instance
-variables, and direct calls to argument objects. I wonder if this implies that
-object state should also be injected (although the practical implications of
-that are minimal)
+     A method can only act upon the message arguments, and the
+     existing state of the receiving object.
 
-Not sure how these rules apply to collections. Presumably it must be acceptable
-to do something like: data.each { |e| e.foo } or data[0].bar. QUESTION: Is LoD 
-meant for objects only and not datastructures?
+1. Method bodies tend to be very close to straight-line code. Very
+   simple logic, very low complexity.
 
-Law of Demeter and callbacks. Is a block-based callback any different inu
-pros/cons than an method-call based one?
+2. There must be no return values, or else the sender of the message
+   cannot be obeying the law.
 
-Implications:
+3. There cannot be tight synchronization, as the sender cannot tell if
+   the message is acted on or not within any "small" period of time
+   (perhaps the objects collaborate with a two way protocol, and the
+   sender can eventually detect a timeout).
 
-    1. Method bodies tend to be very close to straight-line code. Very simple logic,
-    very low complexity.
+4. Since there are no return values, the objects need to be
+   "responsible" objects: they need to handle both nominal, and
+   forseeable off-nominal cases. This has the wonderful affect of
+   localizing failure handling within the object which has the
+   best visibilitiy, and understanding, of whatever went wrong.
+   It also dramatically reduces the complexity of protocols, and
+   clients.
 
-    2. There must be no return values, or else the sender of the message cannot be
-    obeying the law.
+   ...
 
-    3. There cannot be tight synchronization, as the sender cannot tell if
-    the message is acted on or not within any "small" period of time. (However,
-    it may be possible to detect a timeout if there is a two way protocol between
-    the objects)
+5. The law requires an object to subscribe to information, so it has
+   what it needs whenever it gets a message. This means that lazy
+   evaluation can't be used. While this may seem like an inefficiency,
+   it only becomes one in practice if the objects don't have concise
+   responsibilities. In such a case, efficiency of communication
+   bandwidth isn't the real problem.
 
-    4. Since there are no return values, the objects need to be "responsible"
-    objects, handling both the expected cases and the predictable failure cases.
-    This localizes failure handling within the object that has the best
-    visibility/understanding of what could have gone wrong. (see correspondence for
-    more)
+   ...
 
-    5. The law requires an object to subscribe to information, preventing lazy
-    evaluation. This isn't a problem as long as object responsibilities are
-    concise (think about this)
+6. Since tight syncronization is out of the picture, the responsible
+   objects should be goal oriented. A goal is different from a method
+   in that a goal is pursued over some expanse of time, and does not
+   seem instantaneous. By thinking of goals rather than discrete
+   actions, people can derive solutions which don't require tight
+   temporal coupling. This sounds like hand waving, and it is -- but
+   7 years of doing it shows it really does work.
+```
 
-    6. Because tight synchronization is not allowed, objects should be
-    goal-oriented. A goal is different than a method because it is persued over
-    some period of time, and does not seem instantanious. Thinking in terms
-    of goals rather than discrete actions allows for the discovery of solutions
-    which do not require tight temporal coupling.
+These are deep claims, but the remainder of the discussion between Smyth
+and Lieberherr did not elaborate much further on them. However, it is 
+fascinating to imagine the kind of programming style that Smyth
+is advocating here: it boils down to a highly robust form of
+[responsibility-driven development](http://practicingruby.com/articles/64) with 
+concurrent (and potentially distributed) objects that communicate almost 
+exclusively via callback mechanisms. If Smyth were not an established
+scientist working on some of the world's most challenging problems,
+it would almost seem as if he was playing object-oriented buzzword bingo.
 
-    "Temporal coupling and synchronization is elminated, therefore avoiding three of
-    the nastiest problems in real-time and distributed systems: critical sections,
-    priority inversions, and deadlock" <-- ((over my head)).
-
-    "We have found breaking LoD is very expensive! On Mars Pathfinder, integration
-    costs of law breaking parts of the system were at least an order of magnitude 
-    higher, had to pay it on every integration cycle, not just once."
-
+While I don't know nearly enough about any of these ideas to speak 
+authoratively on them, I think that they form a great starting point 
+for a very interesting conversation. However, if you're like me, you
+probably would benefit by bringing these ideas back down to earth
+a bit. With that in mind, I've put together a little example 
+program that will hopefully help you do exactly that.
 
 ### Smyth's Law of Demeter in practice
 
@@ -154,3 +175,18 @@ http://blog.objectmentor.com/articles/2007/11/02/active-record-vs-objects
 - have readers do error handling as an exercise
 
 ### Reflections
+
+---
+
+This means that you can only make direct calls to objects stored in instance
+variables, and direct calls to argument objects. I wonder if this implies that
+object state should also be injected (although the practical implications of
+that are minimal)
+
+Not sure how these rules apply to collections. Presumably it must be acceptable
+to do something like: data.each { |e| e.foo } or data[0].bar. QUESTION: Is LoD 
+meant for objects only and not datastructures?
+
+Law of Demeter and callbacks. Is a block-based callback any different inu
+pros/cons than an method-call based one?
+
