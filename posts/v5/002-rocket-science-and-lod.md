@@ -152,11 +152,190 @@ it would almost seem as if he was playing object-oriented buzzword bingo.
 While I don't know nearly enough about any of these ideas to speak 
 authoratively on them, I think that they form a great starting point 
 for a very interesting conversation. However, if you're like me, you
-probably would benefit by bringing these ideas back down to earth
+probably would benefit from bringing these ideas back down to earth
 a bit. With that in mind, I've put together a little example 
 program that will hopefully help you do exactly that.
 
 ### Smyth's Law of Demeter in practice
+
+Software design principles can be interesting to study in the abstract, but
+there is no substitute for trying them out in concrete applications. If you 
+can find a project that is a natural fit for the technique you are 
+trying to investigate, even the most simple toy application will teach you
+more than pure thought experiments ever could.
+
+Smyth's approach to the Law of Demeter originated from his work on software for
+Mars rovers, an environment where tight temporal coupling and a lack of 
+robust interactions between distributed systems can cause serious problems.
+Because it takes about 14 minutes for light to travel between Earth and Mars, 
+even the most trivial system interactions require careful design consideration. 
+With so much room for things to go wrong, a programming style that claims to 
+make it easier to manage these kinds of problems definitely sounds promising.
+
+Of course, you don't need to land robots on Mars to encounter these kind of
+challenges. Off the top of my head, I can easily imagine things like payment
+processing systems and remote system administration toolchains having a good
+degree of overlap with the issues that Smyth's LoD is meant to
+address. Still, those problems are not nearly as exciting as driving a little
+remote control car around on a different planet. Knowing that, I decided
+to test Smyth's ideas by building a very basic Mars rover simulation. The 
+short video below shows me interacting with it:
+
+<div align="center">
+<iframe width="800" height="600"
+src="http://www.youtube.com/embed/Yqofx6MbYFU?vq=480&rel=0" frameborder="0" allowfullscreen></iframe>
+</div>
+
+In the video, the communications delay is set at only a couple seconds, but it
+can be set arbitrarily high, which makes it possible to simulate the full 14+
+minute delay between Earth and Mars. No matter what the delay is set at, the
+rover queues up commands as they come in, and sends its responses one 
+at a time as its tasks are completed. The entire simulator is only a couple
+pages of code, and consists of the following objects and responsibilities:
+
+* [SpaceExplorer::Radio]() relays messages on a time delay.
+* [SpaceExplorer::MissionControl]() communicates with the rover.
+* [SpaceExplorer::Rover]() communicates with mission control and updates the map.
+* [SpaceExplorer::World]() implements the simulated world map.
+
+As I implemented this system, I took care to abide by Smyth's recommendation
+that methods should not return meaningful values. While I wasn't so pedantic as
+to explicitly return `nil` from each function, I treated them as void functions
+internally, and so none of the simulator's features depend on the return value 
+of the methods I implemented. This had a major impact on the way I designed 
+things overall, and you'll be able to see that as we look at each object
+individually.
+
+```ruby
+module SpaceExplorer
+  class Radio
+    def initialize(delay)
+      @delay = delay
+    end
+
+    def establish_connection(target)
+      @target = target
+    end
+
+    def transmit(command)
+      raise "Target not defined" unless defined?(@target)
+
+      start_time = Time.now
+
+      Thread.new do
+        sleep 1 while Time.now - start_time < @delay
+
+        @target.receive_command(command) 
+      end
+    end
+  end
+end
+```
+
+
+
+```ruby
+module SpaceExplorer
+  class MissionControl
+    def initialize(narrator, radio_link)
+      @narrator   = narrator
+      @radio_link = radio_link
+    end
+
+    def send_command(command)
+      @radio_link.transmit(command)
+    end
+
+    def receive_command(command)
+      @narrator.msg(command)
+    end
+  end
+end
+```
+
+```ruby
+require "thread"
+
+module SpaceExplorer
+  class Rover
+    def initialize(world, radio_link)
+      @world      = world
+      @radio_link = radio_link
+
+      @queue = Queue.new
+
+      Thread.new { loop { process_command(@queue.pop) } }
+    end
+
+    def receive_command(command)
+      @queue.push(command)
+    end
+
+    def process_command(command)
+      case command
+      when "!PING"
+        @radio_link.transmit("PONG")
+      when "!NORTH", "!SOUTH", "!EAST", "!WEST"      
+        @world.move(command[1..-1])
+      when "!SNAPSHOT"
+        @world.snapshot { |data| transmit_encoded_snapshot(data) }
+      else
+        # do nothing
+      end
+    end
+
+    private
+
+    def transmit_encoded_snapshot(data)
+      output = data.map { |row| row.join(" ") }.join("\n")
+
+      @radio_link.transmit("\n#{output}")
+    end
+  end
+end
+```
+
+```ruby
+module SpaceExplorer
+  class World
+    DELTAS = (-2..2).to_a.product((-2..2).to_a)
+
+    def initialize(data, row, col)
+      @data   = data
+
+      @row    = row
+      @col    = col
+    end
+
+    def move(direction)
+      case direction
+      when "NORTH"
+        @row -= 1
+      when "SOUTH"
+        @row += 1
+      when "EAST"
+        @col += 1
+      when "WEST"
+        @col -= 1
+      else
+        raise ArgumentError, "Invalid direction!"
+      end
+    end
+
+    def snapshot
+      snapshot = DELTAS.map do |rowD, colD|
+        if colD == 0 && rowD == 0
+          "@"
+        else
+          @data[@row + rowD][@col + colD]
+        end
+      end
+
+      yield snapshot.each_slice(5).to_a
+    end
+  end
+end
+```
 
 - Show space_explorer examples
 
@@ -173,6 +352,8 @@ http://blog.objectmentor.com/articles/2007/11/02/active-record-vs-objects
 
 - show how the code nicely abstracts away temporal coupling
 - have readers do error handling as an exercise
+
+### GROUP PROJECT: Exploring our options for failure handling
 
 ### Reflections
 
