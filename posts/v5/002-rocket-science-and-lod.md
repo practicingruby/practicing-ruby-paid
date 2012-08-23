@@ -1,10 +1,10 @@
-The Law of Demeter is a well-known software design principle for reducing
-coupling between collaborating objects. However, because the law exists in many
-forms, it often means different things to different people. As far as laws go,
-Demeter has been flexible in practice, and that has lead to some interesting
-evolutions in its applications over time. In this article, we will 
-discuss an interpretation of the law that is quite literally out of 
-this world.
+The [Law of Demeter](http://www.ccs.neu.edu/home/lieber/LoD.html) is a well-known 
+software design principle for reducing coupling between collaborating objects. 
+However, because the law exists in many forms, it often means different things 
+to different people. As far as laws go, Demeter has been flexible in practice, 
+and that has lead to some interesting evolutions in its applications over time. 
+In this article, we will discuss an interpretation of the law that is quite 
+literally out of this world.
 
 ### An introduction to Smyth's Law of Demeter
 
@@ -36,8 +36,8 @@ class Person < ActiveRecord::Base
 end
 ```
 
-The `Person.in_postal_area` method itself does not violate the 
-Law of Demeter, as it is nothing more than a simple delegation
+The `Person.in_postal_area` method does not violate the 
+Law of Demeter itself, as it is nothing more than a simple delegation
 mechanism which passes the `zipcode` parameter on to a 
 lower-level function on the same object. But because it
 returns a value, this function makes it easy for its callers
@@ -55,21 +55,19 @@ class UnsolicitedMailer < ActionMailer::Base
 end
 ```
 
-In `UnsolicitedMailer#spam_postal_area`, the value returned by
-`Person.in_postal_area` is neither part of the internals
-of the `UnsolicitedMailer` object, nor an argument that was passed 
-into the function. This makes it a Demeter violation to send any
-messages to the object that `Person.in_postal_area` returns. 
-Depending on the project's requirements, breaking the law in
-this fashion could be perfectly acceptable, but it is a code
-smell to watch out for.
+Because the value returned by `Person.in_postal_area` is neither 
+a direct part of the `UnsolicitedMailer` object, nor a parameter
+of the `spam_postal_area` method, sending messages
+to it results in a Demeter violation. Depending on the project's 
+requirements, breaking the law in this fashion could be 
+reasonable, but it is a code smell to watch out for.
 
 In the context of the typical Ruby project, methods that 
 return values are common, because the convenience of implementing
 things this way often outweighs the cost of doing so. However,
 whenever you take this approach, you make two fundamental 
 assumptions that those who write code for Mars rovers 
-simply cannot: that your value-returning methods will respond
+cannot: that your value-returning methods will respond
 in a reasonable amount of time, and that they will not fail 
 in all sorts of complicated ways.
 
@@ -152,7 +150,7 @@ it would almost seem as if he was playing object-oriented buzzword bingo.
 While I don't know nearly enough about any of these ideas to speak 
 authoratively on them, I think that they form a great starting point 
 for a very interesting conversation. However, if you're like me, you
-probably would benefit from bringing these ideas back down to earth
+would benefit from bringing these ideas back down to earth
 a bit. With that in mind, I've put together a little example 
 program that will hopefully help you do exactly that.
 
@@ -165,7 +163,7 @@ trying to investigate, even the most simple toy application will teach you
 more than pure thought experiments ever could.
 
 Smyth's approach to the Law of Demeter originated from his work on software for
-Mars rovers, an environment where tight temporal coupling and a lack of 
+Mars rovers; an environment where tight temporal coupling and a lack of 
 robust interactions between distributed systems can cause serious problems.
 Because it takes about 14 minutes for light to travel between Earth and Mars, 
 even the most trivial system interactions require careful design consideration. 
@@ -173,13 +171,13 @@ With so much room for things to go wrong, a programming style that claims to
 make it easier to manage these kinds of problems definitely sounds promising.
 
 Of course, you don't need to land robots on Mars to encounter these kind of
-challenges. Off the top of my head, I can easily imagine things like payment
-processing systems and remote system administration toolchains having a good
+challenges. I can easily imagine things like payment processing systems 
+and remote system administration toolchains having a good
 degree of overlap with the issues that Smyth's LoD is meant to
-address. Still, those problems are not nearly as exciting as driving a little
+address. Still, those problems are not nearly as exciting as driving a
 remote control car around on a different planet. Knowing that, I decided
-to test Smyth's ideas by building a very basic Mars rover simulation. The 
-short video below shows me interacting with it:
+to test Smyth's ideas by building a very unrealistic Mars rover 
+simulation. The video below shows me interacting with it over IRC:
 
 <div align="center">
 <iframe width="800" height="600"
@@ -193,36 +191,77 @@ rover queues up commands as they come in, and sends its responses one
 at a time as its tasks are completed. The entire simulator is only a couple
 pages of code, and consists of the following objects and responsibilities:
 
-* [SpaceExplorer::Radio]() relays messages on a time delay.
-* [SpaceExplorer::MissionControl]() communicates with the rover.
-* [SpaceExplorer::Rover]() communicates with mission control and updates the map.
-* [SpaceExplorer::World]() implements the simulated world map.
+* [SpaceExplorer::Radio](https://github.com/elm-city-craftworks/space_explorer/blob/pr-5.2/lib/space_explorer/radio.rb) relays messages on a time delay.
+* [SpaceExplorer::MissionControl](https://github.com/elm-city-craftworks/space_explorer/blob/pr-5.2/lib/space_explorer/mission_control.rb) communicates with the rover.
+* [SpaceExplorer::Rover](https://github.com/elm-city-craftworks/space_explorer/blob/pr-5.2/lib/space_explorer/rover.rb) communicates with mission control and updates the map.
+* [SpaceExplorer::World](https://github.com/elm-city-craftworks/space_explorer/blob/pr-5.2/lib/space_explorer/world.rb) implements the simulated world map.
 
 As I implemented this system, I took care to abide by Smyth's recommendation
 that methods should not return meaningful values. While I wasn't so pedantic as
 to explicitly return `nil` from each function, I treated them as void functions
 internally, and so none of the simulator's features depend on the return value 
-of the methods I implemented. This had a major impact on the way I designed 
-things overall, and you'll be able to see that as we look at each object
-individually.
+of the methods I implemented. To see the effect this approach had on
+overall system design, we can trace a command's execution from end to end while
+paying attention to what is going on under the hood.
+
+I'd like to walk you through how `SNAPSHOT` works, simply because it has the
+largest number of moving parts to it. As you saw from the video, 
+`SNAPSHOT` is used to get back a 5x5 ascii "picture" of the area around the 
+rover, which can be used to aid navigation. In the following example, 
+`@` is the rover, `-` represents empty spaces, and `X` represents boulders:
+
+```
+20:35|  seacreature| !SNAPSHOT
+20:35|  roboseacreature| X - - X -
+20:35|  roboseacreature| X X - X X
+20:35|  roboseacreature| - X @ X X
+20:35|  roboseacreature| - - X X -
+20:35|  roboseacreature| - - - - -
+```
+
+As you may have already guessed, the user interface for this project is
+IRC-based, which is a convenient (if ugly) medium for experimenting with
+asynchronous communications. A bot that is responsible for running
+the simulation monitors the channel for commands, which can be any
+message that starts with an exclamation point. When these messages are
+detected, they are passed on a `MissionControl` object for processing. The
+callback which monitors the channel and passes messages along to that 
+object is shown below:
+
+```ruby
+bot.on(:message, /\A!(.*)/) do |m, command|
+  mission_control.send_command(command)
+end
+```
+
+The `MissionControl` object is nothing more than a bridge between the UI 
+and a `Radio` object, and so the `send_command` method passes the 
+command along without modification:
+
+```ruby
+module SpaceExplorer
+  class MissionControl
+    def send_command(command)
+      @radio_link.transmit(command)
+    end
+  end
+end
+```
+
+The `Radio` instance that `@radio_link` points to holds a
+reference to a `Rover` object, which is where the `SNAPSHOT` command will be
+processed. Before it gets there, `Radio#transmit` enforces a
+transmission delay through the use of a very coarse-grained timer mechanism:
 
 ```ruby
 module SpaceExplorer
   class Radio
-    def initialize(delay)
-      @delay = delay
-    end
-
-    def establish_connection(target)
-      @target = target
-    end
-
     def transmit(command)
       raise "Target not defined" unless defined?(@target)
 
-      start_time = Time.now
-
       Thread.new do
+        start_time = Time.now
+
         sleep 1 while Time.now - start_time < @delay
 
         @target.receive_command(command) 
@@ -232,26 +271,21 @@ module SpaceExplorer
 end
 ```
 
+It's important to point out here that `Radio#transmit` is designed to work with
+an arbitrary delay, and so it isn't practical for it to block execution and
+return a value. Instead, it spins off a background thread that will eventually
+call the `receive_command` callback method on its `@target` object, which is a
+`Rover` instance in this case.
 
-
-```ruby
-module SpaceExplorer
-  class MissionControl
-    def initialize(narrator, radio_link)
-      @narrator   = narrator
-      @radio_link = radio_link
-    end
-
-    def send_command(command)
-      @radio_link.transmit(command)
-    end
-
-    def receive_command(command)
-      @narrator.msg(command)
-    end
-  end
-end
-```
+The implementation of the `Rover` object is a little more interesting than the
+objects we've looked at so far, because it implements something akin to the
+[Actor model](http://en.wikipedia.org/wiki/Actor_model). 
+Whenever `Rover#receive_command` is called, commands are not
+processed directly, but instead placed on a threadsafe queue which then gets
+acted upon in a first-come, first-serve basis. This allows the `Rover` to do 
+its tasks sequentially while continuing to accept requests as they come in. To
+understand how that works, think about how `SNAPSHOT` gets handled by the 
+following code:
 
 ```ruby
 require "thread"
@@ -273,54 +307,80 @@ module SpaceExplorer
 
     def process_command(command)
       case command
-      when "!PING"
+      when "PING"
         @radio_link.transmit("PONG")
-      when "!NORTH", "!SOUTH", "!EAST", "!WEST"      
-        @world.move(command[1..-1])
-      when "!SNAPSHOT"
-        @world.snapshot { |data| transmit_encoded_snapshot(data) }
+      when "NORTH", "SOUTH", "EAST", "WEST"      
+        @world.move(command)
+      when "SNAPSHOT"
+        @world.snapshot { |text| @radio_link.transmit("\n#{text}") }
       else
         # do nothing
       end
     end
-
-    private
-
-    def transmit_encoded_snapshot(data)
-      output = data.map { |row| row.join(" ") }.join("\n")
-
-      @radio_link.transmit("\n#{output}")
-    end
   end
 end
 ```
+
+When the `receive_command` callback is triggered by the `Radio` object,
+the method simply pushes that command onto a queue, which should happen nearly
+instantaneously in practice. At this point, the command has finished its
+outbound trip, and is ready to be processed.
+
+After the `Rover` object handles any tasks that were already queued up,
+`SNAPSHOT` is passed to the `process_command` method, where the 
+following line gets executed:
+
+```ruby
+@world.snapshot { |text| @radio_link.transmit("\n#{text}") }
+```
+
+This code looks a little weird, because it isn't immediately obvious why a block
+is being used here. Instead, we might expect the following under 
+ordinary circumstances:
+
+```ruby
+@radio_link.transmit("\n#{@world.snapshot}") 
+```
+
+However, taking this approach would be a very subtle violation of Smyth's LoD,
+because it would require `World#snapshot` to have a meaningful return value,
+introducing some additional coupling. In this case, the coupling is purely
+temporal rather than structural, and that makes it a bit harder to spot.
+
+The main difference between the two examples is that the latter has a strong
+connascence of timing and the former does not. In the value-returning example,
+if `@world.snapshot` were not simply generating a trivial ASCII diagram, but
+actually controlling hardware on a Mars rover to take an image, we might expect
+it to take some amount of time to respond. If it were a large enough amount of
+time, it wouldn't be practical to block while waiting for a response, so the
+call to `RadioLink#transmit` would need to be backgrounded. This would also be
+true for any caller that made use of `World#snapshot`.
+
+By using a code block (which is really just a lightweight, anonymous callback
+mechanism), we can push the responsibility of whether or not to run the
+computations in a background thread into the `World` object, making that
+decision completely invisible to its callers. As an added bonus, `World` can
+also be more responsible about failure handling as well, because it decides 
+if and when to execute the callback, and how to handle unexpected situations.
+
+In practical scenarios, the advantages and disadvantages of whether or not
+violate Smyth's law would need to be weighed out, but in this case I've
+intentionally tried to apply it first and then attempt to justify it. For this
+particular example, I can see the approach as being worthwhile even if it does
+make for slightly more ugly code.
+
+Of course, no attempt at purity is ultimately successful, and if you take a look
+at `World#snapshot`, you will see that this is where I finally throw Smyth's LoD
+out the window for the sake of practicality. Feel free to focus on the structure
+of the code rather than the algorithm used to process the map, as that is what 
+matters most in this article:
 
 ```ruby
 module SpaceExplorer
   class World
     DELTAS = (-2..2).to_a.product((-2..2).to_a)
 
-    def initialize(data, row, col)
-      @data   = data
-
-      @row    = row
-      @col    = col
-    end
-
-    def move(direction)
-      case direction
-      when "NORTH"
-        @row -= 1
-      when "SOUTH"
-        @row += 1
-      when "EAST"
-        @col += 1
-      when "WEST"
-        @col -= 1
-      else
-        raise ArgumentError, "Invalid direction!"
-      end
-    end
+    # ...
 
     def snapshot
       snapshot = DELTAS.map do |rowD, colD|
@@ -331,43 +391,132 @@ module SpaceExplorer
         end
       end
 
-      yield snapshot.each_slice(5).to_a
+      text = snapshot.each_slice(5).map { |e| e.join(" ") }.join("\n")
+
+      yield text
     end
   end
 end
 ```
 
-- Show space_explorer examples
+Among other things, we see here the familiar chain of `Enumerable` methods 
+slammed together, all of which return values that are not immediate parts of
+the `World` object:
 
-- talk about areas where it was easy
-  - when to use method-based callbacks
-  - when to use block-based callbacks 
+```ruby
+text = snapshot.each_slice(5).map { |e| e.join(" ") }.join("\n")
+```
 
-- talk about areas where violations were necessary:
-  - collections, low level data (i.e. make an exception for core objects, apply
-    law to domain objects)
+While I could have probably wrote some cumbersome adapters to make this
+code conform to Smyth's LoD, I think that would be a wasteful attempt at follow
+the letter of the law rather than its spirit. This is especially true when you
+consider that Smyth and many other early adopters of the classical Law of
+Demeter were working in languages that had a clear separation between objects
+and data structures, and so would not necessarily have considered core
+structures to be "objects" in the proper sense. In Ruby, our core structures are
+full blown objects, but that does not mean they need to follow the same rules 
+as our domain objects.
 
-[[[[[[ SEE ALSO, UNCLE BOB, DATA STRUCTURES VS. OBJECTS ]]]]
-http://blog.objectmentor.com/articles/2007/11/02/active-record-vs-objects
+While I would love it if you'd share a comment with your own thoughts about 
+the philosophical divide between data structures and domain objects, and
+also encourage you to read [this post from Bob Martin](http://blog.objectmentor.com/articles/2007/11/02/active-record-vs-objects) 
+on the topic, I won't dwell on the point for now. We still have
+work to do!
 
-- show how the code nicely abstracts away temporal coupling
-- have readers do error handling as an exercise
+With the output in hand, all that remains to be done is to ferry it back to the
+IRC channel that requested it. Looking back at the relevant portion of `Rover#process_command`, 
+you can see that the yielded text from `World#snapshot` is passed on to 
+another `Radio` object:
+
+```ruby
+@world.snapshot { |text| @radio_link.transmit("\n#{text}") }
+```
+
+This `Radio` object holds a reference to the `MissionControl` object that sent
+the original `SNAPSHOT` command, and the path back to it is identical to the
+path the command took to get to the `Rover` object, just in reverse. I won't
+explain that process again in detail, as all that really matters is that
+`MissionControl#receive_command` eventually gets run. This method is just as
+boring as the `send_command` method we looked at earlier, serving as a direct
+bridge to the UI. I've used a Cinch-based IRC bot in this example, but anything
+with a `msg()` method will do:
+
+```ruby
+module SpaceExplorer
+  class MissionControl
+    # ...
+
+    def receive_command(command)
+      @narrator.msg(command)
+    end
+  end
+end
+```
+
+At this point, a message is sent to the IRC channel and the out-and-back trip is
+completed. Despite being a fairly complicated feature, Smyth's LoD was mostly
+followed throughout, and things only got weird in a few places. That said,
+if you have a devious mind, you are likely to have already realized that the
+relative simplicity of this code is deceptive, because there are
+so many places that things can go wrong. Let's talk a little more about 
+that now.
 
 ### GROUP PROJECT: Exploring our options for failure handling
 
+Smyth's Law of Demeter promises three main consequences: less complex method
+definitions, a decrease in temporal coupling, and a robust way of handling
+failures. While the example I've shown so far provides some evidence for the
+first two claims, I intentionally avoided working on error handling to leave
+something for us to think through together.
+
+Your challenge, if you choose to accept it, is to think about what can go wrong
+in this simulation, and to come up with ways to handle those problems without
+violating Smyth's LoD. Off the top of my head, I can think of several trivial
+problems that exist in this code, but I'm sure that there are many things I
+haven't considered as well.
+
+If you want to start with some low hanging fruit, think about what happens when
+an invalid command is sent, or what happens when the rover moves off the edge of
+the fixed-size map it is currently using. If you want to get fancy, think about
+whether the rover ought to have some safety mechanism that will prevent it from
+driving into boulders, which it currently is perfectly happy to do. Or if you
+want to get creative, find your own way of breaking things, and feel free to ask
+me clarifying questions as you go.
+
+Any level of participation is welcome, ranging from simply asking a "What if?"
+question after reading through the code a bit, to grand-scale patches that make
+our clunky little rover bullet-proof. As I said at the beginning of this
+article, my purpose in introducing Smyth's LoD to you was to start a
+conversation, and I think this is a fun way to do exactly that.
+
+The [full source for the simulator](https://github.com/elm-city-craftworks/space_explorer) 
+is ready for you to tinker with, so go forth and break stuff!
+
 ### Reflections
 
----
+While I am fairly happy with how the simulator experiment turned out, it is 
+hard to draw very many conclusions from it. In very small greenfield 
+projects, it is hard  to see how any design principle will ultimately 
+influence the full software development lifecycle. That having been said,
+it did serve as a great test bed for exploring these ideas, and can be a 
+stepping stone towards trying these techniques in more practical settings.
 
-This means that you can only make direct calls to objects stored in instance
-variables, and direct calls to argument objects. I wonder if this implies that
-object state should also be injected (although the practical implications of
-that are minimal)
+I tend to think of software principles as being descriptive rather than
+prescriptive; they provide us with convenient labels for particular approaches
+to problems that already exist in the wild. If you've seen or worked on some
+code that reminds you of the ideas that Smyth's Law of Demeter attempts to
+capture, I'd love to hear about it.
 
-Not sure how these rules apply to collections. Presumably it must be acceptable
-to do something like: data.each { |e| e.foo } or data[0].bar. QUESTION: Is LoD 
-meant for objects only and not datastructures?
+I'd also love to hear whatever doubts have been nagging you as
+you worked your way through this article. Every software design strategy has its
+strengths and weaknesses, and sometimes we make the mistake of emphasizing the
+good parts while downplaying the bad parts, especially when we study new things.
+With that in mind, your curmudgeonly comments are most welcome, as they tend to 
+bring some balance along with them.
 
-Law of Demeter and callbacks. Is a block-based callback any different inu
-pros/cons than an method-call based one?
-
+> **NOTE:** I owe a huge hat-tip to [David
+> Black](http://twitter.com/david_a_black), as he was the inspiration for
+this article. He and I were originally collaborating on a more traditional
+treatment of the Law of Demeter when we each found our own divergent ideas to
+investigate, but I definitely would not have written this article if he hadn't
+shared his thoughtful explorations with me.
