@@ -1,4 +1,6 @@
-I/O in Ruby is so simple: 
+*BIO GOES HERE*
+
+Network I/O in Ruby is so simple: 
 
 ```ruby
 require 'socket'
@@ -23,18 +25,18 @@ limiting.
 There are several ways to improve this situation, but lately we've seen an
 influx of event-driven solutions. [Node.js][nodejs] is just an event-driven I/O-library
 built on top of JavaScript. [EventMachine][em] has been a solid solution in the Ruby
-world for several years. Python has [Twisted][twisted], and Perl has [so many they even
-have an abstaction around them][anyevent]
+world for several years. Python has [Twisted][twisted], and Perl has so many they even
+have [an abstaction around them][anyevent].
 
 While they might seem like silver bullets, there are subtle details that
 you'll have to think about. You can accomplish a lot by following simple rules
 ("don't block the thread"), but I always prefer to know precisely what I'm
-dealing with. Besides, if doing "regular" I/O is so simple, why does
+dealing with. Besides, if doing regular I/O is so simple, why does
 event-driven I/O has to be looked at as black magic?
 
 That's why we're going to implement an event loop in this article. Yep, that's
 right; we'll capture the core part of EventMachine/Node.js/Twisted in about
-150 lines of Ruby! It won't be performant, it won't be test-driven, it won't
+150 lines of Ruby. It won't be performant, it won't be test-driven, it won't
 be solid, but it will use the exact same concepts as in all of these great
 projects. This is in fact how they work.
 
@@ -93,9 +95,7 @@ Some notes:
 
 3. Why is it useful return `self` in #on?
 
-4. There's no #off yet. This is left as an excercise to the reader.
-
-5. You might find it useful to implement a special "all" event which is
+4. You might find it useful to implement a special "all" event which is
    triggered for every event that is emitted.
 
 ## The Loop
@@ -535,4 +535,5 @@ Lalalala?
 [libuv]: https://github.com/joyent/libuv
 [nio4r]: https://github.com/tarcieri/nio4r
 [bp]: http://en.wikipedia.org/wiki/Back_pressure#Back_pressure_in_information_technology
+
 
