@@ -1,9 +1,55 @@
-[[[ Consider adding a set of exercises at the end of the article, based on the
-questions from the original issues ]]]
+As one of Ruby's most fundamental building blocks, modules are both extremely 
+powerful and a bit complicated. Despite being a very low level construct, they
+provide you with a ton of tools to make use of, including all of the 
+following features:
 
-### Modules for Namespacing
+* You can create nested constants using modules, which allows you
+to organize your code into namespaces.
 
-Imagine that you are writing an XML generation library, and in it, you have a class to generate your XML documents. Perhaps uncreatively, you choose the name `Document` for your class, creating something similar to what is shown below.
+* You can `include` a module into a class, mixing its
+functionality into all of instances of that class. It is also 
+possible to `include` a module into other modules, to create
+composite mixins that can build on top of one another.
+
+* You can also `extend` the functionality of objects on an individual 
+basis using modules. This feature can be used to mix functionality 
+into any object, including `Class` and `Module` objects.
+
+* You can define methods and instance variables directly on 
+modules, because they are first-class objects. Similarly, it
+is possible to dynamically generate anonymous modules 
+using `Module.new`.
+
+* In Ruby 2.0, you might be able to `use` modules to
+`refine` the functionality of other objects within a 
+namespace, as an alternative to monkey patching.
+
+As you can see from this list, Ruby's modules make it so
+that we have a lot more to think about when it comes to 
+modeling relationships than simply whether to use class-
+based inheritance or object composition. They provide a 
+whole new dimension not found in traditional object-oriented 
+programming languages, introducing new tradeoffs for you 
+to consider when designing your programs. When used in
+moderation, modules can help you create more flexible
+and elegant systems, but you need to understand how
+to work with them effectively in order to do that.
+
+In this article, I will walk you through several practical examples of
+what modules can be used for, ranging from the most basic
+applications to the somewhat more obscure and experimental. Taken
+together, the scenarios I have laid out here form a decent field guide 
+to the various applications of modules that you'll find in the wild, 
+and will help you explore the tradeoffs of using these techniques 
+in your own code.
+
+\pagebreak
+
+# Namespaces
+
+Imagine that you are the maintainer of an XML generation library, and in it, you have a
+class to generate your XML documents. Perhaps uncreatively, you choose the name
+`Document` for your class, creating something similar to what is shown below:
 
 ```ruby
 class Document
@@ -13,7 +59,8 @@ class Document
 end
 ```
 
-On its own, this seems to make a lot of sense; a user could do something simple like the following to make use of your library.
+On its own, this seems to make a lot of sense; a user could do something simple
+like the following to make use of your library:
 
 ```ruby
 require "your_xml_lib"
@@ -22,7 +69,9 @@ document = Document.new
 puts document.generate
 ```
 
-But imagine that you were using another library that generates PDF documents, which happens to use similar uncreative naming for its class that does the PDF document generation. Then, the following code would look equally valid.
+But imagine that there is some other library that generates PDF documents, which
+happens to use similar uncreative naming for its class that does its 
+document generation. Then, the following code would look equally valid:
 
 ```ruby
 require "their_pdf_lib"
@@ -31,9 +80,18 @@ document = Document.new
 puts document.generate
 ```
 
-As long as the two libraries were never loaded at the same time, there would be no issue. But as soon as someone loaded both libraries, some quite confusing behavior would happen. One might think that defining two different classes with the same name would lead to some sort of error being raised by Ruby, but with open classes, that is not the case. Ruby would actually apply the definitions of `Document` one after the other, with whatever file was required last taking precedence. The end result would in all likelihood be a very broken `Document` class that could generate neither XML nor PDF.
+As long as the two libraries were never loaded at the same time, there would be
+no issue. But as soon as someone loaded both libraries, some quite confusing
+behavior would happen. One might think that defining two different classes with
+the same name would lead to some sort of error being raised by Ruby, but with
+open classes, that is not the case. Ruby would apply the definitions of
+`Document` one after the other, with whatever file was required last taking
+precedence. The end result would almost certainly be a very broken `Document`
+class that could generate neither XML nor PDF.
 
-But there is no reason for this to happen, as long as both libraries take care to namespace things. Shown below is an example of two `Document` classes that could co-exist peacefully.
+But there is no reason for this to happen, as long as both libraries take care
+to wrap their classes in a namespace. Shown below is an example of 
+two `Document` classes that could co-exist peacefully:
 
 ```ruby
 # somewhere in your_xml_lib
@@ -53,7 +111,8 @@ module PDF
 end
 ```
 
-Using both classes in the same application is as easy, as long as you explicitly include the namespace when referring to each library's `Document` class.
+Using both classes in the same application is easy; you just need to explicitly
+include the namespace when referring to each library's `Document` class.
 
 ```ruby
 require "your_xml_lib"
@@ -64,91 +123,81 @@ pdf_document = PDF::Document.new
 xml_document = XML::Document.new
 ```
 
-The clash has been prevented because each library has nested its `Document` class within a module, allowing the class to be defined within that namespace rather than at the global level.
-
-[[[ consider talking about nesting any kind of constant + private constants,
-consider replacing following section with Rack::File example as it is more
-real]]]
-
-
-Tt is important to understand that constants are looked up from the innermost nesting to the outermost, finally searching the global namespace. This can be a bit confusing at times, especially when you consider some corner cases.
-
-For example, examine the following code:
+The clash has been prevented because each library has nested its `Document`
+class within a module, allowing the class to be defined within that namespace
+rather than at the global level. Because of the way constants are resolved in
+Ruby, each of these libraries could even refer directly to their own `Document`
+object without repeating the fully qualified name within their own namespace, as
+shown in the following example:
 
 ```ruby
-module FancyReporter
-  class Document
-    def initialize
-       @output = String.new
-    end
+module XML
+  p Document #=> XML::Document
+end
 
-    attr_reader :output
-  end
+module PDF
+  p Document #=> PDF::Document
 end
 ```
 
-If you load this code into irb and play with a bit on its own, you can inspect an instance of Document to see that its output attribute is a core ruby `String` object, as shown below:
+This behavior is convenient, but does lead to cumbersome ambiguities 
+on occasion. The popular [rack](http://rack.github.com/) library 
+provides an unfortunate example of this problem, as shown below:
 
 ```ruby
->> FancyReporter::Document.new.output
-=> ""
->> FancyReporter::Document.new.output.class
-=> String
-```
+require "rack"
 
-While this seems fairly obvious, it is easy for a bit of unrelated code written elsewhere to change everything. Consider the following code:
-
-```ruby
-module FancyReporter
-  module String
-    class Formatter
-    end
-  end
+module Rack
+  p File     #=> Rack::File
+  p ::File   #=> File
 end
 ```
 
-While the designer of `FancyReporter` was most likely trying to be well organized by offering `FancyReporter::String::Formatter`, this small change causes headaches because it changes the meaning of `String.new` in `Document`'s initialize method. In fact, you cannot even create an instance of `Document` before the following error is raised:
+Because rack defines its own `File` class, it is placed ahead of Ruby's core
+class in the constant lookup order within the `Rack` module. This means that
+in order to access Ruby's file I/O functionality from within Rack's namespace,
+it is necessary to do an explicit constant lookup from the top level (i.e.
+`::File`), which is ugly at best, and easy to forget at worst. While in 
+practice this kind of collision is rare, it is something to watch out 
+for when naming your own classes and modules, even within your 
+own namespace.
+
+Some folks get tired of typing the fully qualified namespaces of their
+dependencies, and will mix top-level modules into their objects or even
+into the global namespace to make their code a bit more aesthetically
+pleasing, as shown below:
 
 ```ruby
-?> FancyReporter::Document.new
-NoMethodError: undefined method `new' for FancyReporter::String:Module
-	from (irb):35:in `initialize'
-	from (irb):53:in `new'
-	from (irb):53
-```
+include XML
 
-There are a number of ways this problem can be avoided. Often times, it's
-possible to come up with alternative names that do not clash with core objects,
-and when that's the case, it's preferable. In this particular case, `String.new`
-can also be replaced with `""`, as nothing can change what objects are created
-via Ruby's string literal syntax. But there is also an approach that works
-independent of context, and that is to use explicit constant lookups from the
-global namespace. You can see an example of explicit lookups in the following
-code:
-
-```ruby
-module FancyReporter
-  class Document
-    def initialize
-       @output = ::String.new
-    end
-
-    attr_reader :output
-  end
+doc = Document.new("foo.xml") #=> refers to XML::Document implicitly
+doc.xpath("//h3/a").each do |link| 
+  #... 
 end
 ```
 
-Prepending any constant with `::` will force Ruby to skip the nested namespaces and bubble all the way up to the root. In this sense, the difference between `A::B` and `::A::B` is that the former is a sort of relative lookup whereas the latter is absolute from the root namespace.
+While in some circumstances this approach leads to more concise code,
+it completely negates the collision protection that namespaces provide,
+and can lead to some very weird and unexpected errors. The inherently
+unsafe nature of this technique makes it a clear anti-pattern, and
+hopefully the examples in this section have helped to demonstrate
+exactly why that is the case.
 
-In general, having to use absolute lookups may be a sign that there is an unnecessary name conflict within your application. But if upon investigation you find names that inheritently collide with one another, you can use this tool to avoid any ambiguity in your code.
+\pagebreak
 
-### Using Mix-ins to Augment Class Definitions
+# Traditional mixins
 
-Although knowing [how to use modules for namespacing](http://practicingruby.com/articles/36) is important, it's really only a small part of what you can do with modules. What modules do best is providing a convenient way to write code that be mixed into other objects, augmenting their behaviors. Because modules facilitate code sharing in a way that is distinct from both the general OO concept of class inheritance and from things like Java's interfaces, they require you to think about your design in a way that's a bit different from most other object oriented programming languages.
+Modules are useful for namespacing, but their main purpose is to provide
+a convenient way to write code that be mixed into other objects, augmenting
+their behaviors. Because mixins facilitate code sharing in a way that is distinct 
+from both the general OO concept of class inheritance and from things 
+like Java's interfaces, they require you to think about your design 
+in a way that's a bit different from most other object oriented 
+programming languages.
 
 While I imagine that most of our readers are comfortable with using mixins, I'll
-refer to some core Ruby mixins to illustrate their power before moving on to more 
-subtle points. For example, consider the following bit of code which implements lazily evaluated computations:
+refer to some core Ruby mixins to illustrate their power. For example, consider 
+the following bit of code which implements lazily evaluated computations:
 
 ```ruby
 class Computation
@@ -169,18 +218,7 @@ class Computation
     result > other.result
   end
 
-  def >=(other)
-    result >= other.result
-  end
-
-  def <=(other)
-    result <= other.result
-  end
-
-  def ==(other)
-    result == other.result
-  end
-
+  # followed by similar definitions for >=, <=, and ==
 end
 
 a = Computation.new { 1 + 1 }
@@ -226,11 +264,23 @@ p b >= c #=> true
 p a == b #=> false
 ```
 
-We see that our individual operator definitions have disappeared, and in its place are two new bits of code. The first new thing is just an include statement that tells Ruby to mix the `Comparable` functionality into the `Computation` class definition. But in order to make use of the mixin, we need to tell `Comparable` how to evaluate the sort order of our `Computation` objects, and that's where `<=>` comes in.
+We see that our individual operator definitions have disappeared, and in its
+place are two new bits of code. The first new thing is just an `include` 
+statement that tells Ruby to mix the `Comparable` functionality into 
+the `Computation` class definition. But in order to make use of the 
+mixin, we need to tell `Comparable` how to evaluate the sort order 
+of our `Computation` objects, and that's where `<=>` comes in.
 
-The `<=>` method, sometimes called the spaceship operator, essentially fills in a template method that allows `Comparable` to work. It codifies the notion of comparison in an abstract manner by expecting the method to return `-1` when the current object is considered less than the object it is being compared to, `0` when the two are considered equal, and `1` when the current object is considered greater than the object it is being compared to.
+The `<=>` method, sometimes called the spaceship operator, essentially fills in
+a template method that allows `Comparable` to work. It codifies the notion of
+comparison in an abstract manner by expecting the method to return `-1` when the
+current object is considered less than the object it is being compared to, `0`
+when the two are considered equal, and `1` when the current object is considered
+greater than the object it is being compared to.
 
-If you're still scratching your head a bit, pretend that rather than being a core Ruby object, that we've implemented `Comparable` ourselves by writing the following code.
+If you're still scratching your head a bit, pretend that rather than being a
+core Ruby object, that we've implemented `Comparable` ourselves by writing the
+following code:
 
 ```ruby
 module Comparable
@@ -256,12 +306,14 @@ module Comparable
 end
 ```
 
-Now, if you imagine these method definitions literally getting pasted into your `Computation` class when `Comparable` is included, you'll see that it would provide a behavior that is functionally equivalent to our initial example.
+Now, if you imagine these method definitions literally getting pasted into your
+`Computation` class when `Comparable` is included, you'll see that it would
+provide a behavior that is functionally equivalent to our initial example.
 
 Of course, it wouldn't make sense for Ruby to implement such a feature for us
 without using it in its own structures. Because Ruby's numeric classes
 all implement `<=>`, we are able to simply delegate our `<=>` call to the 
-result of the computations.
+result of the computations:
 
 ```ruby
 class Computation
@@ -281,17 +333,27 @@ class Computation
 end
 ```
 
-The only requirement for this code to work as expected is that each `Computation`'s result must implement the `<=>` method. Since all objects that mix in `Comparable` have to implement `<=>`, any comparable object returned as a result should work fine here.
+The only requirement for this code to work as expected is that each
+`Computation`'s result must implement the `<=>` method. Since all objects that
+mix in `Comparable` have to implement `<=>`, any `Comparable` object returned as a
+result should work fine here.
 
-While not a technically complicated example, there is surprising power in having a primitive built into your programming language which trivializes the implementation of the Template Method design pattern. If you look at Ruby's `Enumerable` module and the powerful features it offers, you might think it would be a much more complicated example to study. But it too hinges on Template Method and requires only an `each()` method to give you all sorts of complex functionality including things like `select()`, `map()`, and `inject()`. If you haven't tried it before, you should certainly try to roll your own `Enumerable` module to get a sense of just how useful mixins can be.
+While not a technically complicated example, there is surprising power in having
+a primitive built into your programming language which trivializes the
+implementation of the Template Method design pattern. If you look at Ruby's
+`Enumerable` module and the powerful features it offers, you might think it
+would be a much more complicated example to study. But it also hinges on
+a template method; simply defining `each()` gives you all sorts of complex
+functionality including things like `select()`, `map()`, and `reduce()`. 
+If you haven't tried it before, you should certainly try to
+implement your own `Enumerable` module to get a sense of just how 
+useful mixins can be. I have done that exercise myself many times, and
+even wrote a [Practicing Ruby article](http://practicingruby.com/articles/shared/eislpkhxolnr) 
+about it.
 
-[[[ fix abrupt cut here]]]
-
-### Using Mix-ins to Augment Objects Directly
-
-[[[ Consider replacing or recasting this section in a DCI context, reread and revise ]]]
-
-As you may already know, Ruby's mixin capability is not limited to simply including new behavior into a class definition. You can also extend the behavior of a class itself, through the use of the `extend()` method. We can look to the Ruby standard library <i>forwardable</i> for a nice example of how this is used. Consider the following trivial `Stack` implementation.
+As you may already know, it similarly convenient to use mixins at the class 
+level. The `Forwardable` module from Ruby's standard library provides a 
+nice demonstration of why that can be quite useful:
 
 ```ruby
 require "forwardable"
@@ -307,7 +369,11 @@ class Stack
 end
 ```
 
-In this example, we can see that after we extend our `Stack` class with the `Forwardable` module, we are provided with a class level method called `def_delegators` which allows us to easily define methods which delegate to an object stored in the specified instance variable. Playing around with the `Stack` object a bit should illustrate what this code has done for us.
+In this example, we can see that after we extend our `Stack` class with the
+`Forwardable` module, we are provided with a class level method called
+`def_delegators` which allows us to easily define methods which delegate to an
+object stored in the specified instance variable. Playing around with the
+`Stack` object a bit should illustrate what this code has done for us.
 
 ```ruby
 >> stack = Stack.new
@@ -343,25 +409,54 @@ module MyForwardable
 end
 ```
 
-While the metaprogramming aspects of this may be a bit noisy to read if you're not familiar with them, this is fairly vanilla dynamic Ruby code. If you've got Ruby 1.9.2 installed, you can actually try it out on your own and verify that it does indeed work as expected. But the practical use case of this code isn't what's important here.
+While the metaprogramming aspects of this may be a bit noisy to read if you're
+not familiar with them, this is fairly vanilla dynamic Ruby code. If you're
+curious about how it works, go ahead and try it out on your own machine to verify 
+that it does work as expected. 
 
-The key thing to notice about this code is that while it essentially implements a class method, nothing in the module's syntax directly indicates this to be the case. The only hint we get that this is meant to be used at the class level is the use of `define_method()`, but we need to dig into the implementation code to notice that.
+An interesting thing about mixins is that they don't explicitly distinguish
+between methods which are designed to be mixed in at the instance level and
+methods which ought to be mixed in at the class level. The decision of *where*
+a module's functionality gets attached depends on whether `include` or 
+`extend` is used, and what the target object is. 
 
-[[[ Fix abrupt cut here ]]]
+The somewhat indirect relationship between modules and the objects they get 
+mixed into facilitates some very powerful customizations at the per-object 
+level, and we will talk a bit more about that towards the end of this
+article. However, before we do that I'd like to cover a couple uses of modules
+that leverage the fact that they are not simply a low-level mechanism for
+implementation sharing between objects, but also first class objects 
+themselves.
 
-We can now focus on the question that caused me to write this series in the
-first place. Many readers were confused by my use of `extend self` within
-earlier Practicing Ruby articles, and this lead to a number of interesting
-questions on the mailing list at the time these articles were originally
-published. While I tried my best to answer them directly, I think we're in better
-shape to study this topic now that the last two articles have laid a 
-foundation for us.
+\pagebreak
 
-### Self-Mixins as Function Bags
+# Function bags
+
+* You can use def self.foo or class << self, in a way similar to how you would
+define singleton methods on any other object
+
+* You can use module_function, which essentially copies methods defined by
+  the module and makes them available on the module itself.
+
+* You can use extend self, which causes the module to mix the methods it
+  defines into its own lookup path, allowing you to call the functions
+  directly on the module itself.
+
+All of these techniques have their own pros and cons, but the first
+approach has the least moving parts to it. If you understand how
+singleton methods work on any object, you understand how they
+work on modules.
+
+It does not however, allow for the dual-purpose nature of things
+like the Math module.
+
 
 [[[ Think about extend self here vs module_function and def self.foo ]]]
 
-A fascinating thing about Ruby is the wide range of different software design paradigms it supports. While object-oriented design is heavily favored, Ruby can do a surprisingly good job of emulating everything from procedure programming to prototype-based programming. But the one area that Ruby overlaps most with is functional programming.
+A fascinating thing about Ruby is the wide range of different software design
+paradigms it supports. While object-oriented design is heavily favored, Ruby can
+do a surprisingly good job of emulating everything from procedural 
+programming to prototype-based programming. But the one area that Ruby overlaps most with is functional programming.
 
 Now, before you retire your parenthesis for good and herald Ruby as a replacement for LISP, be warned: There is a lot about Ruby's design that makes it a horrible language for functional programming. But when used sparingly, techniques from the functional world fit surprisingly well in Ruby programs. The technique I find most useful is the ability to organize related functions together under a single namespace.
 
@@ -430,7 +525,9 @@ So whenever you have a bit of logic that seems to not have many state dependenci
 
 As it turns out, the technique can also be used in more stateful scenarios when you recognize that Ruby modules are objects themselves, and like any object, can contain instance data.
 
-### Self-Mixins for Implementing Singleton Pattern
+\pagebreak
+
+# Singleton objects
 
 [[[ Consider changing this to be a brief summary and forward reference to my
 Singletons article ]]]
@@ -515,7 +612,9 @@ For cases like the configuration system we've shown here, choosing to use this a
 
 However, if you work with other people's code, it is likely that you'll run into someone implementing Singleton Pattern this way. Now, rather than scratching your head, you will have a solid understanding of how this technique works, and why someone might want to use it.
 
-### Modules instead of Monkey Patches
+\pagebreak
+
+# Localized monkey patches
 
 Back in the bad old days before Prawn, I was working on a reporting framework called Ruby Reports (Ruport), which generated PDF reports via `PDF::Writer`. At the time, `PDF::Writer` was quite buggy, and essentially abandoned, but was the only game in town when it came to PDF generation.
 
@@ -628,101 +727,13 @@ When using per-object mixins as an alternative to monkey patching, what you gain
 
 In Ruby 2.0, we may end up with even better option for this sort of thing called refinements, which are also module based. But for now, if you must hack other people's objects, this approach is a civil way to do it.
 
-We'll now take a look at how to produce libraries and applications that actively encourage extensions to be done this way.
-
 [[[ CONSIDER A REFINEMENTS EXAMPLE HERE, REWRITING THE PREVIOUS EXAMPLES W.
 REFINEMENTS ]]]
 
-### Modules as Extension Points
+\pagebreak
 
-[[[ THE BASIC IDEAS HERE FORM A GOOD DCI-INSPIRED SCENARIO, BUT CONSIDER MORE
-MODERN EXAMPLES ]]]
+# Role-centric modeling (DCI)
 
-This last section is not so much about practical advice as it is about taking what we've learned so far and really stretching it as far as possible into new territories. In essence, what follows are my own experiments with ideas that I'm not fully sure are good, but find interesting enough to share with you.
+[[[ ADD DCI EXAMPLE HERE ]]]
 
-In previous Practicing Ruby issues, I've shown some code from a command line client we've used for time tracking in my consulting work. The tool itself never quite matured far enough to be release ready, but I used it as a testing ground for new design ideas, so it is a good conversation starter at least.
 
-Today, I want to show how we implemented commands for it. Essentially, I want to walk through what happens when someone types the following command into their console:
-
-```ruby
-$ turbine start
-Timer started at Wed Dec 15 17:55:37 -0500 2010
-```
-
-Because we knew this tool would evolve over time, we wanted to make it as hackable as possible. To do this, we set up a system in which commands get installed into a hidden folder in each project, making it trivial to modify existing commands or add new ones. Here's a quick directory listing to show what that structure looks like:
-
-```ruby
-$ ls .turbine/commands/standard/
-add.rb		project.rb	rewind.rb	status.rb commit.rb push.rb		
-staged.rb	stop.rb drop.rb	reset.rb start.rb
-```
-
-As you might expect, start.rb defines the start command. Here's what its source
-looks like:
-
-```ruby
-Turbine::Application.extension(:start_command) do
-  def start
-    timer = Turbine::Timer.new
-    if timer.running?
-      prompt.say "Timer already started, please stop or rewind first"
-    else
-      timer.write_timestamp
-      prompt.say "Timer started at #{Time.now}"
-    end
-  end
-end
-```
-
-You'll notice that all our commands are direct mappings to method
-calls, which are responsible for doing all the work. While I've simplified the
-following definition to remove some domain specific callbacks and options 
-parsing, the following example shows the basic harness which registers 
-Turbine's commands:
-
-```ruby
-module Turbine
-  class Application
-    def self.extensions
-      @extensions ||= {}
-    end
-
-    def self.extension(key, &block)
-      extensions[key] = Module.new(&block)
-    end
-
-    def initialize
-      self.class.extensions.each do |_, extension|
-        extend(extension)
-      end
-    end
-  
-    def run(command)
-      send(command)
-    end
-  end
-end
-```
-
-From this, we see that `Turbine::Application` stores a Hash of anonymous modules
-which are created on the fly whenever the `extension()` is called. The
-interesting thing about this design is that the commands aren't applied globally
-to `Turbine::Application`, but instead, are mixed in at the instance level. This
-approach allows us to selectively disable features, or completely replace them 
-with alternative implementations.
-
-For example, consider a custom command that gets loaded after the standard commands, which is implemented like this:
-
-```ruby
-Turbine::Application.extension(:start_command) do
-  def go
-    puts "Let's go!"
-  end
-end
-```
-
-Because the module defining the `go()` method would replace the original module in the extensions hash, the original module ends up getting completely wiped out. In retrospect, for my particular use case, this approach seems to be like using a thermonuclear weapon where a slingshot would do, but you can't argue that this fails to take extensibility to whole new limits.
-
-Eventually, when someone falls off the deep end in their study of modules, they ask 'is it possible to uninclude them?', and the short answer to that question is "No", promptly followed up with "Why would you want to do that?". But what we've shown here is a good approximation for unincluding a module, even if we haven't quite figured out the answer to the 'why' part yet.
-
-But sometimes, we have to explore just for the fun of it, right? :)
