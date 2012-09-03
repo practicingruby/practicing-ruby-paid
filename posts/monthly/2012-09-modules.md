@@ -1,3 +1,6 @@
+% Uses for Modules
+% Practicing Ruby, September 2012
+
 As one of Ruby's most fundamental building blocks, modules are both extremely 
 powerful and a bit complicated. Despite being a very low level construct, they
 provide you with a ton of tools to make use of, including all of the 
@@ -49,7 +52,7 @@ in your own code.
 
 Imagine that you are the maintainer of an XML generation library, and in it, you have a
 class to generate your XML documents. Perhaps uncreatively, you choose the name
-`Document` for your class, creating something similar to what is shown below:
+`Document` for your class:
 
 ```ruby
 class Document
@@ -90,7 +93,7 @@ precedence. The end result would almost certainly be a very broken `Document`
 class that could generate neither XML nor PDF.
 
 But there is no reason for this to happen, as long as both libraries take care
-to wrap their classes in a namespace. Shown below is an example of 
+to wrap their classes in a namespace. The following example shows 
 two `Document` classes that could co-exist peacefully:
 
 ```ruby
@@ -142,7 +145,7 @@ end
 
 This behavior is convenient, but does lead to cumbersome ambiguities 
 on occasion. The popular [rack](http://rack.github.com/) library 
-provides an unfortunate example of this problem, as shown below:
+provides an unfortunate example of this problem:
 
 ```ruby
 require "rack"
@@ -340,10 +343,11 @@ result should work fine here.
 
 While not a technically complicated example, there is surprising power in having
 a primitive built into your programming language which trivializes the
-implementation of the Template Method design pattern. If you look at Ruby's
+implementation of the [Template Method design
+pattern](http://en.wikipedia.org/wiki/Template_Method). For example, if you look at Ruby's
 `Enumerable` module and the powerful features it offers, you might think it
-would be a much more complicated example to study. But it also hinges on
-a template method; simply defining `each()` gives you all sorts of complex
+would be a much more complicated mixin to study. But because it also hinges on
+a template method, simply defining `each()` gives you all sorts of complex
 functionality including things like `select()`, `map()`, and `reduce()`. 
 If you haven't tried it before, you should certainly try to
 implement your own `Enumerable` module to get a sense of just how 
@@ -351,7 +355,7 @@ useful mixins can be. I have done that exercise myself many times, and
 even wrote a [Practicing Ruby article](http://practicingruby.com/articles/shared/eislpkhxolnr) 
 about it.
 
-As you may already know, it similarly convenient to use mixins at the class 
+As you may already know, it is similarly convenient to use mixins at the class 
 level. The `Forwardable` module from Ruby's standard library provides a 
 nice demonstration of why that can be quite useful:
 
@@ -397,7 +401,7 @@ object stored in the specified instance variable. Playing around with the
 As before, it may be helpful to think about how we might implement `Forwardable` ourselves. The following bit of code shows one way to approach the problem.
 
 ```ruby
-module MyForwardable
+module Forwardable
   def def_delegators(ivar, *delegated_methods)
     delegated_methods.each do |m|
       define_method(m) do |*a, &b|
@@ -409,8 +413,8 @@ module MyForwardable
 end
 ```
 
-While the metaprogramming aspects of this may be a bit noisy to read if you're
-not familiar with them, this is fairly vanilla dynamic Ruby code. If you're
+While the metaprogramming techniques used here may look a bit opaque if 
+you're not familiar with them, this is fairly vanilla dynamic Ruby code. If you're
 curious about how it works, go ahead and try it out on your own machine to verify 
 that it does work as expected. 
 
@@ -430,61 +434,73 @@ themselves.
 
 \pagebreak
 
-# Function bags
+# Namespaced functions
 
-* You can use def self.foo or class << self, in a way similar to how you would
-define singleton methods on any other object
-
-* You can use module_function, which essentially copies methods defined by
-  the module and makes them available on the module itself.
-
-* You can use extend self, which causes the module to mix the methods it
-  defines into its own lookup path, allowing you to call the functions
-  directly on the module itself.
-
-All of these techniques have their own pros and cons, but the first
-approach has the least moving parts to it. If you understand how
-singleton methods work on any object, you understand how they
-work on modules.
-
-It does not however, allow for the dual-purpose nature of things
-like the Math module.
-
-
-[[[ Think about extend self here vs module_function and def self.foo ]]]
-
-A fascinating thing about Ruby is the wide range of different software design
-paradigms it supports. While object-oriented design is heavily favored, Ruby can
-do a surprisingly good job of emulating everything from procedural 
-programming to prototype-based programming. But the one area that Ruby overlaps most with is functional programming.
-
-Now, before you retire your parenthesis for good and herald Ruby as a replacement for LISP, be warned: There is a lot about Ruby's design that makes it a horrible language for functional programming. But when used sparingly, techniques from the functional world fit surprisingly well in Ruby programs. The technique I find most useful is the ability to organize related functions together under a single namespace.
-
-When we create class definitions, we tend to think of the objects we're building as little structures which manage state and provide behaviors which manipulate that state. But sometimes, a more stateless model makes sense. The closer you get to pure mathematics, the more a pure functional model makes sense. We need to look no farther than Ruby's own `Math` module for an example:
+While modules are most commonly used as a mechanism for mixing functionality
+into other objects, it is also possible to use them directly. This technique 
+is most commonly used for creating namespaced functions, such as in 
+Ruby's `Math` module:
 
 ```ruby
->> Math.sin(Math::PI/2.0)
-=> 1.0
->> Math.log(Math::E)
-=> 1.0
+p Math.sin(Math::PI/2.0) #=> 1.0
+p Math.log(Math::E)      #=> 1.0
 ```
 
-It seems unlikely that we'd want to create an instance of a `Math` object, since
-it doesn't really deal with any state that persists beyond a single function
-call. But it might be desirable to mix this functionality into another object so
-that you can call math functions without repeating the `Math` constant
-excessively. For this reason, Ruby implements `Math` as a module.
+The functions provided by the `Math` module do not depend on the kind of state
+and identity that objects typically do, and so it would not make sense to 
+create instances of `Math` objects. However, because Ruby is a general purpose 
+language, defining methods like `sin()` and `log()` in the top-level namespace
+would be pretty sloppy. Implementing `Math` as a module that responds to direct 
+function calls balances the tensions between these two competing design concerns.
+
+Ruby also uses this pragmatic approach in a few other places, including 
+the [fileutils](http://www.ruby-doc.org/stdlib-1.9.3/libdoc/fileutils/rdoc/FileUtils.html)
+ standard library:
 
 ```ruby
->> Math.class
-=> Module
+require "fileutils"
+
+FileUtils.mkdir_p("temp/long/path/name")
+
+# do something interesting here...
 ```
 
-For another great example of modular code design in Ruby itself, be sure to check out the `FileUtils` standard library, which allows you to basic *nix file operations as if they were just ordinary function calls.
+Emulating this style in your own code is easy, but there are several
+ways to do it, all of which have their own quirks to them:
 
-After seeing how Ruby is using this technique, I didn't find it hard to stumble upon scenarios in my own code that could benefit from a similar design. For example, when I was working on building out the backend for a trivia website, I was given some logic for normalizing user input so that it could be compared against a predetermined pattern.
+1. Defining singleton methods on modules (i.e. using `def self.foo` or 
+`class << self`) prevents those methods from being mixed into other
+objects.
 
-While I could have stuck this logic in a number of different places, I decided I wanted to put it within a module of its own, because its logic did not rely on any persistent state and could be defined independently of the way our questions and quizzes were modeled. The following code is what I came up with:
+1. The `module_function` keyword prohibits the use of private
+methods, and has fairly complicated semantics.
+
+1. Using `extend self` solves these problems, but is somewhat
+unintuitive and tends to surprise those who have never seen
+it used before.
+
+In all fairness, none of these approaches feel pure from a design 
+perspective, but because it has the least complications, the
+`extend self` approach has become somewhat idiomatic. In a nutshell,
+`extend self` works by adding the methods defined by the module to 
+its own lookup path, allowing those methods to be called directly.
+You can check out [an earlier version of this
+article](http://practicingruby.com/articles/shared/uecrbiznivfn) 
+and [an addendum to it](http://practicingruby.com/articles/shared/nwtojmfkvwjq) 
+for a much more nuanced discussion on this topic; I have only omitted it 
+here to allow us to focus on practical applications rather than 
+implementation details.
+
+While namespaced functions are not something you will use every single day,
+it is not especially rare to stumble upon scenarios that can benefit from
+this style of design. For example, when I was working on building out 
+the backend for a trivia website, I was given some logic for 
+normalizing user input so that it could be compared against a 
+predetermined pattern. While I could have stuck this logic in a number 
+of different places, I decided I wanted to put it within a module of its own, 
+because it did not rely on any persistent state and could be defined 
+independently of the way our questions and quizzes were modeled. The following 
+code is what I came up with:
 
 ```ruby
 module MinimalAnswer
@@ -504,9 +520,7 @@ module MinimalAnswer
 end
 ```
 
-The nice thing about the code above is that using a modular design doesn't force you to give up things like private methods. This allows you to keep your user facing API narrow while still being able to break things out into helper methods.
-
-Here is a simple example of how my `MinimalAnswer` module is used within the application:
+The following example shows how `MinimalAnswer` is meant to be used:
 
 ```ruby
 >> MinimalAnswer.match?("Cop,Police Officer", "COP")
@@ -519,24 +533,31 @@ Here is a simple example of how my `MinimalAnswer` module is used within the app
 => true
 ```
 
-Now as I said before, this is a minor bit of functionality and could probably be shelved onto something like a `Question` object or somewhere else within the system. But the downside of that approach would be that as this `MinimalAnswer` logic began to get more complex, it would begin to stretch the scope of whatever object you attached this logic to. By breaking it out into a module right away, we give this code its own namespace to grow in, and also make it possible to test the logic in isolation, rather than trying to bootstrap a potentially much more complex object in order to test it.
+As I said before, this is a minor bit of functionality and could probably be shelved onto something like a `Question` object or somewhere else within the system. But the downside of that approach would be that as this `MinimalAnswer` logic began to get more complex, it would begin to stretch the scope of whatever object you attached this logic to. By breaking it out into a module right away, we give this code its own namespace to grow in, and also make it possible to test the logic in isolation, rather than trying to bootstrap a potentially much more complex object in order to test it.
 
-So whenever you have a bit of logic that seems to not have many state dependencies between its functions, you might consider this approach. But since stateless code is rare in Ruby, you may wonder if learning about self-mixins really bought us that much.
-
-As it turns out, the technique can also be used in more stateful scenarios when you recognize that Ruby modules are objects themselves, and like any object, can contain instance data.
+Whenever you have a bit of logic that seems to not have many state dependencies between its functions, you might consider this approach. But since stateless code is rare in Ruby, you may wonder if learning about self-mixins really bought us that much. As it turns out, the technique can also be used in more stateful scenarios when you recognize that Ruby modules are objects themselves, and like any object, 
+they can contain instance data. We'll talk about how to take advantage of that
+fact in the next section.
 
 \pagebreak
 
 # Singleton objects
 
-[[[ Consider changing this to be a brief summary and forward reference to my
-Singletons article ]]]
+> **NOTE:** Ruby overloads the term 'singleton object', so we need to be careful about
+terminology. What I'm about to show you is how to use self-mixed modules to implement 
+the [Singleton design pattern](http://en.wikipedia.org/wiki/Singleton_pattern). Although this pattern can be
+[awkward to implement in Ruby](http://practicingruby.com/articles/shared/jleygxejeopq), 
+modules offer one of the more reasonable ways of doing so.
 
-Ruby overloads the term 'singleton object', so we need to be careful about terminology here. What I'm about to show you is how to use these self-mixed modules to implement something similar to the [Singleton design pattern](http://en.wikipedia.org/wiki/Singleton_pattern).
-
-I've found in object design that objects typically need zero, one, or many instances. When an object doesn't really need to be instantiated at all because it has no data in common between its behaviors, the modular approach we just reviewed often works best. The vast majority of the remaining cases fall into ordinary class definitions which facilitate many instances. Virtually everything we model fits into this category, so it's not worth discussing in detail. However, there are some cases in which a single object is really all we need. In particular, configuration systems come to mind.
-
-The following example shows a simple DSL I wrote for the trivia application I had mentioned earlier. It may look familiar, and that is because it appeared in our discussion on writing configuration systems some weeks ago. This time around, our focus will be on how this system actually works rather than what purpose it serves.
+I've found in object design that objects typically need zero, one, or many
+instances. When an object doesn't really need to be instantiated at all because
+it has no data in common between its behaviors, the functional approach we just
+reviewed often works best. The vast majority of the remaining cases fall into
+ordinary class definitions which facilitate many instances. Virtually everything
+we model fits into this category, so it's not worth discussing in detail.
+However, there are some rare cases in which a single object is really all we need. 
+In particular, configuration systems come to mind. For example, take a look
+at the configuration object from the trivia website I mentioned earlier:
 
 ```ruby
 AccessControl.configure do
@@ -557,11 +578,11 @@ AccessControl.configure do
 end 
 ```
 
-To implement code that allows the definitions above to be modeled internally, we need to consider how this system will be used. While it is easy to imagine roles shifting over time, getting added and removed as needed, it's hard to imagine what the utility of having more than one `AccessControl` object would be.
+To guess at how this kind of object might be implemented, we need to consider how it will be used. While it is easy to imagine roles shifting over time, getting added and removed as needed, it's hard to imagine what the utility of having more than one `AccessControl` object would be. For this reason, it's safe to say that `AccessControl` configuration data is global information, and so does not need the data segregation that creating instances of a class provides.
 
-For this reason, it's safe to say that `AccessControl` configuration data is global information, and so does not need the data segregation that creating instances of a class provides.
-
-By modeling `AccessControl` as a module rather than class, we end up with an object that we can store data on that can't be instantiated.
+By modeling `AccessControl` as a module rather than class, it becomes impossible
+to create new instances of the object, and so all the state needs to be stored
+within the module itself:
 
 ```ruby
 module AccessControl
@@ -591,9 +612,13 @@ module AccessControl
 end
 ```
 
-There are two minor points of potential confusion in this code worth discussing, the first is the use of `instance_eval` in `configure()`, and the second is that the `definitions()` method refers to instance variables. This is where we need to remind ourselves that the scope of methods defined by a module cannot be determined until it is mixed into something.
-
-Once we recognize these key points, a bit of introspection shows us what is really going on.
+There are two minor points of potential confusion in this code worth discussing,
+the first is the use of `instance_eval` in `configure()`, and the second is that
+the `definitions()` method refers to instance variables. This is where you need
+to remind yourself that methods are executed within the context of whatever
+object they get mixed into, even if that object is the module itself. Once you 
+recognize those key points, a bit of introspection reveals what is really 
+going on:
 
 ```ruby
 >> AccessControl.configure { "I am #{self.inspect}" }
@@ -604,7 +629,7 @@ Once we recognize these key points, a bit of introspection shows us what is real
 => ["@definitions"]
 ```
 
-Since `AccessControl` is an ordinary Ruby object, it has ordinary instance variables and can make use of `instance_eval` just like any other object. The key difference here is that `AccessControl` is a module, not a class, and so cannot be used as a factory for creating more instances. In fact, calling `AccessControl.new` raises a `NoMethodError`.
+Because `AccessControl` is an ordinary Ruby object, it has ordinary instance variables and can make use of `instance_eval` just like any other object. The key difference here is that `AccessControl` is a module, not a class, and so cannot be used as a factory for creating more instances. In fact, calling `AccessControl.new` raises a `NoMethodError`.
 
 In a traditional implementation of Singleton Pattern, you have a class which disables instantiation through the ordinary means, and creates a single instance that is accessible through the class method `instance()`. However, this seems a bit superfluous in a language in which classes are full blown objects, and so isn't necessary in Ruby.
 
@@ -620,19 +645,18 @@ Back in the bad old days before Prawn, I was working on a reporting framework ca
 
 One of the bugs was something fairly critical: Memory consumption for outputting simple PDF tables would balloon like crazy, causing a document with more than a few pages to take anywhere from several minutes to several *hours* to run.
 
-The original author of the library had a patch laying around that inserted a hook which did some caching that greatly reduced the memory consumption, but he had not tested it extensively and did not want to want to cut a release. I had talked to him about possibly monkey patching `PDF::Document` in Ruport's code to add this patch, but together, we came up with a better solution: wrap the patch in a module.
+The original author of the library had a patch laying around that inserted a hook which did some caching that greatly reduced the memory consumption, but he had not tested it extensively and did not want to 
+cut a release. I had talked to him about possibly monkey patching `PDF::Document` in Ruport's code to add this patch, but together, we came up with a better solution: wrap the patch in a module.
 
 ```ruby
 module PDFWriterMemoryPatch
-  unless self.class.instance_methods.include?("_post_transaction_rewind")
-    def _post_transaction_rewind
-      @objects.each { |e| e.instance_variable_set(:@parent,self) }
-    end
+  def _post_transaction_rewind
+    @objects.each { |e| e.instance_variable_set(:@parent,self) }
   end
 end
 ```
 
-In Ruport's PDF formatter code, we did something like the following to apply our patch:
+In Ruport's PDF formatter code, we used `extend` to apply the patch: 
 
 ```ruby
 @document = PDF::Document.new
@@ -641,99 +665,75 @@ In Ruport's PDF formatter code, we did something like the following to apply our
 
 Throughout our application, whenever someone interacted with a `PDF::Document` instance we created, they had a patched instance that fixed the memory leak. This meant from the Ruport user's perspective, the bug was fixed. So what makes this different from monkey patching?
 
-Because we were only manipulating the individual objects that we created in our library, we were not making a global change that might surprise people. For example if someone was building an application that only implicitly loaded Ruport as a dependency, and they created a `PDF::Document` instance, our patch would not be loaded. This prevented us from causing unexpected behavior in any code that lived outside of Ruport itself.
+Because we were only manipulating the individual objects that we created in our library, we were not making a global change that might surprise people. For example if someone was building an application that only implicitly loaded Ruport as a dependency, and they created a `PDF::Document` instance, our patch would not be loaded. This prevented us from causing unexpected behavior in any code that lived outside of Ruport itself. While this approach didn't shield us from the risks that a future change to `PDF::Writer` could potentially break our patch in Ruport, it did prevent any risk of global consequences. Anyone who's ever spent a day scratching their head because of some sloppy monkey patch in a third party dependency will immediately be able to see the value of this sort of isolation.
 
-While this approach didn't shield us from the risks that a future change to `PDF::Writer` could potentially break our patch in Ruport, it did prevent any risk of global consequences. Anyone who's ever spent a day scratching their head because of some sloppy monkey patch in a third party dependency will immediately be able to see the value of this sort of isolation.
-
-The neat thing is that a similar approach can be used for core extensions as
-well. Rather than re-opening Ruby core classes, you can imbue individual
-instances with custom behavior, getting many of the benefits of monkey patching
-without the disadvantages. For example, suppose you want to add the `sum)()` and
-`average()` methods to Array. If we were monkey patching, we'd write something
-like the following code:
+Ruby 2.0 may help make modules even more useful for this kind of thing via
+refinements. While refinements are currently considered experimental, they have
+been implemented in Ruby's development branch to give people a chance to
+play around with them. Had this feature been available when we were working on
+Ruport, we could have written the previous patch in the following way:
 
 ```ruby
-class Array
-  def sum
-    inject(0) { |s,e| s + e }
+module Ruport
+  module PDFWriterMemoryPatch
+    refine PDF::Document do
+      def _post_transaction_rewind
+        @objects.each { |e| e.instance_variable_set(:@parent,self) }
+      end
+    end
   end
 
-  def average
-    sum.to_f / length
-  end
-end
+  class Formatter::PDF
+    use PDFWriterMemoryPatch
 
-obj = [1,3,5,7]
-obj.sum     #=> 16
-obj.average #=> 4
-```
-
-The danger here of course is that you'd be globally stomping anyone else's definition of `sum()` and `average()`, which can lead to ugly conflicts. All these problems can be avoided with a minor modification.
-
-```ruby
-module ArrayMathHelpers
-  def sum
-    inject(0) { |s,e| s + e }
-  end
-
-  def average
-    sum.to_f / length
-  end
-end
-
-obj = [1,3,5,7]
-obj.extend(ArrayMathHelpers)
-obj.sum     #=> 16
-obj.average #=> 4
-```
-
-By explicitly mixing in the `ArrayMathHelpers` module, we isolate our changes just to the objects we've created ourselves. With slight modification, this technique can also be used with objects passed into functions, typically by making a copy of the object before working on it.
-
-Because modules mixed into an instance of an object are looked up before 
-the methods defined by its class, 
-you can actually use this technique for modifying existing behavior of an object as well. 
-The example below demonstrates modifying `<<` on strings so that it allows appending 
-arbitrary objects to a string through coercion.
-
-```ruby
-module LooseStringAppend
-  def <<(value)
-    super
-  rescue TypeError
-    super(value.to_s)
-  end
-end
-
-a = "foo"
-a.extend(LooseStringAppend)
-a << :bar << :baz #=> "foobarbaz"
-```
-
-Of course this (like most core modifications), is a horrible idea. But speaking as a pure technique, this is far better than the alternative global monkey patch shown below:
-
-```ruby
-class String
-  alias_method :old_append, :<<
-  
-  def <<(value)
-    old_append(value)
-  rescue TypeError
-    old_append(value.to_s)
+    def initialize
+      @document = PDF::Document.new
+    end
   end
 end
 ```
 
-When using per-object mixins as an alternative to monkey patching, what you gain is essentially two things: A first class seat in the lookup path allowing you to make use of `super()`, and isolation on a per-object behavior so that consumers of your code don't curse you for patching things in unexpected ways. While this approach isn't always available, it is definitely preferable whenever you can choose it over monkey patching.
-
-In Ruby 2.0, we may end up with even better option for this sort of thing called refinements, which are also module based. But for now, if you must hack other people's objects, this approach is a civil way to do it.
-
-[[[ CONSIDER A REFINEMENTS EXAMPLE HERE, REWRITING THE PREVIOUS EXAMPLES W.
-REFINEMENTS ]]]
+The new `refine` keyword gives modules a way to define methods that will
+automatically override methods on other objects in a localized scope. The
+`use` keyword applies these refinements within the context of a particular
+class, module, or file. So that means that in `Ruport::Formatter::PDF`,
+`PDF::Document` objects will have `_post_transaction_rewind` defined
+on it, but that outside of that class the refinements will not be applied. This
+somewhat more formalized approach has various advantages and disadvantages 
+to it, many of which are still being actively discussed. Nonetheless,
+refinements provide an explicit implementation of localized monkey patches that
+per-object mixins can only approximate.
 
 \pagebreak
 
-# Role-centric modeling (DCI)
+# Further reading
 
-[[[ ADD DCI EXAMPLE HERE ]]]
+The very existence of modules represents a comprimise between design purity and
+pragmatism, and so an article on the "misuses of modules" could be just as
+long as this one, if not longer. However, the cost of using modules is often
+much harder to quantify than the benefits of doing so, and so those discussions
+often get very academic very quickly.
 
+I have attempted to cover the practical downsides of using modules in various Practicing
+Ruby articles over the years, and if that topic interests you, I'd encourage you
+to check out the following articles:
 
+* Ruby and the Singleton Pattern don't get along ([Issue 2.8](http://practicingruby.com/articles/shared/jleygxejeopq))
+* Criteria for disciplined inheritance ([Issue 3.7](http://practicingruby.com/articles/shared/uvgdkprzmoqf), 
+[Issue 3.8](http://practicingruby.com/articles/shared/lxgettcjiggh))
+* The hidden costs of inheritance ([Issue 4.9](http://practicingruby.com/articles/shared/goiwglvezuip))
+* Implementing the Active Record pattern ([Issue 4.8](http://practicingruby.com/articles/shared/cpqewwhqoaeq), 
+[Issue 4.10](http://practicingruby.com/articles/shared/ucqsaohjxddv))
+
+You'll notice that most of those articles are more about inheritance than they
+are about modules directly. However, that is one of the most important things to
+note: mixing modules into objects *is* a form of inheritance. A huge amount of
+the problems that you'll find with class-based inheritance also apply to mixins,
+and it seems that this is an often neglected point.
+
+In a language like Ruby which tries to bridge the gaps between various
+programming paradigms and design styles, finding the right balance and making
+the right choices is left up to the programmer. I encourage you to experiment
+with modules in your own code as you see fit, and find the right balance that
+works for you. However, it does not hurt to take into account the hard lessons
+learned by others. ;-) 
