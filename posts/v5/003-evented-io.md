@@ -1,6 +1,6 @@
 *This issue of Practicing Ruby was contributed by Magnus Holm ([@judofyr](https://twitter.com/judofyr)), 
 a Ruby programmer  from Norway. Magnus works on various open source 
-projects (including the [Camping web framework](https://github.com/camping)),
+projects (including the [Camping](https://github.com/camping) web framework),
 and writes articles over at [the timeless
 repository](http://timelessrepo.com/).*
 
