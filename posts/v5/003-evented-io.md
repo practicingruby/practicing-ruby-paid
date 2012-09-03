@@ -4,7 +4,7 @@ projects (including the [Camping web framework](https://github.com/camping)),
 and writes articles over at [the timeless
 repository](http://timelessrepo.com/).*
 
-Network I/O in Ruby is so simple: 
+Working with network I/O in Ruby is so simple: 
 
 ```ruby
 require 'socket'
@@ -38,15 +38,96 @@ you'll have to think about. You can accomplish a lot by following simple rules
 dealing with. Besides, if doing regular I/O is so simple, why does
 event-driven I/O have to be looked at as black magic?
 
-That's why we're going to implement an event loop in this article. Yep, that's
-right; we'll capture the core part of EventMachine/Node.js/Twisted in about
-150 lines of Ruby. It won't be performant, it won't be test-driven, it won't
-be solid, but it will use the exact same concepts as in all of these great
-projects. This is in fact how they work.
+To show that they are nothing to be afraid of, we are going to implement an 
+event loop in this article. Yep, that's right; we'll capture the core 
+part of EventMachine/Node.js/Twisted in about 150 lines of Ruby. It won't 
+be performant, it won't be test-driven, it won't be solid, but it will 
+use the exact same concepts as in all of these great projects. We will start 
+by looking at a minimal chat server example, and then discuss 
+how to build the infrastructure that supports it.
 
-Let's start.
+## Obligatory chat server example
 
-## Events
+Because chat servers seem to be the event-driven equivalent of a
+"hello world" program, we will keep with that tradition here. The
+following example shows a trivial `ChatServer` object which uses
+the `IOLoop` that we'll discuss in this article:
+
+```ruby
+class ChatServer
+  def initialize
+    @clients = []
+    @client_id = 0
+  end
+
+  def <<(server)
+    server.on(:accept) do |stream|
+      add_client(stream)
+    end
+  end
+
+  def add_client(stream)
+    id = (@client_id += 1)
+    send("User ##{id} joined\n")
+
+    stream.on(:data) do |chunk|
+      send("User ##{id} said: #{chunk}")
+    end
+
+    stream.on(:close) do
+      @clients.delete(stream)
+      send("User ##{id} left")
+    end
+
+    @clients << stream
+  end
+
+  def send(msg)
+    @clients.each do |stream|
+      stream << msg
+    end
+  end
+end
+
+# usage
+
+io     = IOLoop.new
+server = ChatServer.new
+
+server << io.listen('0.0.0.0', 1234)
+
+io.start
+```
+
+To play around with this server, run [this script](https://raw.github.com/gist/3612925/315e7bfc5de7a029606b3885d71953acb84f112e/ChatServer.rb) and then open up a couple telnet sessions to it. You should be able to produce something like the following with a bit of experimentation:
+
+```
+# from User #1's console:
+$ telnet 127.0.0.1 1234
+
+User #2 joined
+User #2 said: Hi
+Hi
+User #1 said: Hi
+User #2 said: Bye
+User #2 left
+
+# from User #2's console (quits after saying Bye)
+$ telnet 127.0.0.1 1234
+
+User #1 said: Hi
+Bye
+User #2 said: Bye
+```
+
+If you can't get this running or don't have the time to try it out right now,
+don't worry: as long as you understand the basic idea, you'll be fine. This just
+serves as a practical example to help you understand [the 
+code we'll be discussing](https://raw.github.com/gist/3612925/315e7bfc5de7a029606b3885d71953acb84f112e/ChatServer.rb) throughout the rest of this article.
+
+Now that we have a place to start from, let's build our event system.
+
+## Event handling
 
 First of all we need, obviously, events! With no further ado:
 
@@ -87,22 +168,12 @@ end
 EventEmitter is a module which we can include into classes that can send and
 receive events. In some sense this is the most important part of our event
 loop: It defines how we use and reason about events in the system. Modifying it
-later will require changes all over the place.
+later will require changes all over the place. While this particular
+implementation is a bit more simple than what you'd expect from a real 
+library, it covers the fundamental ideas that are common to all
+event-based systems.
 
-Some notes:
-
-1. Blocks don't have to be invoked right away, but can be stored and invoked
-   later.
-
-2. Have you seen "Hash.new with block" before? It's definitely one of the most
-   useful "easter eggs" in Ruby.
-
-3. Why is it useful to return `self` in #on?
-
-4. You might find it useful to implement a special "all" event which is
-   triggered for every event that is emitted.
-
-## The Loop
+## The IO loop
 
 Next up we need something to fire up these events. As you will see in
 the following code, the general flow of an event loop is simple:
@@ -168,9 +239,13 @@ class IOLoop
     end
   end
 end
+```
 
-# Usage:
+Notice here that IOLoop#start blocks everything (until IOLoop#stop is called).
+Everything after IOLoop#start will happen in callbacks which means that the
+control flow can be surprising. For example, consider the following code:
 
+```ruby
 l = IOLoop.new
 
 ruby = i.connect('ruby-lang.org', 80)  # 1
@@ -189,18 +264,15 @@ end
 l.start        # 5
 ```
 
-Notice here that IOLoop#start blocks everything (until IOLoop#stop is called).
-Everything after IOLoop#start will happen in callbacks which means that the
-control flow can be surprising. You might think that you're writing data in
-step 2, but that's just stored locally in a buffer. It's not until the event
-loop has started (in step 5) that it's actually sending the data. This method
-triggers `tick` to be run in a loop, which in turn delegates the work of
-reading/writing data and emiting events to the `Stream#handle_read` and 
-`#handle_write` methods. We will take a look at how those are 
+You might think that you're writing data in step 2, but that's just stored locally in 
+a buffer. It's not until the event loop has started (in step 5) that it's actually
+sending the data. This method triggers `tick` to be run in a loop, which
+delegates the work of reading/writing data and emiting events to the 
+`Stream#handle_read` and `#handle_write` methods. We will look at how those are 
 implemented a bit later in this article, but you can treat them as a
 black box for now.
 
-Based on what you have seen so far, it should be it clear why it's 
+Based on what you have seen so far, it should also be it clear why it's 
 so terrible to block inside a callback. Have a look at this call graph:
 
 ```
@@ -224,29 +296,32 @@ tick (10 streams are readable)
 ```
 
 By blocking inside the second callback, the I/O loop has to wait 5 seconds 
-before it's able to continue calling the rest of the callbacks.
+before it's able to continue calling the rest of the callbacks. This is
+obviously a bad thing, and it is important
+to avoid this kind of situation when possible. Of course, non-blocking
+callbacks are not enough, the event loop also needs to make use of non-blocking
+I/O. Let's talk a bit more about that now.
 
-### IO events
+## IO events
 
 At the most basic level, there are only two events for an IO object:
 
-1. Readable: The IO is readable; data is waiting for us. Examples:
-   Data has been read from the disk or a client/server has sent you data.
-
-2. Writable: The IO is writable; we can write data.
+1. Readable: The IO is readable, data is waiting for us. 
+2. Writable: The IO is writable, we can write data.
 
 These might sound a little confusing: How can a client know that the server
 will send us data? It can't. Readable doesn't mean "the server will send us
 data", it means "the server has already sent us data". In that case the data
-is handled by the kernel in your OS. When you "read" from an IO object you're
-actually just copying bytes from the kernel.
+is handled by the kernel in your OS. Whenever you read from an IO object, you're
+actually just copying bytes from the kernel. If the receiver does not read 
+from IO, the kernel's buffer will become full and the sender's IO will 
+no longer be writable. The sender will then have to wait until the 
+receiver can catch up and free up the kernel's buffer. This is
+what makes non-blocking IO operations tricky to work with.
 
-If you don't read from an IO, the kernel's buffer will become full and the
-sender's IO will no longer be writable. The sender will then have to wait
-until the receiver can catch up and free up the kernel's buffer.
-
-Because these low level operations can be tedious to work with, the goal 
-of an I/O loop is to trigger some more usable events:
+Because these low level operations can be tedious to handle manually, the 
+goal of an I/O loop is to trigger some more usable events for application
+programmers:
 
 1. Data: A chunk of data was sent to us.
 2. Close: The IO was closed.
@@ -256,7 +331,7 @@ of an I/O loop is to trigger some more usable events:
 All of this functionality can be built on top of Ruby's `IO` objects with
 a bit of effort.
 
-## Dealing with IOs
+## Working with the Ruby IO object
 
 There are various ways to read from a IO object in Ruby:
 
@@ -319,7 +394,7 @@ It returns an array of those IO objects which need attention. It returns nil
 if the optional timeout (in seconds) was supplied and has elapsed.
 ```
 
-With this knowledge we can write a way better #tick:
+With this knowledge we can write a much better #tick method:
 
 ```ruby
 class IOLoop
@@ -340,9 +415,11 @@ end
 and then return those streams. From there, it is up to them to do the 
 actual data processing work.
 
-## Handling read and write
+## Handling streaming input and output 
 
-All right, I've used Stream all over the code, now it's time to implement it.
+Now that we've used the `Stream` object in various examples, you may 
+already have an idea of what its responsibilities are. But now, we should
+take a look at how it is implemented:
 
 ```ruby
 class Stream
@@ -387,10 +464,11 @@ class Stream
 end
 ```
 
-If you've been following along from the beginning, I believe most of this code
-should be self-explanatory.
-
-We also need a class for handling the server:
+`Stream` is nothing more than a wrapper around a Ruby `IO` object which
+abstracts away all the low level details of reading and writing we have
+discussed throughout this article. The `Server` object we make use of 
+in `IOLoop#accept` is implemented in a similar fashion, but is focused
+on accepting incoming connections instead:
 
 ```ruby
 class Server
@@ -414,130 +492,49 @@ class Server
 end
 ```
 
-A server is a very simplified stream: Instead of reading data, we can *accept*
-connections. As usual, we're doing this in a non-blocking way.
+Now that you've studied how these low level objects work, you should
+be able to revisit the full [source code for the Chat Server example](https://gist.github.com/3612925)
+and understand exactly how it works. If so, then you now know how to 
+build an evented I/O loop from scratch.
 
-### Smarter writing
+### Conclusions
 
-The IO will (hopefully, and most likely) be writable most of the time.  This
-means that even though we have nothing to write (i.e. the write buffer is
-empty), we're still passing it to IO.select. An easy optimization is to only
-check for writability on the streams that have pending outgoing data: 
+Although the basic ideas behind event-driven IO systems are easy to understand, 
+there are many low-level details that complicate things. We discussed some
+of those issues in this article, but there are many others that would need
+to be considered if we were trying to build a real event library. Among
+other things, we would need to consider the following problems:
 
-```ruby
-r, w = IO.select(@streams, @streams.select { |s| !s.writebuffer.empty? })
-```
+* Because our event loop does not implement timers, it is difficult to do
+a number of important things. Even something as simple as keeping a 
+connection open for a set period of time can be painful without built-in
+support for timers, and so any serious event library must support them. It's
+worth pointing out that `IO#select` does accept a timeout parameter, and
+it would be possible to make use of it fairly easily within this codebase.
 
-If you don't want to run an Array#select on every tick you can also solve this
-by having two separate arrays (`IO.select(@readers, @writers)`) and using the
-`drain`-callback to remove streams from writers when the buffer is empty.
+* The event loop shown in this article is susceptible to [back pressure][bp],
+which occurs when data continues to be buffered infinitely even if it
+has not been accepted for processing yet. Because our event loop 
+provides no mechanism for signalling that its buffers are full, incoming
+data will accumulate and have a similar effect to a memory leak until
+the connection is closed or the data is accepted.
 
-## Timers
+* The performance of select(2) is linear, which means that handling 
+10,000 streams will take 10,000x as long as handling a single stream. 
+Alternative solutions do exist at the kernel, but many are not 
+cross-platform and are not exposed to Ruby by default. If you have 
+high performance needs, you may want to look into the [nio4r][nio4r] 
+project, which attempts to solve this problem in a clean way by 
+wrapping the libev library.
 
-You will find yourself severely limited without timers in IOLoop. Something as
-simple as "keep this connection open for 5 seconds" becomes impossible without
-explicit support for timers by the event loop. (Well, technically, you *can*
-block the whole event loop for 5 seconds, but this is probably not what you
-want.)
-
-Luckily for us, IO.select accepts a *timeout* as the fourth parameter:
-
-```ruby
-class IOLoop
-  def initialize
-    # ...
-    @timers = []
-  end
-
-  def timer(sec, &blk)
-    @timers << [Time.now + sec, blk]
-    @timers.sort!
-  end
-  
-  def tick
-    now = Time.now
-    # Remove timers that have passed.
-    passed = @timers.delete_if { |time, _| time <= now }
-
-    if timer = @timers.first
-      # If there are any pending timers, we want only want to block     
-      # until the number of seconds
-      timeout = timer[0] - now
-    end
-
-    # Invoke the timers
-    passed.each { |_, blk| blk.call }
-
-    r, w = IO.select(@streams, @streams, nil, timeout)
-    # …
-  end
-end
-```
-
-Be aware that these timers do not have very high precision.
-
-## Notes on select(2)
-
-select(2) (the syscall that IO.select is based on) has *linear performance*.
-This means that handling 10 000 streams is 10 000 times as slow as handling 1
-stream, which makes select(2) a poor solution when you expect many
-connections. There are alternative solutions, namely epoll(2) in Linux and
-kqueue(2) in BSD, but these are not cross-platform nor exposed by Ruby by
-default. There's also cross-platform abstractions on top of
-select/epoll/kqueue: Both [libev][libev] and [libuv][libuv] (used by Node.js)
-uses either select, epoll or kqueue depending on the platform.
-
-If you want to experiment with these high-performance libraries in Ruby, I'd
-recommend the [Nio4r-project][nio4r] which wraps libev in a clean and simple
-matter.  You should have no problem replacing IO.select in our little IOLoop
-with NIO::Selector.
-
-## Back pressure
-
-An observant reader might notice a slight problem with our `@writebuffer`:
-it's unbounded. If the receiver is not attempting to read the incoming data at
-all, the socket will become non-writable. This is called [back pressure][bp],
-instead of flooding the network, the receiver communicates that it can't
-handle more incoming data and the sender pauses.
-
-The problem with our event loop (and many others) is that there is no
-connection between what is *producing* the data and what is *sending* it.
-Anyone can produce data by calling `Stream#<<`, but there's no way for the
-event loop to tell these producers that they should pause for some seconds.
-
-Our event loop will happily buffer the data forever and it will silently
-become a memory "leak". It's not a true leak since the memory will be freed
-when the receiver starts accepting data or the connection is closed, but
-*practically* it will behave as a leak.
-
-If you're using event-driven I/O and continuously sending data you should
-examine how your event loop handles back pressure:
-
-```ruby
-require 'socket'
-
-# Open connection
-socket = TCPSocket.new(IP, PORT)
-
-# Send initial handshake so the server will start streaming
-socket << "Do something"
-
-# And wait...
-sleep
-```
-
-If the memory usage slowly increases over time, you're vulnerable to a very
-simple DoS attack. If the connection is suddenly cut off, you might also cut off
-"real" clients. If nothing special happens: You're handling back pressure
-correctly.
-
-Handling back pressure using blocking I/O is much simpler. The call to #write
-will always block until the socket is writable so there's no way to produce
-more data until the receiver has acknowledged the previous chunk.
-
-## Conclusion
-
-Lalalala?
+The challenges involved in getting the details right in event loops
+are the real reason why tools like EventMachine and Node.js exist. These systems
+allow application programmers to gain the benefits of event-driven I/O without
+considering a ton of subtleties. Still, knowing how they work under the hood
+should help you make better use of these tools, and also should take away some
+of the feeling that they are a kind of deep voodoo that you'll never
+comprehend. Event-driven I/O is perfectly understandable, it is just a bit 
+messy.
 
 [nodejs]: http://nodejs.org/
 [em]: http://rubyeventmachine.com/
@@ -547,5 +544,3 @@ Lalalala?
 [libuv]: https://github.com/joyent/libuv
 [nio4r]: https://github.com/tarcieri/nio4r
 [bp]: http://en.wikipedia.org/wiki/Back_pressure#Back_pressure_in_information_technology
-
-
