@@ -1,4 +1,8 @@
-*BIO GOES HERE*
+*This issue of Practicing Ruby was contributed by Magnus Holm ([@judofyr](https://twitter.com/judofyr)), 
+a Ruby programmer  from Norway. Magnus works on various open source 
+projects (including the [Camping web framework](https://github.com/camping)),
+and writes articles over at [the timeless
+repository](http://timelessrepo.com/).*
 
 Network I/O in Ruby is so simple: 
 
@@ -32,7 +36,7 @@ While they might seem like silver bullets, there are subtle details that
 you'll have to think about. You can accomplish a lot by following simple rules
 ("don't block the thread"), but I always prefer to know precisely what I'm
 dealing with. Besides, if doing regular I/O is so simple, why does
-event-driven I/O has to be looked at as black magic?
+event-driven I/O have to be looked at as black magic?
 
 That's why we're going to implement an event loop in this article. Yep, that's
 right; we'll capture the core part of EventMachine/Node.js/Twisted in about
@@ -82,8 +86,8 @@ end
 
 EventEmitter is a module which we can include into classes that can send and
 receive events. In some sense this is the most important part of our event
-loop: It defines how we use and reason about events in the system. Changing it
-later will introduce changes all over the place.
+loop: It defines how we use and reason about events in the system. Modifying it
+later will require changes all over the place.
 
 Some notes:
 
@@ -93,14 +97,17 @@ Some notes:
 2. Have you seen "Hash.new with block" before? It's definitely one of the most
    useful "easter eggs" in Ruby.
 
-3. Why is it useful return `self` in #on?
+3. Why is it useful to return `self` in #on?
 
 4. You might find it useful to implement a special "all" event which is
    triggered for every event that is emitted.
 
 ## The Loop
 
-Next up we need something to fire up these events:
+Next up we need something to fire up these events. As you will see in
+the following code, the general flow of an event loop is simple:
+detect new events, run their associated callbacks, and then repeat
+the whole process over again.
 
 ```ruby
 class IOLoop
@@ -182,23 +189,19 @@ end
 l.start        # 5
 ```
 
-This shows the general flow of an event loop:
-
-1. Find new events.
-2. Run callbacks based on the event.
-3. Try again.
-
 Notice here that IOLoop#start blocks everything (until IOLoop#stop is called).
 Everything after IOLoop#start will happen in callbacks which means that the
 control flow can be surprising. You might think that you're writing data in
 step 2, but that's just stored locally in a buffer. It's not until the event
-loop has started (in step 5) that it's actually sending the data.
+loop has started (in step 5) that it's actually sending the data. This method
+triggers `tick` to be run in a loop, which in turn delegates the work of
+reading/writing data and emiting events to the `Stream#handle_read` and 
+`#handle_write` methods. We will take a look at how those are 
+implemented a bit later in this article, but you can treat them as a
+black box for now.
 
-In our I/O loop we'll implement Stream#handle\_read and #handle\_write and they
-will be responsible for reading/writing and emitting other events.
-
-This should also make it clear why it's so terrible to block inside a
-callback. Have a look at this call graph:
+Based on what you have seen so far, it should be it clear why it's 
+so terrible to block inside a callback. Have a look at this call graph:
 
 ```
 # indentation means that a method/block is called
@@ -220,8 +223,8 @@ tick (10 streams are readable)
   ...
 ```
 
-By blocking inside a callback, the I/O loop has to wait 5 seconds before it's
-able to continue calling the rest of the callbacks.
+By blocking inside the second callback, the I/O loop has to wait 5 seconds 
+before it's able to continue calling the rest of the callbacks.
 
 ### IO events
 
@@ -242,12 +245,16 @@ If you don't read from an IO, the kernel's buffer will become full and the
 sender's IO will no longer be writable. The sender will then have to wait
 until the receiver can catch up and free up the kernel's buffer.
 
-The goal of an I/O loop is to produce some more usable events:
+Because these low level operations can be tedious to work with, the goal 
+of an I/O loop is to trigger some more usable events:
 
 1. Data: A chunk of data was sent to us.
 2. Close: The IO was closed.
 3. Drain: We've sent all buffered outgoing data.
 4. Accept: A new connection was opened (only for servers).
+
+All of this functionality can be built on top of Ruby's `IO` objects with
+a bit of effort.
 
 ## Dealing with IOs
 
@@ -260,38 +267,42 @@ data = io.readpartial(12)
 data = io.read_nonblock(12)
 ```
 
-`io.read` reads until the IO is closed (e.g. end of file, server closes the
+* `io.read` reads until the IO is closed (e.g. end of file, server closes the
 connection etc.) 
 
-`io.read(12)` reads until it has received exactly 12 bytes.
+* `io.read(12)` reads until it has received exactly 12 bytes.
 
-`io.readpartial(12)` waits until the IO becomes readable, then it reads *at
+* `io.readpartial(12)` waits until the IO becomes readable, then it reads *at
 most* 12 bytes. So if a server only sent 6 bytes, readpartial will return
 those 6 bytes. If you had used `read(12)` it would wait until 6 more bytes are
 sent.
 
-`io.read_nonblock(12)` will read at most 12 bytes if the IO is readable. It
+* `io.read_nonblock(12)` will read at most 12 bytes if the IO is readable. It
 raises IO::WaitReadable if the IO is not readable.
 
-For writing there's two methods:
+For writing there are two methods:
 
 ```ruby
 length = io.write(str)
 length = io.write_nonblock(str)
 ```
 
-`io.write` writes the whole string to the IO; waiting until the IO becomes
+* `io.write` writes the whole string to the IO; waiting until the IO becomes
 writable if necessary. Returns the number of bytes written (which should
 always be equal to the number of bytes in the original string).
 
-`io.write_nonblock` writes as many bytes as possible until the IO becomes
+* `io.write_nonblock` writes as many bytes as possible until the IO becomes
 non-writable, returning the number of bytes written. Raises IO::WaitWritable
 if the IO is not writable.
 
+The challenge when both reading and writing is knowing when it is possible
+to do so, and when it is necessary to wait.
+
 ## Getting real with IO.select
 
-I'm not going to implement Stream#readable? or #writable?. It's a terrible
-solution to loop over every stream object in Ruby and check if it's
+We will need some mechanism for knowing when we can read or write to our
+streams, but I'm not going to implement Stream#readable? or #writable?. It's 
+a terrible solution to loop over every stream object in Ruby and check if it's
 readable/writable over and over again. This is really just not a job for Ruby;
 it's too far away from the kernel.
 
@@ -326,7 +337,8 @@ end
 ```
 
 `IO.select` will block until some of our streams become readable or writable
-and then return those streams.
+and then return those streams. From there, it is up to them to do the 
+actual data processing work.
 
 ## Handling read and write
 
