@@ -1,10 +1,9 @@
-*This issue of Practicing Ruby was contributed by Magnus Holm ([@judofyr](https://twitter.com/judofyr)), 
+*This issue of Practicing Ruby was contributed by Magnus Holm ([@judofyr][judofyr]), 
 a Ruby programmer  from Norway. Magnus works on various open source 
-projects (including the [Camping](https://github.com/camping) web framework),
-and writes articles over at [the timeless
-repository](http://timelessrepo.com/).*
+projects (including the [Camping][camping] web framework),
+and writes articles over at [the timeless repository][timeless].*
 
-Working with network I/O in Ruby is so simple: 
+Working with network I/O in Ruby is so easy: 
 
 ```ruby
 require 'socket'
@@ -21,16 +20,16 @@ end
 # Visit http://localhost:9234/ in your browser.
 ```
 
-Boom, a server is up and running! There are certain disadvantages though: We
+Boom, a server is up and running! It has some disadvantages though: We
 can only handle one connection at a time. We can also only have one *server*
-running at a time. There's no understatement in saying that this can be quite
-limiting. 
+running at a time. There's no understatement in saying that these constraints
+can be quite limiting. 
 
 There are several ways to improve this situation, but lately we've seen an
 influx of event-driven solutions. [Node.js][nodejs] is just an event-driven I/O-library
 built on top of JavaScript. [EventMachine][em] has been a solid solution in the Ruby
 world for several years. Python has [Twisted][twisted], and Perl has so many they even
-have [an abstaction around them][anyevent].
+have [an abstraction around them][anyevent].
 
 While they might seem like silver bullets, there are subtle details that
 you'll have to think about. You can accomplish a lot by following simple rules
@@ -39,7 +38,7 @@ dealing with. Besides, if doing regular I/O is so simple, why does
 event-driven I/O have to be looked at as black magic?
 
 To show that they are nothing to be afraid of, we are going to implement an 
-event loop in this article. Yep, that's right; we'll capture the core 
+I/O event loop in this article. Yep, that's right; we'll capture the core 
 part of EventMachine/Node.js/Twisted in about 150 lines of Ruby. It won't 
 be performant, it won't be test-driven, it won't be solid, but it will 
 use the exact same concepts as in all of these great projects. We will start 
@@ -99,7 +98,9 @@ server << io.listen('0.0.0.0', 1234)
 io.start
 ```
 
-To play around with this server, run [this script](https://raw.github.com/gist/3612925/315e7bfc5de7a029606b3885d71953acb84f112e/ChatServer.rb) and then open up a couple telnet sessions to it. You should be able to produce something like the following with a bit of experimentation:
+To play around with this server, run [this script][chatserver] and then open up
+a couple telnet sessions to it. You should be able to produce something like the
+following with a bit of experimentation:
 
 ```
 # from User #1's console:
@@ -120,10 +121,10 @@ Bye
 User #2 said: Bye
 ```
 
-If you can't get this running or don't have the time to try it out right now,
-don't worry: as long as you understand the basic idea, you'll be fine. This just
-serves as a practical example to help you understand [the 
-code we'll be discussing](https://raw.github.com/gist/3612925/315e7bfc5de7a029606b3885d71953acb84f112e/ChatServer.rb) throughout the rest of this article.
+If you don't have the time to try out this code right now,
+don't worry: as long as you understand the basic idea behind it, you'll be fine.
+This chat server just serves as a practical example to help you 
+understand [the code we'll be discussing][chatserver] throughout this article.
 
 Now that we have a place to start from, let's build our event system.
 
@@ -165,7 +166,7 @@ end
 
 ```
 
-EventEmitter is a module which we can include into classes that can send and
+`EventEmitter` is a module which we can include into classes that can send and
 receive events. In some sense this is the most important part of our event
 loop: It defines how we use and reason about events in the system. Modifying it
 later will require changes all over the place. While this particular
@@ -241,8 +242,8 @@ class IOLoop
 end
 ```
 
-Notice here that IOLoop#start blocks everything (until IOLoop#stop is called).
-Everything after IOLoop#start will happen in callbacks which means that the
+Notice here that `IOLoop#start` blocks everything until `IOLoop#stop` is called.
+Everything after `IOLoop#start` will happen in callbacks which means that the
 control flow can be surprising. For example, consider the following code:
 
 ```ruby
@@ -264,16 +265,20 @@ end
 l.start        # 5
 ```
 
-You might think that you're writing data in step 2, but that's just stored locally in 
-a buffer. It's not until the event loop has started (in step 5) that it's actually
-sending the data. This method triggers `tick` to be run in a loop, which
-delegates the work of reading/writing data and emiting events to the 
-`Stream#handle_read` and `#handle_write` methods. We will look at how those are 
-implemented a bit later in this article, but you can treat them as a
-black box for now.
+You might think that you're writing data in step 2, but the
+`<<` method actually only stores the data in a local buffer.
+It's not until the event loop has started (in step 5) that the data
+actually gets sent. The `IOLoop#start` method triggers `#tick` to be run in a loop, which
+delegates to `Stream#handle_read` and `Stream#handle_write`. These methods 
+are responsible for doing any necessary I/O operations and then triggering
+events like `:data` and `:close`, which you can being used in step 3 and step 4
+above. We'll take a look at how `Stream` is implemented later, but for now 
+the main thing to take away from this example is that event-driven code 
+cannot be read in top-down fashion as if it were procedural code.
 
-Based on what you have seen so far, it should also be it clear why it's 
-so terrible to block inside a callback. Have a look at this call graph:
+Studying the implementation of `IOLoop` should also make it clear why it's 
+so terrible to block inside a callback. For example, take a look at this 
+call graph:
 
 ```
 # indentation means that a method/block is called
@@ -304,20 +309,20 @@ I/O. Let's talk a bit more about that now.
 
 ## IO events
 
-At the most basic level, there are only two events for an IO object:
+At the most basic level, there are only two events for an `IO` object:
 
-1. Readable: The IO is readable, data is waiting for us. 
-2. Writable: The IO is writable, we can write data.
+1. Readable: The `IO` is readable, data is waiting for us. 
+2. Writable: The `IO` is writable, we can write data.
 
 These might sound a little confusing: How can a client know that the server
 will send us data? It can't. Readable doesn't mean "the server will send us
 data", it means "the server has already sent us data". In that case the data
-is handled by the kernel in your OS. Whenever you read from an IO object, you're
+is handled by the kernel in your OS. Whenever you read from an `IO` object, you're
 actually just copying bytes from the kernel. If the receiver does not read 
-from IO, the kernel's buffer will become full and the sender's IO will 
+from `IO`, the kernel's buffer will become full and the sender's `IO` will 
 no longer be writable. The sender will then have to wait until the 
 receiver can catch up and free up the kernel's buffer. This is
-what makes non-blocking IO operations tricky to work with.
+what makes non-blocking `IO` operations tricky to work with.
 
 Because these low level operations can be tedious to handle manually, the 
 goal of an I/O loop is to trigger some more usable events for application
@@ -333,7 +338,7 @@ a bit of effort.
 
 ## Working with the Ruby IO object
 
-There are various ways to read from a IO object in Ruby:
+There are various ways to read from an `IO` object in Ruby:
 
 ```ruby
 data = io.read
@@ -342,18 +347,18 @@ data = io.readpartial(12)
 data = io.read_nonblock(12)
 ```
 
-* `io.read` reads until the IO is closed (e.g. end of file, server closes the
+* `io.read` reads until the `IO` is closed (e.g. end of file, server closes the
 connection etc.) 
 
 * `io.read(12)` reads until it has received exactly 12 bytes.
 
-* `io.readpartial(12)` waits until the IO becomes readable, then it reads *at
-most* 12 bytes. So if a server only sent 6 bytes, readpartial will return
+* `io.readpartial(12)` waits until the `IO` becomes readable, then it reads *at
+most* 12 bytes. So if a server only sent 6 bytes, `readpartial` will return
 those 6 bytes. If you had used `read(12)` it would wait until 6 more bytes are
 sent.
 
 * `io.read_nonblock(12)` will read at most 12 bytes if the IO is readable. It
-raises IO::WaitReadable if the IO is not readable.
+raises `IO::WaitReadable` if the `IO` is not readable.
 
 For writing there are two methods:
 
@@ -362,28 +367,28 @@ length = io.write(str)
 length = io.write_nonblock(str)
 ```
 
-* `io.write` writes the whole string to the IO; waiting until the IO becomes
-writable if necessary. Returns the number of bytes written (which should
+* `io.write` writes the whole string to the `IO`; waiting until the `IO` becomes
+writable if necessary. It returns the number of bytes written (which should
 always be equal to the number of bytes in the original string).
 
-* `io.write_nonblock` writes as many bytes as possible until the IO becomes
-non-writable, returning the number of bytes written. Raises IO::WaitWritable
-if the IO is not writable.
+* `io.write_nonblock` writes as many bytes as possible until the `IO` becomes
+non-writable, returning the number of bytes written. It raises `IO::WaitWritable`
+if the `IO` is not writable.
 
-The challenge when both reading and writing is knowing when it is possible
-to do so, and when it is necessary to wait.
+The challenge when both reading and writing in a non-blocking fashion is knowing 
+when it is possible to do so, and when it is necessary to wait.
 
 ## Getting real with IO.select
 
 We will need some mechanism for knowing when we can read or write to our
-streams, but I'm not going to implement Stream#readable? or #writable?. It's 
+streams, but I'm not going to implement `Stream#readable?` or `#writable?`. It's 
 a terrible solution to loop over every stream object in Ruby and check if it's
 readable/writable over and over again. This is really just not a job for Ruby;
 it's too far away from the kernel.
 
 Luckily, the kernel exposes ways to efficiently detect readable and writable
-IOs. The simplest (and cross-platform) is called select(2) and is available in
-Ruby as IO.select:
+I/O streams. The simplest cross-platform method is called select(2) 
+and is available in Ruby as `IO.select`:
 
 ```
 IO.select(read_array [, write_array [, error_array [, timeout]]])
@@ -394,7 +399,7 @@ It returns an array of those IO objects which need attention. It returns nil
 if the optional timeout (in seconds) was supplied and has elapsed.
 ```
 
-With this knowledge we can write a much better #tick method:
+With this knowledge we can write a much better `#tick` method:
 
 ```ruby
 class IOLoop
@@ -412,8 +417,8 @@ end
 ```
 
 `IO.select` will block until some of our streams become readable or writable
-and then return those streams. From there, it is up to them to do the 
-actual data processing work.
+and then return those streams. From there, it is up to those streams to do 
+the actual data processing work.
 
 ## Handling streaming input and output 
 
@@ -493,13 +498,13 @@ end
 ```
 
 Now that you've studied how these low level objects work, you should
-be able to revisit the full [source code for the Chat Server example](https://gist.github.com/3612925)
-and understand exactly how it works. If so, then you now know how to 
-build an evented I/O loop from scratch.
+be able to revisit the full [source code for the Chat Server
+example][chatserver] and understand exactly how it works. If you
+can do that, then you now know how to build an evented I/O loop from scratch.
 
 ### Conclusions
 
-Although the basic ideas behind event-driven IO systems are easy to understand, 
+Although the basic ideas behind event-driven I/O systems are easy to understand, 
 there are many low-level details that complicate things. We discussed some
 of those issues in this article, but there are many others that would need
 to be considered if we were trying to build a real event library. Among
@@ -536,6 +541,10 @@ of the feeling that they are a kind of deep voodoo that you'll never
 comprehend. Event-driven I/O is perfectly understandable, it is just a bit 
 messy.
 
+[chatserver]: https://raw.github.com/gist/3612925/315e7bfc5de7a029606b3885d71953acb84f112e/ChatServer.rb
+[timeless]: http://timelessrepo.com
+[camping]: https://github.com/camping
+[judofyr]: http://twitter.com/judofyr
 [nodejs]: http://nodejs.org/
 [em]: http://rubyeventmachine.com/
 [twisted]: http://twistedmatrix.com/
