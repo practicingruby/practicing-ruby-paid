@@ -301,7 +301,7 @@ tick (10 streams are readable)
 ```
 
 By blocking inside the second callback, the I/O loop has to wait 5 seconds 
-before it's able to continue calling the rest of the callbacks. This is
+before it's able to call the rest of the callbacks. This is
 obviously a bad thing, and it is important
 to avoid this kind of situation when possible. Of course, non-blocking
 callbacks are not enough, the event loop also needs to make use of non-blocking

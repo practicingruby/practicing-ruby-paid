@@ -12,73 +12,101 @@ compatible with Twitter's API. This article will define what each of those types
 compare their advantages and disadvantages in the context of rstat.us, and discuss
 the decision we have made for rstat.us' current development.
 
-Hypermedia API
---------------
+## Hypermedia API
 
-Hypermedia APIs currently have a reputation for being complicated and hard to understand, but they're really nothing to be scared of. There are many, many articles about what hypermedia is or is not, but the general definition that made hypermedia click for me is that a hypermedia API returns links in its responses that the client then uses to make its next calls. This means the server does not have a set of URLs with parameters documented for you up front; it has documentation of the controls that you will see within the responses.
+Hypermedia APIs currently have a reputation for being complicated and hard to
+understand, but they're really nothing to be scared of. There are many, many
+articles about what hypermedia is or is not, but the general definition that
+made hypermedia click for me is that a hypermedia API returns links in its
+responses that the client then uses to make its next calls. This means the
+server does not have a set of URLs with parameters documented for you up front;
+it has documentation of the controls that you will see within the responses.
 
-The specific hypermedia API type that we are considering for rstat.us is one that complies with the [Application-Level Profile Semantics (ALPS) microblogging spec](http://amundsen.com/hypermedia/profiles/). This spec is an experiment started by Mike Amundsen to explore the advantages and disadvantages of multiple client and server implementations agreeing only on what particular values for the XHTML attributes `class`, `id`, `rel`, and `name` signify. The spec does not contain any URLs, example queries, or example responses.
+The specific hypermedia API type that we are considering for rstat.us is one
+that complies with the [Application-Level Profile Semantics (ALPS) microblogging
+spec](http://amundsen.com/hypermedia/profiles/). This spec is an experiment
+started by Mike Amundsen to explore the advantages and disadvantages of multiple
+client and server implementations agreeing only on what particular values for
+the XHTML attributes `class`, `id`, `rel`, and `name` signify. The spec does not
+contain any URLs, example queries, or example responses.
 
-Here is a subset of the ALPS spec attributes and definitions; these have to do with the rendering of one status update and its metadata:
+Here is a subset of the ALPS spec attributes and definitions; these have to do
+with the rendering of one status update and its metadata:
 
-  - li.message - A representation of a single message
-  - span.message-text - The text of a message posted by a user
-  - span.user-text - The user nickname text
-  - a with rel 'message' - A reference to a message representation
+- li.message - A representation of a single message
+- span.message-text - The text of a message posted by a user
+- span.user-text - The user nickname text
+- a with rel 'message' - A reference to a message representation
 
 Here is one way you could render an update that is compatible with these ALPS spec attributes:
 
-    <li class="message">
-      <span class="message-text">I had a fantastic sandwich at Primanti's for lunch.</span>
-      <span class="user-text">Carols10cents</span>
-      <a rel="message" href="http://rstat.us/12345">(permalink)</a>
-    </li>
+```html
+<li class="message">
+  <span class="message-text">
+    I had a fantastic sandwich at Primanti's for lunch.
+  </span>
+  <span class="user-text">Carols10cents</span>
+  <a rel="message" href="http://rstat.us/12345">(permalink)</a>
+</li>
+```
 
 And here is another way that is also compatible:
 
-    <li class="message even">
-      <p>
-        <a rel="permalink message" href="http://rstat.us/update?id=12345">
-          <span class="user-text">Carols10cents</span> said:
-        </a>
-        <span class="message-text">I had a fantastic sandwich at Primanti's for lunch.</span>
-      </p>
-    </li>
+```html
+<li class="message even">
+  <p>
+    <a rel="permalink message" href="http://rstat.us/update?id=12345">
+      <span class="user-text">Carols10cents</span> said:
+    </a>
+    <span class="message-text">
+      I had a fantastic sandwich at Primanti's for lunch.
+    </span>
+  </p>
+</li>
+```
 
 Notice some of the differences between the two:
-  - All the elements being siblings vs some nested within each other
-  - Only having the ALPS attribute values vs having other classes and rels as well
-  - Only having the ALPS elements vs having the `<p>` element between the `<li>` and the rest of the children
-  - The URLs of the permalinks are different
 
-All of these are perfectly fine! If the client only depends on the values of the attributes and not the exact data structure that's returned, it will be flexible enough to handle both these responses.
+- All the elements being siblings vs some nested within each other
+- Only having the ALPS attribute values vs having other classes and rels as well
+- Only having the ALPS elements vs having the `<p>` element 
+between the `<li>` and the rest of the children
+- The URLs of the permalinks are different
 
-Here is how a client could extract this update's author's username using [Nokogiri](http://nokogiri.org) on either of these fragments, using CSS selectors or XPath:
+All of these are perfectly fine! If the client only depends on the values of the
+attributes and not the exact data structure that's returned, it will be flexible
+enough to handle both these responses.
 
-    require 'nokogiri'
+Here is how a client could extract this update's author's username using
+[Nokogiri](http://nokogiri.org) on either of these fragments, using CSS
+selectors:
 
-    # Create a Nokogiri HTML Document from the first example, the second example could be substituted and the
-    # result would be the same
-    html = <<HERE
-      <li class="message">
-        <span class="message-text">I had a fantastic sandwich at Primanti's for lunch.</span>
-        <span class="user-text">Carols10cents</span>
-        <a rel="message" href="http://rstat.us/12345">(permalink)</a>
-      </li>
-    HERE
+```ruby
+require 'nokogiri'
 
-    doc = Nokogiri::HTML::Document.parse(html)
+# Create a Nokogiri HTML Document from the first example, the second example 
+# could be substituted and the result would be the same
+html = <<HERE
+  <li class="message">
+    <span class="message-text">
+      I had a fantastic sandwich at Primanti's for lunch.
+    </span>
+    <span class="user-text">Carols10cents</span>
+    <a rel="message" href="http://rstat.us/12345">(permalink)</a>
+  </li>
+HERE
 
-    # Using CSS selectors
-    username = doc.css("li.message span.user-text").text 
+doc = Nokogiri::HTML::Document.parse(html)
 
-    # Using XPath selectors, slightly more complex since elements can have more than one class
-    username = doc.xpath("//li[contains(concat(' ', normalize-space(@class), ' '), 'message')]//span[contains(concat(' ', normalize-space(@class), ' '), '')]").text 
+# Using CSS selectors
+username = doc.css("li.message span.user-text").text 
+```
 
-So with this kind of contract, we have the flexibility to change the representation of an update by the server from the first format to the second without breaking client functionality.
+With this kind of contract, we have the flexibility to change the representation
+of an update by the server from the first format to the second without breaking
+client functionality.
 
-JSON API
---------
+## JSON API
 
 JSON APIs are much more common than hypermedia APIs right now. This style of API typically has a published list of URLs, one for each action a client may want to take. Each URL also has a number of documented parameters in which a client can send arguments, and the requests return data in a defined format (JSON is popular). This style is more like making a Remote Procedure Call (RPC) -- calling functions with arguments and receiving return values but the work is being done on a remote machine. I think it's popular because it matches the way we code locally; it feels familiar.
 
@@ -86,56 +114,101 @@ JSON APIs are much more common than hypermedia APIs right now. This style of API
 
 For example, here is how you would get the text of the 3 most recent tweets made by user @climagic with Twitter's JSON API ([relevant documentation](https://dev.twitter.com/docs/api/1/get/statuses/home_timeline)):
 
-    require 'open-uri'
-    require 'json'
+```ruby
+require 'open-uri'
+require 'json'
 
-    # Make a request to the home_timeline resource with the format json.
-    # Pass the parameter screen_name with the value climagic and the parameter count with the value 3.
+# Make a request to the home_timeline resource with the format json.
+# Pass the parameter screen_name with the value climagic and the 
+# parameter count with the value 3.
 
-    uri = URI("http://api.twitter.com/1/statuses/user_timeline.json?screen_name=climagic&count=3")
+base = "http://api.twitter.com/1/statuses/user_timeline.json"
+uri  = URI("#{base}?screen_name=climagic&count=3")
 
-    # The response object is a list of tweets, which is documented at
-    # https://dev.twitter.com/docs/platform-objects/tweets
+# The response object is a list of tweets, which is documented at
+# https://dev.twitter.com/docs/platform-objects/tweets
 
-    response = JSON.parse(open(uri).read)
+response = JSON.parse(open(uri).read)
 
-    tweets = response.collect { |t| t["text"] }
-
-
-Comparing and contrasting the two styles
-----------------------------------------
-
-There are many clients that have been built against Twitter's current API. There are even some clients that allow you to change the root URL of all the requests (ex: [Twidere](https://play.google.com/store/apps/details?id=org.mariotaku.twidere)), so that if rstat.us implemented the exact same parameters and return data, people could use those clients and tell them to request `http://rstat.us/statuses/user_timeline.json` instead and immediately have an rstat.us client. Even if rstat.us doesn't end up having that level of compatibility, if we offer an API in this same style, developers of other clients would already be familiar with how to use it in general.
-
-But do we want to be coupled to Twitter's API design? If Twitter changes a parameter name, or a URL, or the structure of the data returned, and the clients update to handle that, the rstat.us use of those clients will break as well. One of the reasons rstat.us was started was to become less reliant on Twitter, after all.
-
-In addition to flexibility in the exact representation provided by the server and consumable by the client, another advantage of a hypermedia API is that the media type used here is XHTML-- and we just so happen to already have an XHTML representation of rstat.us' functionality, rstat.us' web interface itself! If you take a look at the source of [http://rstat.us](http://rstat.us), you can see that the markup for an update contains the attribute values we've been talking about. rstat.us isn't completely compliant with the spec yet, but adding attributes to our existing output [has been fairly simple](https://github.com/hotsh/rstat.us/commit/4e234556c73426dc16526883661b3feb1e2f7d9f). Building out a Twitter-compatible JSON API would mean reimplementing an almost entirely separate interface to rstat.us' functionality that we would then need to maintain consistency with the core of rstat.us itself _as well as_ with Twitter.
-
-But, looking at the source of http://rstat.us again, you'll also see a lot of other information in the source of the page. Most of it isn't needed for the use of the API, so we're transferring a lot of unnecessary data back and forth. The JSON responses are very compact in comparison; over time and with scale, this could make a difference in performance.
-
-Another concern I have is that some operations that are straightforward with a Twitter-style JSON API, such as getting one user's updates given their username, seem complex when following the ALPS spec. With the JSON API, there is a predefined URL with the username as a parameter, and the response would contain the user's updates. With the ALPS spec, starting from the root URL (which is the only predefined URL in an ideal hypermedia API), we would need to do a minimum of 4 HTTP requests:
-
-  - Request the root URL
-  - Find the `a` with `rel=users-search` and follow its `href`
-  - Fill out the `form` that has `class=users-search`, putting the username in the `input` with `name=search`
-  - Find the search result beneath `div#users ul.search li.user` that has `span.user-text` equal to the username; follow the `a` with `rel=user` within that search result
-  - Extract the user's updates using the update attributes.
-
-This workflow could be cached so that the next time we try to get a user's updates, we wouldn't have to make all these calls. Another alternative is extending the ALPS spec to include, for example, a URI template with a `rel` attribute to indicate that it's a transition to information about a user when the template is filled out with the username.
+tweets = response.collect { |t| t["text"] }
+```
 
 
-Outcome
--------
+### Comparing and contrasting the two styles
 
-After weighing all these considerations, we've decided to concentrate first on implementing a Twitter-compatible JSON API. Being able to use existing, functioning clients is probably the most compelling reason. Should those not end up working, having an API in a style already familiar to many client developers is also a big plus. For the long term, I think having a more flexible and scalable solution is more important but these aren't really something we need until there is more adoption. So we may implement a hypermedia API, probably an extension of the ALPS spec, in the future.
+There are many clients that have been built against Twitter's current API. There
+are even some clients that allow you to change the root URL of all the requests
+(ex:
+[Twidere](https://play.google.com/store/apps/details?id=org.mariotaku.twidere)),
+so that if rstat.us implemented the exact same parameters and return data,
+people could use those clients and tell them to request
+`http://rstat.us/statuses/user_timeline.json` instead and immediately have an
+rstat.us client. Even if rstat.us doesn't end up having that level of
+compatibility, if we offer an API in this same style, developers of other
+clients would already be familiar with how to use it in general.
 
-References
-----------
+But do we want to be coupled to Twitter's API design? If Twitter changes a
+parameter name, or a URL, or the structure of the data returned, and the clients
+update to handle that, the rstat.us use of those clients will break as well. One
+of the reasons rstat.us was started was to become less reliant on Twitter, after
+all.
 
-  - [rstat.us](http://rstat.us) and its [code on github](https://github.com/hotsh/rstat.us)
-  - [ALPS microblogging spec](http://amundsen.com/hypermedia/profiles/)
-  - [Designing Hypermedia APIs](http://designinghypermediaapis.com) by Steve Klabnik
-  - [A Shoes hypermedia client for ALPS microblogging](https://gist.github.com/2187514)
-  - [Twitter API docs](https://dev.twitter.com/docs/api)
-  - [REST APIs must be hypertext-driven](http://roy.gbiv.com/untangled/2008/rest-apis-must-be-hypertext-driven)
+In addition to flexibility in the exact representation provided by the server
+and consumable by the client, another advantage of a hypermedia API is that the
+media type used here is XHTML-- and we just so happen to already have an XHTML
+representation of rstat.us' functionality, rstat.us' web interface itself! If
+you take a look at the source of [http://rstat.us](http://rstat.us), you can see
+that the markup for an update contains the attribute values we've been talking
+about. rstat.us isn't completely compliant with the spec yet, but adding
+attributes to our existing output [has been fairly
+simple](https://github.com/hotsh/rstat.us/commit/4e234556c73426dc16526883661b3feb1e2f7d9f).
+Building out a Twitter-compatible JSON API would mean reimplementing an almost
+entirely separate interface to rstat.us' functionality that we would then need
+to maintain consistency with the core of rstat.us itself _as well as_ with
+Twitter.
 
+But, looking at the source of http://rstat.us again, you'll also see a lot of
+other information in the source of the page. Most of it isn't needed for the use
+of the API, so we're transferring a lot of unnecessary data back and forth. The
+JSON responses are very compact in comparison; over time and with scale, this
+could make a difference in performance.
+
+Another concern I have is that some operations that are straightforward with a
+Twitter-style JSON API, such as getting one user's updates given their username,
+seem complex when following the ALPS spec. With the JSON API, there is a
+predefined URL with the username as a parameter, and the response would contain
+the user's updates. With the ALPS spec, starting from the root URL (which is the
+only predefined URL in an ideal hypermedia API), we would need to do a minimum
+of 4 HTTP requests:
+
+- Request the root URL
+- Find the `a` with `rel=users-search` and follow its `href`
+- Fill out the `form` that has `class=users-search`, putting the username in the `input` with `name=search`
+- Find the search result beneath `div#users ul.search li.user` that has `span.user-text` equal to the username; follow the `a` with `rel=user` within that search result
+- Extract the user's updates using the update attributes.
+
+This workflow could be cached so that the next time we try to get a user's
+updates, we wouldn't have to make all these calls. Another alternative is
+extending the ALPS spec to include, for example, a URI template with a `rel`
+attribute to indicate that it's a transition to information about a user when
+the template is filled out with the username.
+
+### Outcome
+
+After weighing all these considerations, we've decided to concentrate first on
+implementing a Twitter-compatible JSON API. Being able to use existing,
+functioning clients is probably the most compelling reason. Should those not end
+up working, having an API in a style already familiar to many client developers
+is also a big plus. For the long term, I think having a more flexible and
+scalable solution is more important but these aren't really something we need
+until there is more adoption. So we may implement a hypermedia API, probably an
+extension of the ALPS spec, in the future.
+
+### References
+
+- [rstat.us](http://rstat.us) and its [code on github](https://github.com/hotsh/rstat.us)
+- [ALPS microblogging spec](http://amundsen.com/hypermedia/profiles/)
+- [Designing Hypermedia APIs](http://designinghypermediaapis.com) by Steve Klabnik
+- [A Shoes hypermedia client for ALPS microblogging](https://gist.github.com/2187514)
+- [Twitter API docs](https://dev.twitter.com/docs/api)
+- [REST APIs must be hypertext-driven](http://roy.gbiv.com/untangled/2008/rest-apis-must-be-hypertext-driven)
