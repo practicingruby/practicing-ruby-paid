@@ -1,9 +1,9 @@
 **BIO GOES HERE**
 
 Rstat.us is a microblogging site that is similar to Twitter, but it's built using
-open standards ([OStatus](http://ostatus.org/)). It's designed to be distributed so 
-that anyone can run rstat.us' code on their own domain but be able to follow anyone 
-on other domains. The largest problem currently impeding user adoption is the lack 
+open standards ([OStatus](http://ostatus.org/)). It's designed to be federated so
+that anyone can run rstat.us' code on their own domain but be able to follow anyone
+on other domains. The largest problem currently impeding user adoption is the lack
 of a mobile client, which is due to the lack of an API.
 
 We have been exploring two different types of APIs for possible implementation for
