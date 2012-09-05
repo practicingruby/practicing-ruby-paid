@@ -1,5 +1,22 @@
-https://www.vitsoe.com/gb/about/good-design
-http://en.wikipedia.org/wiki/Dieter_Rams
+* https://www.vitsoe.com/gb/about/good-design
+* http://en.wikipedia.org/wiki/Dieter_Rams
+
+GEMS TO LOOK AT:
+
+* Nokogiri
+* Rake
+* Rack
+* Celluloid
+* Minitest
+* Haml / Sass
+* Compass
+* Coffeescript
+* Redcarpet
+* Mailhopper
+* MD Preview
+* Omniauth
+
+GOOD DESIGN:
 
 * Is innovative - The possibilities for innovation are not, by any means, exhausted. Technological development is always offering new opportunities for innovative design. But innovative design always develops in tandem with innovative technology, and can never be an end in itself.
 
