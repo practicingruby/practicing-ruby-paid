@@ -16,6 +16,9 @@ GEMS TO LOOK AT:
 * MD Preview
 * Omniauth
 * Sequel
+* Foreman
+* Sidekiq
+* Resque
 
 DESIGN CANDIDATES:
 
