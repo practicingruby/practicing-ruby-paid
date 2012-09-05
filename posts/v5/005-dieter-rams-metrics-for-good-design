@@ -19,6 +19,7 @@ GEMS TO LOOK AT:
 * Foreman
 * Sidekiq
 * Resque
+* Redis Failover
 
 DESIGN CANDIDATES:
 
