@@ -181,11 +181,72 @@ the user's updates. With the ALPS spec, starting from the root URL (which is the
 only predefined URL in an ideal hypermedia API), we would need to do a minimum
 of 4 HTTP requests:
 
-- Request the root URL
-- Find the `a` with `rel=users-search` and follow its `href`
-- Fill out the `form` that has `class=users-search`, putting the username in the `input` with `name=search`
-- Find the search result beneath `div#users ul.search li.user` that has `span.user-text` equal to the username; follow the `a` with `rel=user` within that search result
-- Extract the user's updates using the update attributes.
+```ruby
+require 'nokogiri'
+require 'open-uri'
+
+USERNAME = "carols10cents"
+BASE_URI = "https://rstat.us/"
+
+def find_a_in(html, params = {})
+  raise "no rel specified" unless params[:rel]
+
+  # This XPath is necessary because @rels could have more than one value.
+  link = html.xpath(
+    ".//a[contains(concat(' ', normalize-space(@rel), ' '), ' #{params[:rel]} ')]"
+  ).first
+end
+
+def resolve_relative_uri(params = {})
+  raise "no relative uri specified" unless params[:relative]
+  raise "no base uri specified" unless params[:base]
+
+  (URI(params[:base]) + URI(params[:relative])).to_s
+end
+
+def request_html(relative_uri)
+  absolute_uri = resolve_relative_uri(
+    :relative => relative_uri,
+    :base     => BASE_URI
+  )
+  Nokogiri::HTML::Document.parse(open(absolute_uri).read)
+end
+
+# Request the root URL
+# HTTP Request #1
+root_response = request_html(BASE_URI)
+
+# Find the `a` with `rel=users-search` and follow its `href`
+# HTTP Request #2
+users_search_path = find_a_in(root_response, :rel => "users-search")["href"]
+users_search_response = request_html(users_search_path)
+
+# Fill out the `form` that has `class=users-search`,
+# putting the username in the `input` with `name=search`
+
+search_path = users_search_response.css("form.users-search").first["action"]
+user_lookup_query = "#{search_path}?search=#{USERNAME}"
+
+# HTTP Request #3
+user_lookup_response = request_html(user_lookup_query)
+
+# Find the search result beneath `div#users ul.search li.user` that has
+# `span.user-text` equal to the username
+search_results = user_lookup_response.css("div#users ul.search li.user")
+
+result = search_results.detect { |sr|
+  sr.css("span.user-text").text.match(/^#{USERNAME}$/i)
+}
+
+# Follow the `a` with `rel=user` within that search result
+# HTTP Request #4
+user_path = find_a_in(result, :rel => "user")["href"]
+user_response = request_html(user_path)
+
+# Extract the user's updates using the update attributes.
+updates = user_response.css("div#messages ul.messages-user li")
+puts updates.map { |li| li.css("span.message-text").text.strip }.join("\n")
+```
 
 This workflow could be cached so that the next time we try to get a user's
 updates, we wouldn't have to make all these calls. Another alternative is
