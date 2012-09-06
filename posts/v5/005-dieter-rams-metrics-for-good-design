@@ -20,18 +20,20 @@ GEMS TO LOOK AT:
 * Sidekiq
 * Resque
 * Redis Failover
+* Turn
+* Spin
 
 DESIGN CANDIDATES:
 
 - Innovative (TBD)
 - Useful (TBD)
-- Aesthetic
-- Understandable
-- Unobtrusive
-- Honest
-- Long-lasting
-- Thorough
-- Environmental (Turn?)
+- Aesthetic (TBD)
+- Understandable (TBD)
+- Unobtrusive (TBD)
+- Honest (TBD)
+- Long-lasting (TBD)
+- Thorough (TBD)
+- Environmental (Spin?) 
 - Minimal (Rack?)
 
 GOOD DESIGN:
