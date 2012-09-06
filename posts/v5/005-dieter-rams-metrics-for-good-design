@@ -25,16 +25,17 @@ GEMS TO LOOK AT:
 
 DESIGN CANDIDATES:
 
-- Innovative (TBD)
-- Useful (TBD)
+* Environmental (Spin)
+* Minimal (Rack)
+* Unobtrusive (Sinatra and/or Tilt)
+* Innovative (Celluloid)
+
+- Useful (Jekyll?)
 - Aesthetic (TBD)
 - Understandable (TBD)
-- Unobtrusive (TBD)
 - Honest (TBD)
 - Long-lasting (TBD)
-- Thorough (TBD)
-- Environmental (Spin?) 
-- Minimal (Rack?)
+- Thorough (CSV?)
 
 GOOD DESIGN:
 
