@@ -133,6 +133,16 @@ response = JSON.parse(open(uri).read)
 tweets = response.collect { |t| t["text"] }
 ```
 
+Rendering JSON from the server is usually fairly simple as well, and I think
+the simplicity of providing and consuming JSON using many different languages
+is one of the big reasons JSON APIs are gaining in popularity. Twitter
+actually decided to [drop support for XML, RSS, and
+Atom](https://dev.twitter.com/docs/api/1.1/overview#JSON_support_only) in
+version 1.1 of their API, leaving ONLY support for JSON. [According to
+Programmable
+Web](http://blog.programmableweb.com/2011/05/25/1-in-5-apis-say-bye-xml/) 20%
+of new APIs released in 2011 offered only JSON support.
+
 
 ### Comparing and contrasting the two styles
 
