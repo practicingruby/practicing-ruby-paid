@@ -1,6 +1,7 @@
-**BIO GOES HERE**
+*This issue of Practicing Ruby was contributed by Carol Nichols ([@carols10cents][carols10cents], [carols10cents@rstat.us](https://rstat.us/users/Carols10cents)),
+a Ruby programmer from Pittsburgh, PA, USA. Carol is one of the maintainers of [rstat.us](https://rstat.us) and one of the organizers of [Steel City Ruby Conf](http://steelcityrubyconf.org/).*
 
-Rstat.us is a microblogging site that is similar to Twitter, but it's built using
+[Rstat.us](https://rstat.us) is a microblogging site that is similar to Twitter, but it's built using
 open standards ([OStatus](http://ostatus.org/)). It's designed to be federated so
 that anyone can run rstat.us' code on their own domain but be able to follow anyone
 on other domains. The largest problem currently impeding user adoption is the lack
