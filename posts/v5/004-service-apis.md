@@ -259,10 +259,19 @@ puts updates.map { |li| li.css("span.message-text").text.strip }.join("\n")
 ```
 
 This workflow could be cached so that the next time we try to get a user's
-updates, we wouldn't have to make all these calls. Another alternative is
-extending the ALPS spec to include, for example, a URI template with a `rel`
-attribute to indicate that it's a transition to information about a user when
-the template is filled out with the username.
+updates, we wouldn't have to make all of these HTTP requests. The first two
+requests for the root page and the user search page are unlikely to change
+very often, so when we get a new username we can start with the construction
+of the user_lookup_query with a cached search_path value. That way, we would
+only need to make the last two HTTP requests to look up subsequent users. If
+the root page or the user search page DO change, however, then our cache will
+be stale and the subsequent requests could fail. In that case, we should have
+error handling code that clears the cache and tries starting from the root
+page again.
+
+Another alternative is extending the ALPS spec to include, for example, a URI
+template with a `rel` attribute to indicate that it's a transition to
+information about a user when the template is filled out with the username.
 
 ### Outcome
 
