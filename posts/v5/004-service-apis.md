@@ -272,6 +272,11 @@ page again.
 Another alternative is extending the ALPS spec to include, for example, a URI
 template with a `rel` attribute to indicate that it's a transition to
 information about a user when the template is filled out with the username.
+The ALPS spec path would still work, but this would be a shortcut that clients
+could take to reduce the number of HTTP requests. However, since it wouldn't
+be an official part of the spec, we would need to add documentation about it.
+Clients trying to use APIs that do not provide this extension would need to
+support both the shortcut and the ALPS spec path anyway.
 
 ### Outcome
 
