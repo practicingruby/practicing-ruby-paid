@@ -4,6 +4,19 @@ experience of USING our tools.
 * https://www.vitsoe.com/gb/about/good-design
 * http://en.wikipedia.org/wiki/Dieter_Rams
 
+DESIGN CANDIDATES:
+
+* Environmental (Spin)
+* Minimal (Rack)
+* Unobtrusive (Tilt)
+* Innovative (Celluloid)
+* Understandable (Minitest)
+* Aesthetic (Simplecov)
+* Long-lasting (RubyGems)
+* Thorough (CSV)
+* Makes a product Useful (Nokogiri) - makes libxml2 useful
+* Honest (Sinatra)
+
 GEMS TO LOOK AT:
 
 * Nokogiri
@@ -26,20 +39,6 @@ GEMS TO LOOK AT:
 * Turn
 * Spin
 * Simplecov
-
-DESIGN CANDIDATES:
-
-* Environmental (Spin)
-* Minimal (Rack)
-* Unobtrusive (Sinatra and/or Tilt)
-* Innovative (Celluloid)
-* Understandable (Minitest)
-* Aesthetic (Simplecov)
-
-- Useful (Jekyll?)
-- Honest (TBD)
-- Long-lasting (TBD)
-- Thorough (CSV? Rails?)
 
 GOOD DESIGN:
 
