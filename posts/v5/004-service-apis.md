@@ -1,5 +1,8 @@
-*This issue of Practicing Ruby was contributed by Carol Nichols ([@carols10cents][carols10cents], [carols10cents@rstat.us](https://rstat.us/users/Carols10cents)),
-a Ruby programmer from Pittsburgh, PA, USA. Carol is one of the maintainers of [rstat.us](https://rstat.us) and one of the organizers of [Steel City Ruby Conf](http://steelcityrubyconf.org/).*
+*This article was contributed by Carol Nichols
+([@carols10cents](http://twitter.com/carols10cents), [carols10cents@rstat.us](https://rstat.us/users/Carols10cents)),
+Carol is one of the maintainers for [rstat.us](https://rstat.us). She is
+also actively involved in the Pittsburgh Ruby community, and is a co-organizer of the
+[Steel City Ruby Conf](http://steelcityrubyconf.org/).*
 
 [Rstat.us](https://rstat.us) is a microblogging site that is similar to Twitter, but it's built using
 open standards ([OStatus](http://ostatus.org/)). It's designed to be federated so
@@ -103,9 +106,12 @@ doc = Nokogiri::HTML::Document.parse(html)
 username = doc.css("li.message span.user-text").text 
 ```
 
-With this kind of contract, we have the flexibility to change the representation
+With this kind of contract, we can change the representation
 of an update by the server from the first format to the second without breaking
-client functionality.
+client functionality. While we will discuss the tradeoffs involved in using
+hypermedia APIs in more detail later on in this article, it is worth noting
+that structural flexibility is a big part of what makes them attractive
+from a design perspective.
 
 ## JSON API
 
@@ -144,6 +150,10 @@ Programmable
 Web](http://blog.programmableweb.com/2011/05/25/1-in-5-apis-say-bye-xml/) 20%
 of new APIs released in 2011 offered only JSON support.
 
+Of course, popularity is neither the best nor the only metric for evaluating
+design strategies; costs and benefits of different approaches 
+can only be weighed out in the context of a real project. To illustrate that point, we can consider how 
+each of these API styles would impact the development of rstat.us.
 
 ### Comparing and contrasting the two styles
 
@@ -167,11 +177,11 @@ all.
 In addition to flexibility in the exact representation provided by the server
 and consumable by the client, another advantage of a hypermedia API is that the
 media type used here is XHTML-- and we just so happen to already have an XHTML
-representation of rstat.us' functionality, rstat.us' web interface itself! If
+representation of rstat.us' functionality, the rstat.us web interface itself! If
 you take a look at the source of [http://rstat.us](http://rstat.us), you can see
 that the markup for an update contains the attribute values we've been talking
-about. rstat.us isn't completely compliant with the spec yet, but adding
-attributes to our existing output [has been fairly
+about. We haven't made rstat.us completely compliant with the ALPS spec yet, 
+but adding attributes to our existing output [has been fairly
 simple](https://github.com/hotsh/rstat.us/commit/4e234556c73426dc16526883661b3feb1e2f7d9f).
 Building out a Twitter-compatible JSON API would mean reimplementing an almost
 entirely separate interface to rstat.us' functionality that we would then need
@@ -190,7 +200,7 @@ seem complex when following the ALPS spec. With the JSON API, there is a
 predefined URL with the username as a parameter, and the response would contain
 the user's updates. With the ALPS spec, starting from the root URL (which is the
 only predefined URL in an ideal hypermedia API), we would need to do a minimum
-of 4 HTTP requests:
+of 4 HTTP requests. That would lead to some very tedious client code:
 
 ```ruby
 require 'nokogiri'
@@ -260,7 +270,7 @@ puts updates.map { |li| li.css("span.message-text").text.strip }.join("\n")
 ```
 
 This workflow could be cached so that the next time we try to get a user's
-updates, we wouldn't have to make all of these HTTP requests. The first two
+updates, we wouldn't have to make so many requests. The first two
 requests for the root page and the user search page are unlikely to change
 very often, so when we get a new username we can start with the construction
 of the user_lookup_query with a cached search_path value. That way, we would
@@ -270,25 +280,32 @@ be stale and the subsequent requests could fail. In that case, we should have
 error handling code that clears the cache and tries starting from the root
 page again.
 
-Another alternative is extending the ALPS spec to include, for example, a URI
-template with a `rel` attribute to indicate that it's a transition to
+We could possibly simplify things by extending the ALPS spec to include 
+a URI template with a `rel` attribute to indicate that it's a transition to
 information about a user when the template is filled out with the username.
 The ALPS spec path would still work, but this would be a shortcut that clients
 could take to reduce the number of HTTP requests. However, since it wouldn't
-be an official part of the spec, we would need to add documentation about it.
+be an official part of the spec, we would need to document it.
 Clients trying to use APIs that do not provide this extension would need to
 support both the shortcut and the ALPS spec path anyway.
 
-### Outcome
+As you can see, there are significant tradeoffs between the two API styles,
+and so it isn't especially easy to decide what to do. But because rstat.us
+really needs an API in order to be a serious alternative to Twitter, we must 
+figure out a way forward!
+
+### Making a decision
 
 After weighing all these considerations, we've decided to concentrate first on
-implementing a Twitter-compatible JSON API. Being able to use existing,
-functioning clients is probably the most compelling reason. Should those not end
+implementing a Twitter-compatible JSON API. Being able to use existing
+clients is probably the most compelling reason. Should those not end
 up working, having an API in a style already familiar to many client developers
-is also a big plus. For the long term, I think having a more flexible and
-scalable solution is more important but these aren't really something we need
-until there is more adoption. So we may implement a hypermedia API, probably an
-extension of the ALPS spec, in the future.
+is still a big plus. For the long term, I think having a more flexible and
+scalable solution is important, but those problems won't need to be solved until
+until there is more adoption. We may implement a hypermedia API (probably an
+extension of the ALPS spec) in the future, but for now we will take the
+pragmatic route in the hopes that it will encourage others to use
+rstat.us and support its development.
 
 ### References
 
