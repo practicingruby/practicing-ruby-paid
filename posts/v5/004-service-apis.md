@@ -1,9 +1,10 @@
-**BIO GOES HERE**
+*This issue of Practicing Ruby was contributed by Carol Nichols ([@carols10cents][carols10cents], [carols10cents@rstat.us](https://rstat.us/users/Carols10cents)),
+a Ruby programmer from Pittsburgh, PA, USA. Carol is one of the maintainers of [rstat.us](https://rstat.us) and one of the organizers of [Steel City Ruby Conf](http://steelcityrubyconf.org/).*
 
-Rstat.us is a microblogging site that is similar to Twitter, but it's built using
-open standards ([OStatus](http://ostatus.org/)). It's designed to be distributed so 
-that anyone can run rstat.us' code on their own domain but be able to follow anyone 
-on other domains. The largest problem currently impeding user adoption is the lack 
+[Rstat.us](https://rstat.us) is a microblogging site that is similar to Twitter, but it's built using
+open standards ([OStatus](http://ostatus.org/)). It's designed to be federated so
+that anyone can run rstat.us' code on their own domain but be able to follow anyone
+on other domains. The largest problem currently impeding user adoption is the lack
 of a mobile client, which is due to the lack of an API.
 
 We have been exploring two different types of APIs for possible implementation for
@@ -133,6 +134,16 @@ response = JSON.parse(open(uri).read)
 tweets = response.collect { |t| t["text"] }
 ```
 
+Rendering JSON from the server is usually fairly simple as well, and I think
+the simplicity of providing and consuming JSON using many different languages
+is one of the big reasons JSON APIs are gaining in popularity. Twitter
+actually decided to [drop support for XML, RSS, and
+Atom](https://dev.twitter.com/docs/api/1.1/overview#JSON_support_only) in
+version 1.1 of their API, leaving ONLY support for JSON. [According to
+Programmable
+Web](http://blog.programmableweb.com/2011/05/25/1-in-5-apis-say-bye-xml/) 20%
+of new APIs released in 2011 offered only JSON support.
+
 
 ### Comparing and contrasting the two styles
 
@@ -181,17 +192,92 @@ the user's updates. With the ALPS spec, starting from the root URL (which is the
 only predefined URL in an ideal hypermedia API), we would need to do a minimum
 of 4 HTTP requests:
 
-- Request the root URL
-- Find the `a` with `rel=users-search` and follow its `href`
-- Fill out the `form` that has `class=users-search`, putting the username in the `input` with `name=search`
-- Find the search result beneath `div#users ul.search li.user` that has `span.user-text` equal to the username; follow the `a` with `rel=user` within that search result
-- Extract the user's updates using the update attributes.
+```ruby
+require 'nokogiri'
+require 'open-uri'
+
+USERNAME = "carols10cents"
+BASE_URI = "https://rstat.us/"
+
+def find_a_in(html, params = {})
+  raise "no rel specified" unless params[:rel]
+
+  # This XPath is necessary because @rels could have more than one value.
+  link = html.xpath(
+    ".//a[contains(concat(' ', normalize-space(@rel), ' '), ' #{params[:rel]} ')]"
+  ).first
+end
+
+def resolve_relative_uri(params = {})
+  raise "no relative uri specified" unless params[:relative]
+  raise "no base uri specified" unless params[:base]
+
+  (URI(params[:base]) + URI(params[:relative])).to_s
+end
+
+def request_html(relative_uri)
+  absolute_uri = resolve_relative_uri(
+    :relative => relative_uri,
+    :base     => BASE_URI
+  )
+  Nokogiri::HTML::Document.parse(open(absolute_uri).read)
+end
+
+# Request the root URL
+# HTTP Request #1
+root_response = request_html(BASE_URI)
+
+# Find the `a` with `rel=users-search` and follow its `href`
+# HTTP Request #2
+users_search_path = find_a_in(root_response, :rel => "users-search")["href"]
+users_search_response = request_html(users_search_path)
+
+# Fill out the `form` that has `class=users-search`,
+# putting the username in the `input` with `name=search`
+
+search_path = users_search_response.css("form.users-search").first["action"]
+user_lookup_query = "#{search_path}?search=#{USERNAME}"
+
+# HTTP Request #3
+user_lookup_response = request_html(user_lookup_query)
+
+# Find the search result beneath `div#users ul.search li.user` that has
+# `span.user-text` equal to the username
+search_results = user_lookup_response.css("div#users ul.search li.user")
+
+result = search_results.detect { |sr|
+  sr.css("span.user-text").text.match(/^#{USERNAME}$/i)
+}
+
+# Follow the `a` with `rel=user` within that search result
+# HTTP Request #4
+user_path = find_a_in(result, :rel => "user")["href"]
+user_response = request_html(user_path)
+
+# Extract the user's updates using the update attributes.
+updates = user_response.css("div#messages ul.messages-user li")
+puts updates.map { |li| li.css("span.message-text").text.strip }.join("\n")
+```
 
 This workflow could be cached so that the next time we try to get a user's
-updates, we wouldn't have to make all these calls. Another alternative is
-extending the ALPS spec to include, for example, a URI template with a `rel`
-attribute to indicate that it's a transition to information about a user when
-the template is filled out with the username.
+updates, we wouldn't have to make all of these HTTP requests. The first two
+requests for the root page and the user search page are unlikely to change
+very often, so when we get a new username we can start with the construction
+of the user_lookup_query with a cached search_path value. That way, we would
+only need to make the last two HTTP requests to look up subsequent users. If
+the root page or the user search page DO change, however, then our cache will
+be stale and the subsequent requests could fail. In that case, we should have
+error handling code that clears the cache and tries starting from the root
+page again.
+
+Another alternative is extending the ALPS spec to include, for example, a URI
+template with a `rel` attribute to indicate that it's a transition to
+information about a user when the template is filled out with the username.
+The ALPS spec path would still work, but this would be a shortcut that clients
+could take to reduce the number of HTTP requests. However, since it wouldn't
+be an official part of the spec, we would need to add documentation about it.
+Clients trying to use APIs that do not provide this extension would need to
+support both the shortcut and the ALPS spec path anyway.
 
 ### Outcome
 
