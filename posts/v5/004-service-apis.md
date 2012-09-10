@@ -301,7 +301,7 @@ implementing a Twitter-compatible JSON API. Being able to use existing
 clients is probably the most compelling reason. Should those not end
 up working, having an API in a style already familiar to many client developers
 is still a big plus. For the long term, I think having a more flexible and
-scalable solution is important, but those problems won't need to be solved until
+scalable solution is important, but those problems won't need to be solved
 until there is more adoption. We may implement a hypermedia API (probably an
 extension of the ALPS spec) in the future, but for now we will take the
 pragmatic route in the hopes that it will encourage others to use
