@@ -280,14 +280,14 @@ be stale and the subsequent requests could fail. In that case, we should have
 error handling code that clears the cache and tries starting from the root
 page again.
 
-We could possibly simplify things by extending the ALPS spec to include 
-a URI template with a `rel` attribute to indicate that it's a transition to
-information about a user when the template is filled out with the username.
-The ALPS spec path would still work, but this would be a shortcut that clients
-could take to reduce the number of HTTP requests. However, since it wouldn't
-be an official part of the spec, we would need to document it.
-Clients trying to use APIs that do not provide this extension would need to
-support both the shortcut and the ALPS spec path anyway.
+We could possibly simplify things by extending the ALPS spec to include a URI
+template on the root page with a `rel` attribute to indicate that it's a
+transition to information about a user when the template is filled out with
+the username. The ALPS spec path would still work, but this would be a
+shortcut that clients could take to reduce the number of HTTP requests.
+However, since it wouldn't be an official part of the spec, we would need to
+document it. Clients trying to use APIs that do not provide this extension
+would need to support both the shortcut and the ALPS spec path anyway.
 
 As you can see, there are significant tradeoffs between the two API styles,
 and so it isn't especially easy to decide what to do. But because rstat.us
