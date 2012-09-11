@@ -1,8 +1,24 @@
-Object-oriented programming helps organize your code in a resilient, easy-to-change way. This article aims to explore one of the concepts that trips up beginner and more experienced object-oriented programmers: how to sensibly connect a set of objects together to perform a complex task. How do you put instances of your information-hiding, single-responsibility-discharging, message-passing classes in touch with one another?
+Object-oriented programming helps organize your code in a resilient,
+easy-to-change way. This article aims to explore one of the concepts that trips
+up beginner and more experienced object-oriented programmers: how to sensibly
+connect a set of objects together to perform a complex task. How do you put
+instances of your information-hiding, single-responsibility-discharging,
+message-passing classes in touch with one another?
 
-I became confused about the smartest ways to do this when I started building  Ruby apps that involved fetch large amounts of data from external services. In these projects, a Rails or Sinatra web application acted as a facade for workers querying a large set of APIs. Each API was different from the last, requiring different approaches and different dependencies. Some APIs involved five or six different steps, and in some cases each step needed to be handled by a different object.
+I became confused about the smartest ways to do this when I started building
+Ruby apps that involved fetch large amounts of data from external services. In
+these projects, a Rails or Sinatra web application acted as a facade for workers
+querying a large set of APIs. Each API was different from the last, requiring
+different approaches and different dependencies. Some APIs involved five or six
+different steps, and in some cases each step needed to be handled by a different
+object.
 
-I felt I understand object-oriented programming pretty well, yet I struggled with specifying the relationships between objects so that each object knew just enough about its peers to get the job done. My style was inconsistent. Sometimes I would inject a dependency using the constructor, and sometimes I would use a setter method. At other times it seemed more natural to have an object directly instantiate new instances of whatever objects it needed, on the fly.
+I felt I understand object-oriented programming pretty well, yet I struggled
+with specifying the relationships between objects so that each object knew just
+enough about its peers to get the job done. My style was inconsistent. Sometimes
+I would inject a dependency using the constructor, and sometimes I would use a
+setter method. At other times it seemed more natural to have an object directly
+instantiate new instances of whatever objects it needed, on the fly.
 
 ### Object Peer Stereotypes
 
@@ -11,10 +27,18 @@ Oriented Software, Guided by Tests][GOOS] by Steve Freeman and Nat Pryce. The bo
 a chapter on object-oriented design styles, and includes a description of
 “Object Peer Stereotypes” that addressed my conundrum perfectly.
 
-The authors divide an object’s peers into three categories: Dependencies, Notifications, and Adjustments (DNA). These are rough categories, because an object peer could fit into more than one category, but I found it to be a useful distinction. We’ll explore each of these categories as they pertain to Ruby code using an example from my real production code: a wrapper for Typhoeus I wrote called HttpRequest.
+The authors divide an object’s peers into three categories: Dependencies,
+Notifications, and Adjustments (DNA). These are rough categories, because an
+object peer could fit into more than one category, but I found it to be a useful
+distinction. We’ll explore each of these categories as they pertain to Ruby code
+using an example from my real production code: a wrapper for Typhoeus I wrote
+called HttpRequest.
 
 By the way, Gregory wrote about a related topic (what types of arguments to pass
-into a method) back in [Issue 2.14][2-14]. As your objects become more sophisticated you’ll find you end up passing fewer basic object types like strings, symbols, or numbers, and more of the Argument, Selector, or Curried objects that Gregory describes.
+into a method) back in [Issue 2.14][2-14]. As your objects become more
+sophisticated you’ll find you end up passing fewer basic object types like
+strings, symbols, or numbers, and more of the Argument, Selector, or Curried
+objects that Gregory describes.
 
 ### Dependencies
 
@@ -25,9 +49,13 @@ into a method) back in [Issue 2.14][2-14]. As your objects become more sophistic
 > ... we insist on dependencies being passed in to the constructor, but
 > notifications and adjustment can be set to defaults and reconfigured later.
 
-I wrote the HttpRequest class so that I could set on_success and on_failure callbacks (where Typhoeus only provides an on_complete callback) and to encapsulate my dependency on the Typhoeus gem, in case I want to switch to another HTTP library later.
+I wrote the HttpRequest class so that I could set on_success and on_failure
+callbacks (where Typhoeus only provides an on_complete callback) and to
+encapsulate my dependency on the Typhoeus gem, in case I want to switch to
+another HTTP library later.
 
-HttpRequest objects have two Dependencies: the URL of the request and a set of options for telling Typhoeus how to make the request.
+HttpRequest objects have two Dependencies: the URL of the request and a set of
+options for telling Typhoeus how to make the request.
 
 ```ruby
 require "typhoeus"
@@ -72,15 +100,27 @@ class HttpRequest
 end
 ```
 
-Note that I’m supplying a default for the options argument, since it’s just a hash that gets passed onto Typhoeus::Request, and it’s something you’ll have available at the same type you have the URL. Because there is a sensible default (an empty hash), you could argue that this argument is more of an Adjustment, described below.
+Note that I’m supplying a default for the options argument, since it’s just a
+hash that gets passed onto Typhoeus::Request, and it’s something you’ll have
+available at the same type you have the URL. Because there is a sensible default
+(an empty hash), you could argue that this argument is more of an Adjustment,
+described below.
 
-If options was a more complex object, something that might have peers of its own, I would probably treat it as an Adjustment. I find test-driven development really helpful in cases like this because often the tests can help you feel out which approach is more appropriate (which is the whole premise of the Growing Object Oriented Software book).
+If options was a more complex object, something that might have peers of its
+own, I would probably treat it as an Adjustment. I find test-driven development
+really helpful in cases like this because often the tests can help you feel out
+which approach is more appropriate (which is the whole premise of the Growing
+Object Oriented Software book).
 
 ### Notifications
 
-“Peers that need to be kept up to date with the object’s activity. The object will notify interested peers whenever it changes state or performs a significant action. Notifications are ‘fire and forget’; the object neither knows nor cares which peers are listening.”
+> Peers that need to be kept up to date with the object’s activity. The object
+> will notify interested peers whenever it changes state or performs a
+> significant action. Notifications are ‘fire and forget’; the object neither
+> knows nor cares which peers are listening.
 
-In the HttpRequest example, success_callbacks and failure_callbacks are the notifications. Another object can register for success notifications like this:
+In the HttpRequest example, success_callbacks and failure_callbacks are the
+notifications. Another object can register for success notifications like this:
 
 ```ruby
 # how to use HttpRequest#on_success to register a Notification
@@ -211,11 +251,23 @@ class DataFetcher
 end
 ```
 
-It could be that AdminChecker is more of a Dependency than an Adjustment, depending on how many different kinds of AdminCheckers there are and how central admin-checking is to your code. If there’s no normal default for the admin_checker value, and if you really can’t make a DataFetcher without knowing what kind of checking policies it’ll be working with, you should probably inject your admin_checker in the constructor, marking it as an important Dependency.
+It could be that AdminChecker is more of a Dependency than an Adjustment,
+depending on how many different kinds of AdminCheckers there are and how central
+admin-checking is to your code. If there’s no normal default for the
+admin_checker value, and if you really can’t make a DataFetcher without knowing
+what kind of checking policies it’ll be working with, you should probably inject
+your admin_checker in the constructor, marking it as an important Dependency.
 
 ### HttpRequestService
 
-There’s one other facet to my HttpRequest object that I thought Practicing Ruby readers might find interesting. Because Typhoeus is concurrent, you have to queue up requests onto a shared Typhoeus::Hydra object. The requests don’t run until you invoke the hydra’s #run method. I experimented with storing the Hydra object in various places and ended up creating a factory for HttpRequest objects called HttpRequestService, below. Can you spot the dependencies and adjustments? It doesn’t have notifications, but I could see adding some instrumentation to measure HttpRequest times.
+There’s one other facet to my HttpRequest object that I thought Practicing Ruby
+readers might find interesting. Because Typhoeus is concurrent, you have to
+queue up requests onto a shared Typhoeus::Hydra object. The requests don’t run
+until you invoke the hydra’s #run method. I experimented with storing the Hydra
+object in various places and ended up creating a factory for HttpRequest objects
+called HttpRequestService, below. Can you spot the dependencies and adjustments?
+It doesn’t have notifications, but I could see adding some instrumentation to
+measure HttpRequest times.
 
 ```ruby
 require "typhoeus"
@@ -242,7 +294,8 @@ class HttpRequestService
 end
 ```
 
-Instances of the HttpRequestService end up as Adjustment peers for the objects responsible for fetching data.
+Instances of the HttpRequestService end up as Adjustment peers for the objects
+responsible for fetching data.
 
 ### Dependency Injection Containers
 
