@@ -15,7 +15,7 @@ DESIGN CANDIDATES:
 * Long-lasting (RubyGems)
 * Thorough (CSV)
 * Makes a product Useful (Nokogiri) - makes libxml2 useful
-* Honest (Sinatra)
+* Honest (Rubinius (or sinatra))
 
 GEMS TO LOOK AT:
 
@@ -39,6 +39,7 @@ GEMS TO LOOK AT:
 * Turn
 * Spin
 * Simplecov
+* Redcarpet
 
 GOOD DESIGN:
 
