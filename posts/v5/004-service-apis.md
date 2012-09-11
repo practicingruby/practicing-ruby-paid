@@ -280,14 +280,14 @@ be stale and the subsequent requests could fail. In that case, we should have
 error handling code that clears the cache and tries starting from the root
 page again.
 
-We could possibly simplify things by extending the ALPS spec to include 
-a URI template with a `rel` attribute to indicate that it's a transition to
-information about a user when the template is filled out with the username.
-The ALPS spec path would still work, but this would be a shortcut that clients
-could take to reduce the number of HTTP requests. However, since it wouldn't
-be an official part of the spec, we would need to document it.
-Clients trying to use APIs that do not provide this extension would need to
-support both the shortcut and the ALPS spec path anyway.
+We could possibly simplify things by extending the ALPS spec to include a URI
+template on the root page with a `rel` attribute to indicate that it's a
+transition to information about a user when the template is filled out with
+the username. The ALPS spec path would still work, but this would be a
+shortcut that clients could take to reduce the number of HTTP requests.
+However, since it wouldn't be an official part of the spec, we would need to
+document it. Clients trying to use APIs that do not provide this extension
+would need to support both the shortcut and the ALPS spec path anyway.
 
 As you can see, there are significant tradeoffs between the two API styles,
 and so it isn't especially easy to decide what to do. But because rstat.us
@@ -301,7 +301,7 @@ implementing a Twitter-compatible JSON API. Being able to use existing
 clients is probably the most compelling reason. Should those not end
 up working, having an API in a style already familiar to many client developers
 is still a big plus. For the long term, I think having a more flexible and
-scalable solution is important, but those problems won't need to be solved until
+scalable solution is important, but those problems won't need to be solved
 until there is more adoption. We may implement a hypermedia API (probably an
 extension of the ALPS spec) in the future, but for now we will take the
 pragmatic route in the hopes that it will encourage others to use
