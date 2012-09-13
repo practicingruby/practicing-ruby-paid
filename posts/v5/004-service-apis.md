@@ -24,7 +24,7 @@ Hypermedia APIs currently have a reputation for being complicated and hard to
 understand, but they're really nothing to be scared of. There are many, many
 articles about what hypermedia is or is not, but the general definition that
 made hypermedia click for me is that a hypermedia API returns links in its
-responses that the client then uses to make its next calls. This means the
+responses that the client then uses to make its next calls. This means that the
 server does not have a set of URLs with parameters documented for you up front;
 it has documentation of the controls that you will see within the responses.
 
@@ -77,9 +77,9 @@ Notice some of the differences between the two:
 - Only having the ALPS attribute values vs having other classes and rels as well
 - Only having the ALPS elements vs having the `<p>` element 
 between the `<li>` and the rest of the children
-- The URLs of the permalinks are different
+- Simple resource-based routing vs. passing the id as a parameter
 
-All of these are perfectly fine! If the client only depends on the values of the
+All of these are perfectly fine! If a client only depends on the values of the
 attributes and not the exact structure that's returned, it will be flexible
 enough to handle both responses. For example, you can extract the username 
 from either fragment using the following CSS selector:
@@ -117,9 +117,9 @@ from a design perspective.
 JSON APIs are much more common than hypermedia APIs right now. This style of API
 typically has a published list of URLs, one for each action a client may want to
 take. Each URL also has a number of documented parameters through which a client can
-send arguments, and the requests return data in a defined format (JSON is
-popular). This style is similar to a Remote Procedure Call (RPC) --
-functions are called with arguments and values are returned, but the work is
+send arguments, and the requests return data in a defined format. This style is 
+similar to a Remote Procedure Call (RPC) --
+functions are called with arguments, and values are returned, but the work is
 done on a remote machine. Because this style matches the way we code locally,
 it feels familiar, and that may explain why the technique is so popular.
 
@@ -146,7 +146,7 @@ uri  = URI("#{base}?screen_name=climagic&count=3")
 
 response = JSON.parse(open(uri).read)
 
-tweets = response.collect { |t| t["text"] }
+tweets = response.map { |t| t["text"] }
 ```
 
 Rendering JSON from the server is usually fairly simple as well, and
@@ -169,8 +169,8 @@ each of these API styles would impact the development of rstat.us.
 There are many clients that have been built against Twitter's current API. There
 are even some clients that allow you to change the root URL of all the requests
 (ex:
-[Twidere](https://play.google.com/store/apps/details?id=org.mariotaku.twidere)),
-so that if rstat.us implemented the same parameters and response data,
+[Twidere](https://play.google.com/store/apps/details?id=org.mariotaku.twidere))
+If rstat.us implemented the same parameters and response data,
 people could use those clients to interact with both Twitter and rstat.us. 
 Even if rstat.us doesn't end up having this level of compatibility with
 Twitter's API, a close approximation to it would still feel a lot more 
@@ -305,10 +305,10 @@ figure out a way forward!
 ### Making a decision
 
 After weighing all these considerations, we've decided to concentrate first on
-implementing a Twitter-compatible JSON API. Being able to use existing
-clients is probably the most compelling reason. Should those not end
-up working, having an API in a style already familiar to many client developers
-is still a big plus. For the long term, having a more flexible and
+implementing a Twitter-compatible JSON API, because it may allow our users
+to interact with rstat.us using the clients they are already familiar with. Even
+if those clients end up requiring some modifications, having an API that is easily 
+understood by many developers will still be a big plus. For the long term, having a more flexible and
 scalable solution is important, but those problems won't need to be solved
 until there is more adoption. We may implement a hypermedia API (probably an
 extension of the ALPS spec) in the future, but for now we will take the

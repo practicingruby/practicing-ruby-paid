@@ -1,65 +1,119 @@
-We're always talking about implementing things, this article is about the
-experience of USING our tools.
+As developers, we spend a lot of our time thinking about internal software 
+quality, because it has such a strong influence on our productivity. We seek to
+write code that is maintainable and easy to change, because if we do not, our 
+work becomes very frustrating in a hurry. There is no need for an external
+motivator to improve our own code quality, because if we fail to do so,
+we are the ones to suffer the consequences.
 
-* https://www.vitsoe.com/gb/about/good-design
-* http://en.wikipedia.org/wiki/Dieter_Rams
+The external quality of our software is often a different story. If we don't
+have regular and close contact with the people who use our software, it takes a
+lot of effort to imagine what kind of problems they might encounter as they
+interact with our systems. In that sense, writing software that is highly 
+usable and pleasant to work with is not something that comes naturally, but 
+instead something that needs to be specifically designed for.
 
-DESIGN CANDIDATES:
+In this article, we will explore the problem of building highly usable systems
+by considering the [principles for good design][principles] that were
+established by Dieter Rams. Even though Rams did not design any software
+himself (he gained his notoriety through his work on household goods for Braun 
+in the 1960s), his ideas are perfectly relevant to modern software 
+development, even when it comes to the design of open source development 
+tools and libraries. 
 
-* Environmental (Spin)
-* Minimal (Rack)
-* Unobtrusive (Tilt)
-* Innovative (Celluloid)
-* Understandable (Minitest)
-* Aesthetic (Simplecov)
-* Long-lasting (RubyGems)
-* Thorough (CSV)
-* Makes a product Useful (Nokogiri) - makes libxml2 useful
-* Honest (Rubinius (or sinatra))
+To illustrate the universal nature of these design principles, I've
+intentionally focused on the low-level tools that I use day to day when building
+software in Ruby. My hope is that by seeing how each of the humanizing values that
+Dieter Rams specified can be applied in even the most technical context, you will
+be able to make use of them pretty much anywhere.
 
-GEMS TO LOOK AT:
+### Good design is innovative
 
-* Nokogiri
-* Rake
-* Rack
-* Celluloid
-* Minitest
-* Haml / Sass
-* Compass
-* Coffeescript
-* Redcarpet
-* Mailhopper
-* MD Preview
-* Omniauth
-* Sequel
-* Foreman
-* Sidekiq
-* Resque
-* Redis Failover
-* Turn
-* Spin
-* Simplecov
-* Redcarpet
+> The possibilities for innovation are not, by any means, exhausted.
+> Technological development is always offering new opportunities for innovative
+> design. But innovative design always develops in tandem with innovative
+> technology, and can never be an end in itself.
 
-GOOD DESIGN:
+Celluloid
 
-* Is innovative - The possibilities for innovation are not, by any means, exhausted. Technological development is always offering new opportunities for innovative design. But innovative design always develops in tandem with innovative technology, and can never be an end in itself.
+### Good design makes a product useful
 
-* Makes a product useful - A product is bought to be used. It has to satisfy certain criteria, not only functional, but also psychological and aesthetic. Good design emphasizes the usefulness of a product whilst disregarding anything that could possibly detract from it.
+>  A product is bought to be used. It has to satisfy certain criteria, not only
+>  functional, but also psychological and aesthetic. Good design emphasizes the
+>  usefulness of a product whilst disregarding anything that could possibly
+>  detract from it.
 
-* Is aesthetic - The aesthetic quality of a product is integral to its usefulness because products are used every day and have an effect on people and their well-being. Only well-executed objects can be beautiful.
+Nokogiri
 
-* Makes a product understandable - It clarifies the product’s structure. Better still, it can make the product clearly express its function by making use of the user's intuition. At best, it is self-explanatory.
+### Good design is aesthetic
 
-* Is unobtrusive - Products fulfilling a purpose are like tools. They are neither decorative objects nor works of art. Their design should therefore be both neutral and restrained, to leave room for the user's self-expression.
+>  The aesthetic quality of a product is integral to its usefulness because
+>  products are used every day and have an effect on people and their
+>  well-being. Only well-executed objects can be beautiful.
 
-* Is honest - It does not make a product more innovative, powerful or valuable than it really is. It does not attempt to manipulate the consumer with promises that cannot be kept.
+Simplecov
 
-* Is long-lasting - It avoids being fashionable and therefore never appears antiquated. Unlike fashionable design, it lasts many years – even in today's throwaway society.
+### Good design makes a product understandable
 
-* Is thorough down to the last detail - Nothing must be arbitrary or left to chance. Care and accuracy in the design process show respect towards the consumer.
+> It clarifies the product’s structure. Better still, it can make the product
+> clearly express its function by making use of the user's intuition. At best,
+> it is self-explanatory.
 
-* Is environmentally friendly - Design makes an important contribution to the preservation of the environment. It conserves resources and minimizes physical and visual pollution throughout the lifecycle of the product.
+Minitest stays with the Test Unit style, but does so in a much more simple way.
+Internals are now understandle, too.
 
-* Is as little design as possible - Less, but better – because it concentrates on the essential aspects, and the products are not burdened with non-essentials. Back to purity, back to simplicity.
+### Good design is unobtrusive
 
+> Products fulfilling a purpose are like tools. They are neither decorative
+> objects nor works of art. Their design should therefore be both neutral and
+> restrained, to leave room for the user's self-expression.
+
+Tilt
+
+### Good design is honest
+
+> It does not make a product more innovative, powerful or valuable than it
+> really is. It does not attempt to manipulate the consumer with promises that
+> cannot be kept.
+
+Rubyspec
+
+### Good design is long-lasting
+
+> It avoids being fashionable and therefore never appears antiquated. Unlike
+> fashionable design, it lasts many years – even in today's throwaway society.
+
+Rubygems
+
+### Good design is thorough down to the last detail
+
+> Nothing must be arbitrary or left to chance. Care and accuracy in the design
+> process show respect towards the consumer.
+
+CSV
+
+### Good design is environmentally friendly
+
+> Design makes an important contribution to the preservation of the environment.
+> It conserves resources and minimizes physical and visual pollution throughout
+> the lifecycle of the product.
+
+Spin
+
+### Good design is as little design as possible
+
+> Less, but better – because it concentrates on the essential aspects, and the
+> products are not burdened with non-essentials. Back to purity, back to
+> simplicity.
+
+Rack
+
+### Reflections
+
+Every project we looked at in this article exhibits some, but not all of these
+good design qualities, in varying degrees of intensity. Design is a balancing
+act, and sometimes tensions exist between things in mutually exclusive ways.
+Still, trying to do as best as possible on all of these metrics and only
+making compromises when it is necessary to do so seems like a pretty good idea.
+
+
+[principles]: http://en.wikipedia.org/wiki/Dieter_Rams#Rams.27_ten_principles_of_.22good_design.22
