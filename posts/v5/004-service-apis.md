@@ -1,7 +1,8 @@
 *This article was contributed by Carol Nichols
-([@carols10cents](http://twitter.com/carols10cents), [carols10cents@rstat.us](https://rstat.us/users/Carols10cents)),
-Carol is one of the maintainers for [rstat.us](https://rstat.us). She is
-also actively involved in the Pittsburgh Ruby community, and is a co-organizer of the
+([@carols10cents](http://twitter.com/carols10cents),
+[carols10cents@rstat.us](https://rstat.us/users/Carols10cents)), one
+of the active maintainers of [rstat.us](https://rstat.us). Carol is
+also involved in the Pittsburgh Ruby community, and is a co-organizer of the
 [Steel City Ruby Conf](http://steelcityrubyconf.org/).*
 
 [Rstat.us](https://rstat.us) is a microblogging site that is similar to Twitter, but 
