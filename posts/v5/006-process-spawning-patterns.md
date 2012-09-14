@@ -1,16 +1,25 @@
-Like many of you, I discovered Ruby via Rails and web development. That was my 'in'. But before it was popular for writing web apps Ruby was popular for its OO fundamentals and for being a great scripting language. One of the reasons for this latter point is that it's so easy to marry Ruby with command line utilities. Here's an example:
+Like many of you, I discovered Ruby via Rails and web development. That was my
+'in'. But before it was popular for writing web apps, Ruby was popular for its OO
+fundamentals and for being a great scripting language. One of the reasons for
+this latter point is that it's so easy to marry Ruby with command line
+utilities. Here's an example:
 
-``` ruby
+```ruby
 task :console do
   `irb -r my_app`
 end
 ```
 
-There's something simple and beautiful in the marrying of Ruby and the command line here. The backticks are barely detectable.  But do you know what's going on inside that backtick method? This code will technically accomplish what you think it will. It will drop you into an app-specific console, basically an `irb` session with your app already required.
+There's something simple and beautiful in the combination of Ruby and the
+command line here: the backticks are barely detectable. This code will technically 
+accomplish what you think it will; it will drop you into an app-specific console, 
+basically an `irb` session with your app already required. But do you know what's 
+going on inside that backtick method? 
 
-But Ruby provides many methods for spawning processes. Why use backticks here? Would it have been better to use `system`?
+Ruby provides many ways of spawing processes. Why use backticks instead of
+`system`?
 
-``` ruby
+```ruby
 task :console do
   system('irb -r my_app')
 end
@@ -18,21 +27,36 @@ end
 
 Or what about `exec`? Would that have been better?
 
-``` ruby
+```ruby
 task :console do
   exec('irb', '-r', 'my_app')
 end
 ```
 
-In order to make this decision you really need to understand what these methods are doing under the hood. It may be true that the differences are trivial for spawning our development console, but picking one of these over another in a production environment can have major implications.
+In order to make this decision, you need to understand what these methods are
+doing under the hood. The differences may be trivial for spawning a development
+console, but picking one of these over another in a production environment can
+have major implications.
 
-In this article we're going to re-implement some part of these process spawning primitives to get a better understanding of how they work and where they're most applicable. Afterwards you'll have a greater understanding of how process spawning works regardless of programming language and you'll have a grip on which methods are most applicable given different situations.
+In this article we're going to re-implement the key parts of these process spawning
+primitives to get a better understanding of how they work and where they're most
+applicable. Afterwards you'll have a greater understanding of how process
+spawning works regardless of programming language and you'll have a grip on
+which methods are most applicable given different situations.
 
 ## Starting Somewhere
 
-I hinted at a few different process spawning methods above. Ruby has a ton more than that. Off the top of my head there's: `Kernel#system`, <code>Kernel#\`</code>, `IO.popen`, `Process.spawn`, `open`, `shell`, `open3`, `pty`, and probably more. All of these ship with Ruby, whether in the core or standard library.
+I have already hinted at a few different process spawning methods, but Ruby has
+a ton of them. Off the top of my head there's: `Kernel#system`,
+<code>Kernel#\`</code>, `IO.popen`, `Process.spawn`, `open`, `shell`, `open3`,
+`pty`, and probably more. All of these ship with Ruby, some in the core and
+others in the standard library.
 
-All of these spawning methods boil down to the same pattern, but we're not going to implement them all. In the interest of time we'll stick with implementing `system` and the backticks method. For the unfamiliar, either of these methods can be called with a shell command as the argument. Both handle the command in slightly different ways with slightly different outputs.
+All of these spawning methods boil down to the same pattern, but we're not going
+to implement them all. To save time we'll stick with implementing `system` and
+the backticks method. For the unfamiliar, either of these methods can be called
+with a shell command as the argument. Both handle the command in slightly
+different ways with slightly different outputs.
 
 ``` 
 system('ls -l') #=> true
@@ -42,46 +66,53 @@ system('boohoo') #=> nil
 `hostname` #=> jessebook
 ```
 
-Let's go.
+Let's start building them.
 
 ## Harnessing Ourselves With Tests
 
-Before we dive in head first to spawning processes let's rein ourselves in a bit. If we're going to re-implement what Ruby already offers then we're going to need a way to test our implementation and make sure that it performs the same way that Ruby does. Enter [Rubyspec](http://rubyspec.org).
+Before we dive in head first to spawning processes let's rein ourselves in a
+bit. If we're going to re-implement what Ruby already offers then we're going to
+need a way to test our implementation and make sure that it performs the same
+way that Ruby does. Enter [Rubyspec](http://rubyspec.org).
 
-> The RubySpec project aims to write a complete executable specification for the Ruby programming language that is syntax-compatible with RSpec. RSpec is essentially a DSL (domain-specific language) for describing the behavior of code. This project contains specs that describe Ruby language syntax, core library classes, and standard library classes.
+> The RubySpec project aims to write a complete executable specification for the
+> Ruby programming language that is syntax-compatible with RSpec. RSpec is
+> essentially a DSL (domain-specific language) for describing the behavior of
+> code. This project contains specs that describe Ruby language syntax, core
+> library classes, and standard library classes.
 
-So Rubyspec provides a spec for the Ruby language itself, and we want to re-implement a part of the Ruby language, therefore we can use Rubyspec itself to test our implementation.
+Rubyspec provides a spec for the Ruby language itself, and we want to
+re-implement a part of the Ruby language; therefore we can use Rubyspec
+to test our implementation.
 
-In order to use these specs to drive our implementation we need to get two things: 1) rubyspec itself, and 2) the testing library similar to rspec. Here's the minimal set of commands to bootstrap this process:
+In order to use these specs to drive our implementation we need to get two
+things: RubySpec itself, and its testing library mspec. You can check
+out [this README](https://github.com/rubyspec/rubyspec/blob/master/README) 
+for installation instructions. To verify that things are working as 
+expected, try running the kernel tests from within the RubySpec project
+directory:
 
-``` bash
-git clone git://github.com/rubyspec/mspec.git # get the testing framework
-cd mspec
-bundle # install deps
-rake install # install the test runner locally
-rbenv rehash
-cd ..
-git clone git://github.com/rubyspec/rubyspec.git # get the specs
-cd rubyspec
-mspec core/kernel # run the Kernel specs
+```bash
+$ mspec core/kernel
 ```
 
-This should get you the mspec testing framework, the Rubyspec itself, and should run the tests for the `Kernel` module. `mspec` uses the current `ruby` in your `PATH` by default. 
+To run our custom code against these tests we can use
+the familiar `-r` option with `mspec` to require a custom file that redefines
+our custom methods. Let's do that, while at the same time running the
+`Kernel.system` specs:
 
-In order for us to get our custom code running against these tests we can use the familiar `-r` option with `mspec` to require a custom file that redefines our custom methods. Let's do that, while at the same time running the `Kernel.system` specs. We'll start by implementing that.
-
-``` bash
-touch practicing_spawning.rb
-mspec -r ./practicing_spawning.rb core/kernel/system_spec.rb
+```bash
+$ touch practicing_spawning.rb
+$ mspec -r ./practicing_spawning.rb core/kernel/system_spec.rb
 ```
 
 Should be all green so far!
 
 ## Breaking the Test
 
-Let's begin our implementation by breaking the test.
+Let's begin our implementation by causing the tests to fail:
 
-``` ruby
+```ruby
 # practicing_spawning.rb
 module Kernel
   def system(*args)
@@ -91,7 +122,9 @@ module Kernel
 end
 ```
 
-The very first spec says that `system` should be private. I set that up right away because it's not the interesting part. If we run the `system` specs again with this addition we get our first of several failures:
+The very first spec says that `system` should be private. I set that up right
+away because it's not the interesting part. If we run the `system` specs again,
+we get our first of several failures:
 
 ``` console
 1)
@@ -100,7 +133,7 @@ Expected (STDOUT): "a\n"
           but got: ""
 ```
 
-which directly relates to the following spec:
+This failure directly relates to the following spec:
 
 ``` ruby
 it "executes the specified command in a subprocess" do
@@ -108,11 +141,17 @@ it "executes the specified command in a subprocess" do
 end
 ```
 
-If you've ever used the `system` method before then this test is pretty simple. It says that shelling out to `echo` should output the echoed string. If you [dig in](https://github.com/rubyspec/mspec/blob/master/lib/mspec/matchers/output_to_fd.rb#L68-70) to the `output_to_fd` method that's part of `mspec` you'll see that it's expecting this output on `$stdout`.
+If you've ever used the `system` method, this test should be easy to
+understand. It says that shelling out to `echo` should output the echoed string.
+If you [dig
+in](https://github.com/rubyspec/mspec/blob/master/lib/mspec/matchers/output_to_fd.rb#L68-70)
+to the `output_to_fd` method that's part of `mspec` you'll see that it's
+expecting this output on `STDOUT`.
 
 ## Fork and Subprocesses
 
-The failing spec title says that `system` spawns a sub-process. If you're creating new processes on a Unix system then you're going to use `fork`. It's the way that new processes are created.
+The failing spec title says that `system` spawns a sub-process. If you're
+creating new processes on a Unix system, that means using `fork`:
 
 > ------------------------------------------------------------------------------
 >   Kernel.fork  [{ block }]   -> fixnum or nil
@@ -348,5 +387,6 @@ I'll leave you with two more tips:
     When passed a String, `exec` may decide to spawn a shell to interpret the command, rather than executing it directly. This is handy for stuff like `system('find . | ack foobar -l')` but is very dangerous when user input is involved. With a String shell injection is possible, much like SQL injection, except that if compromised a shell injection could provide an attacker with root access to your system! Using an Array will never spawn a shell but will pass the Array arguments directly as the `ARGV` on the exec'ed process. Always do this.
 
 If you enjoyed these exercises then you should try and implement some of the other process spawning primitives I mentioned. With Rubyspec as your guide you can try re-implementing just about anything with confidence. Doing so will surely give you a better understanding of how process spawning works in Ruby, and Unix in general. If you go ahead and implement some pure-Ruby versions of these spawning methods please leave a comment and share your code, I'd love to see it!
+
 
 
