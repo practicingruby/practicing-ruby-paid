@@ -1,4 +1,4 @@
-As developers, we spend a lot of our time thinking about internal software 
+s developers, we spend a lot of our time thinking about internal software 
 quality, because it has such a strong influence on our productivity. We seek to
 write code that is maintainable and easy to change, because if we do not, our 
 work becomes very frustrating in a hurry. There is no need for an external
@@ -50,7 +50,56 @@ Nokogiri
 >  products are used every day and have an effect on people and their
 >  well-being. Only well-executed objects can be beautiful.
 
-Simplecov
+Aesthetics play a big role in software design, to the extent that we
+even talk about abstract snippets of code as being beautiful or ugly, depending
+on how they are crafted. While this kind of intuitive judgement of code quality
+can be a very useful heuristic, it is also very subjective and hard to
+generalize. As a result, it is not uncommon for mutually exclusive but equally
+valid style preferences to cause tensions between programmers.
+
+While the grail quest for discovering the optimal coding style is a bit of a
+dead end, there are less controversial ways that aesthetics can be applied to
+programming. If you take a step down the [ladder of
+abstraction][ladder] from code itself to the interface it presents to the world, it
+becomes easier to see how aesthetic qualities affect the overall experience of
+interacting with any given software system. The [SimpleCov][SimpleCov] test
+coverage tool provides an excellent example of how these ideas can be applied
+in practice.
+
+Like any coverage tool, the core job of SimpleCov is to provide reports that
+show developers what areas of their code are not being executed by their test
+suite. This information is useful at both the line-by-line and project-wide
+level, as well as in many contexts that lie between those two extremes. This
+is a surprisingly complicated data presentation problem, but SimpleCov lives up
+to its name and manages to keep things simple without sacrificing visual
+attractiveness.
+
+```ruby
+require "simplecov"
+
+SimpleCov.start "rails"
+```
+
+
+- Test coverage reports are both an aggregate metric across an entire project,
+  and a line-level detail. Presenting all this information elegantly can be a
+  challenge.
+
+- The use of color to express information can be very effective.
+
+- Little things like modal pop-out boxes for viewing specific files, syntax
+  highlighting, sortable and searchable tables, etc. make for a dynamic and 
+  pleasant experience
+
+- A coverage tool could be implemented to work in a similar fashion to the
+  command line utility `diff`, but that would make it much more cumbersome
+  to work with.
+
+- Coverage is a pretty boring context, so an attractive tool makes it feel a bit
+  more pleasant to analyze coverage reports.
+
+
+![](http://i.imgur.com/Bgskb.png)
 
 ### Good design makes a product understandable
 
@@ -117,3 +166,5 @@ making compromises when it is necessary to do so seems like a pretty good idea.
 
 
 [principles]: http://en.wikipedia.org/wiki/Dieter_Rams#Rams.27_ten_principles_of_.22good_design.22
+[ladder]: http://worrydream.com/LadderOfAbstraction/
+[simplecov]: https://github.com/colszowka/simplecov
