@@ -1,3 +1,5 @@
+**BIO GOES HERE**
+
 Like many of you, I discovered Ruby via Rails and web development. That was my
 'in'. But before it was popular for writing web apps, Ruby was popular for its OO
 fundamentals and for being a great scripting language. One of the reasons for
