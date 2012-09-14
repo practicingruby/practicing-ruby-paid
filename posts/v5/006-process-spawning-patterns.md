@@ -128,7 +128,7 @@ The very first spec says that `system` should be private. I set that up right
 away because it's not the interesting part. If we run the `system` specs again,
 we get our first of several failures:
 
-``` console
+```console
 1)
 Kernel#system executes the specified command in a subprocess FAILED
 Expected (STDOUT): "a\n"
@@ -137,7 +137,7 @@ Expected (STDOUT): "a\n"
 
 This failure directly relates to the following spec:
 
-``` ruby
+```ruby
 it "executes the specified command in a subprocess" do
   lambda { @object.system("echo a") }.should output_to_fd("a\n")
 end
@@ -145,8 +145,7 @@ end
 
 If you've ever used the `system` method, this test should be easy to
 understand. It says that shelling out to `echo` should output the echoed string.
-If you [dig
-in](https://github.com/rubyspec/mspec/blob/master/lib/mspec/matchers/output_to_fd.rb#L68-70)
+If you [dig in](https://github.com/rubyspec/mspec/blob/master/lib/mspec/matchers/output_to_fd.rb#L68-70)
 to the `output_to_fd` method that's part of `mspec` you'll see that it's
 expecting this output on `STDOUT`.
 
@@ -166,43 +165,60 @@ creating new processes on a Unix system, that means using `fork`:
 > the fork call returns twice, once in the parent, returning the process ID of
 > the child, and once in the child, returning nil.
 
-This bit of Ruby documentation gives you an idea of what `fork` does. It's conceptually similar to going on a hike and coming to a fork in the trail. The trail represents the execution of a process over time. Whereas humans can only pick on fork, when a process is forked it literally continues down both forks of the trail in parallel. What was one process becomes two independent processes.
+This bit of Ruby documentation gives you an idea of what `fork` does. It's
+conceptually similar to going on a hike and coming to a fork in the trail. The
+trail represents the execution of a process over time. Whereas humans can only
+pick one path, when a process is forked it literally continues down both
+branches of the trail in parallel. What was one process becomes two independent 
+processes. This behavior is specified by the fork(2) manpage:
 
-Let's supplement what we got from the Ruby documentation with this bit from the fork(2) manpage:
+> Fork() causes creation of a new process.  The new process (child process) is
+> an exact copy of the calling process (parent process) [...]
 
-> Fork() causes creation of a new process.  The new process (child process) is an exact copy of the calling process (parent process) [...]
+When you `fork`, you start with one process and end up with two processes that
+are *exactly the same*. In some cases, this means that everything is copied from
+one process to the other. In other cases, if [copy-on-write
+semantics](http://en.wikipedia.org/wiki/Copy-on-write) are implemented,
+the processes may physically share memory until one of the processes tries to
+modify it, at which point each gets its own copy written out.
 
-So when you `fork` you start with one process and end up with two processes that are *exactly the same*. In some cases, this means that everything is copied from one process to the other. In other cases, if [copy-on-write semantics](http://en.wikipedia.org/wiki/Copy-on-write) are implemented properly, the processes may physically share memory until one of the processes tries to modify it, at which point each gets its own copy written out.
-
-We still haven't quite figured out yet how we'd implement the `system` method. We know that we can take our Ruby process and create a copy of it with `fork`, but then how do we turn the new child process into an `echo` process?
+We still haven't quite figured out yet how we'd implement the `system` method.
+We know that we can take our Ruby process and create a copy of it with `fork`,
+but then how do we turn the new child process into an `echo` process?
 
 ## Fork + Exec
 
-The `fork` + `exec` pattern for spawning processes is the blueprint upon which most all process spawning is built. We've already looked at `fork`, so what about `exec`?
+The `fork` + `exec` pattern for spawning processes is the blueprint upon which
+most all process spawning is built. We've already looked at `fork`, so what
+about `exec`?
 
-Very simply, `exec` transforms the current process into another process. Using `exec` you can transform a Ruby process into an `ls` process, another Ruby process, or an `echo` process.
+Very simply, `exec` transforms the current process into another process. Using
+`exec` you can transform a Ruby process into an `ls` process, another Ruby
+process, or an `echo` process.
 
-``` ruby
+```ruby
 puts 'hi from Ruby'
 exec('ls')
 puts 'bye from Ruby' # will never be reached
 ```
 
-This program will never get to the last line of Ruby code. Once it has done `exec('ls')` the Ruby program no longer exists. It has been transformed to `ls`. So there's no possible way for it to get back to this Ruby program and finish execution.
+This program will never get to the last line of Ruby code. Once it has done
+`exec('ls')` the Ruby program no longer exists. It has been transformed to `ls`.
+So there's no possible way for it to get back to this Ruby program and finish
+execution.
 
 ## Finally, A Passing Test
 
-With `fork` and `exec` we now have the building blocks that we need to implement our own `system` method. Here's the most basic implementation:
+With `fork` and `exec` we now have the building blocks that we need to implement
+our own `system` method. Here's the most basic implementation:
 
-``` ruby
+```ruby
 # practicing_spawning.rb
 module Kernel
   def system(*args)
 
     # Create a new subprocess that will just exec the requested program.
-    pid = fork do
-      exec(*args)
-    end
+    pid = fork { exec(*args) }
 
     # Since fork() allows both processes to work in parallel we must tell the
     # parent process to wait for the child to exit. Otherwise the parent would
@@ -216,19 +232,28 @@ module Kernel
 end
 ```
 
-If we run this against the same spec as before we get more tests passing, but not all of them. The important thing is that we got that initial spec passing.
+If we run this against the same spec as before we get more tests passing, but
+not all of them. Still, getting that initial spec passing means we're headed
+in the right direction.
 
-There are three very simple Unix programming primitives in use here: `fork`, `exec`, and `wait`. We've already talked about `fork` and `exec`, the cornerstone of Unix process spawning. The third player here, `wait`, is often used in unison with these two. It tells the parent process to wait for the child process before continuing, rather than continuing execution in parallel. This is a pretty common pattern when spawning shell commands because you usually want to wait for the output of the command.
+There are three very simple Unix programming primitives in use here: `fork`,
+`exec`, and `wait`. We've already talked about `fork` and `exec`, the
+cornerstone of Unix process spawning. The third player here, `wait`, is often
+used in unison with these two. It tells the parent process to wait for the child
+process before continuing, rather than continuing execution in parallel. This is
+a pretty common pattern when spawning shell commands because you usually want to
+wait for the output of the command.
 
-In this case we collect the status of the child when it exits and return the result of `success?`. This is `true` for a successful exit status code (ie. 0) and `false` for any other value.
+In this case we collect the status of the child when it exits and return the
+result of `success?`. This is `true` for a successful exit status code (ie. 0)
+and `false` for any other value.
 
 ## Getting Back to Green
 
-Now to get the rest of the `system` specs passing.
+Now we need to get the rest of the `system` specs passing. If we have a look at
+the remainder of the failing specs we see the following:
 
-If we have a look at the remainder of the failing specs we see the following:
-
-``` console
+```console
 1) 
 Kernel#system returns nil when command execution fails FAILED
 Expected false to be nil
@@ -237,13 +262,14 @@ Expected false to be nil
 2)
 Kernel#system does not write to stderr when command execution fails FAILED
 Expected (STDERR): ""
-         but got: "/Users/jstorimer/projects/rubyspec/practicing_spawning.rb:8:in `exec': No such file or directory - sad (Errno::ENOENT)
+         but got: "/[...]/practicing_spawning.rb:8:in `exec': No such 
+         file or directory - sad (Errno::ENOENT)
 <snipped backtrace...>
 ```
 
 These failures relate to the following specs:
 
-``` ruby
+```ruby
 ruby_version_is "1.9" do
   it "returns nil when command execution fails" do
     @object.system("sad").should be_nil
@@ -255,17 +281,30 @@ it "does not write to stderr when command execution fails" do
 end
 ```
 
-Both of these specs are testing the same situation, trying to `exec` a command that doesn't exist. When this case happens it actually raises an exception in the sub-process. This is evidenced by the fact that failure #2 above prints an exception message along with a stacktrace on its `STDERR`, whereas the spec expected that `STDERR` would be empty.
+Both of these specs are testing the same situation, trying to `exec` a command
+that doesn't exist. When this case happens it actually raises an exception in
+the sub-process. This is evidenced by the fact that failure #2 above prints an
+exception message along with a stacktrace on its `STDERR`, whereas the spec
+expected that `STDERR` would be empty.
 
-So when the sub-process raises an exception we need to notify the parent process of the exception. Note that we can't use Ruby's regular exception handling in this case because the exception is happening inside the sub-process. The sub-process got a copy of everything that the parent had, including the Ruby interpreter. So, while all of the code is sourced from same file, we can't depend on regular Ruby features because the processes are actually running on their own separate copies of the VM!
+So when the sub-process raises an exception we need to notify the parent process
+of the exception. Note that we can't use Ruby's regular exception handling in
+this case because the exception is happening inside the sub-process. The
+sub-process got a copy of everything that the parent had, including the Ruby
+interpreter. So, while all of the code is sourced from the same file, we can't
+depend on regular Ruby features because the processes are actually running on
+their own separate copies of the VM!
 
-To solve this we need some form of inter-process communication (IPC). We'll use a Unix pipe.
+To solve this problem, we need some form of inter-process communication (IPC).
+Keeping with the general theme of this article, we'll use a Unix pipe.
 
 ## The Pipe
 
-A call to `IO.pipe` in Ruby will return two `IO` objects. One is readable and one is writable. Together they form a one-way data 'pipe'. Data can be written to one `IO` and read from the other `IO`.
+A call to `IO.pipe` in Ruby will return two `IO` objects, one readable and
+one writable. Together they form a one-way data 'pipe'. Data is written
+to one `IO` object and read from the other.
 
-``` ruby
+```ruby
 rd, wr = IO.pipe
 wr.write "ping"
 wr.close
@@ -273,13 +312,19 @@ wr.close
 rd.read #=> "ping"
 ```
 
-A pipe can be used for IPC by taking advantage of `fork` semantics. If you create a pipe before forking then the child process inherits a copy of the pipe from its parent. Since both have a copy one process can write to the pipe while the other reads from it, enabling inter-process communication. Since pipes are backed by the kernel itself, we can use them to communicate between our separate Ruby processes with their own VMs.
+A pipe can be used for IPC by taking advantage of `fork` semantics. If you
+create a pipe before forking then the child process inherits a copy of the pipe
+from its parent. Since both have a copy, one process can write to the pipe while
+the other reads from it, enabling inter-process communication. Since pipes are
+backed by the kernel itself, we can use them to communicate between our separate
+Ruby processes with their own VMs.
 
 ## Implementing system() with a pipe
 
-Now we can roll together all of these concepts and write our own implementation of `system` that passes all the specs:
+Now we can roll together all of these concepts and write our own implementation
+of `system` that passes all the specs:
 
-``` ruby
+```ruby
 # practicing_spawning.rb
 module Kernel
   def system(*args)
@@ -328,9 +373,10 @@ All green!
 
 ## Implementing backticks
 
-Now that we've got the fundamentals under our belts we can apply it to the implementation of other process spawning methods. Let's do backticks.
+Now that we've got the fundamentals under our belts we can apply it to the
+implementation of other process spawning methods. Let's do backticks.
 
-``` ruby
+```ruby
 # practicing_spawning.rb
 module Kernel
   def `(str)
@@ -364,9 +410,10 @@ module Kernel
 end
 ```
 
-Now we can run the backticks spec against our implementation and see that it's all green!
+Now we can run the backticks spec against our implementation and see that it's
+all green!
 
-``` console
+```console
 $ mspec -r ./practicing_spawning.rb core/kernel/backtick_spec.rb
 ```
 
@@ -374,21 +421,59 @@ The full source for our `practicing_spawning.rb` file is available [as a gist]()
 
 ## Closing Notes
 
-I find there's something special about spawning processes. You get to dig down below the top layer of your programming language to the lower layer where All Things Are One. When dealing with things like `fork`, `exec`, and `wait` your operating system treats all processes equally. Any Ruby process can transform into a C program, or a Python process, or vice versa. Similarly you can `wait` on processes written in any language. At this layer of abstraction there's only the system and its primitives.
+I find there's something special about spawning processes. You get to dig down
+below the top layer of your programming language to the lower layer where All
+Things Are One. When dealing with things like `fork`, `exec`, and `wait`, your
+operating system treats all processes equally. Any Ruby process can transform
+into a C program, or a Python process, or vice versa. Similarly you can `wait`
+on processes written in any language. At this layer of abstraction there's only
+the system and its primitives.
 
-We spend a lot of our mental energy worrying about good principles like abstraction, decoupling, efficiency. In digging down a layer and seeing what your operating system is capable of you see an extremely robust and abstract system. It cares not how you implement your programs but offers the same functionality for any running program. Understanding your system at this level will really show you what it's capable of and give you a good mental understanding of how your system sees the world. Once you really grasp the `fork` + `exec` concept you'll see that its right at the core of a Unix system. Every process is spawned this way. The simplest example is your shell, it uses this very pattern to launch programs.
+We spend a lot of our mental energy worrying about good principles like
+abstraction, decoupling, efficiency. In digging down a layer and seeing what
+your operating system is capable of, you see an extremely robust and abstract
+system. It cares not how you implement your programs but offers the same
+functionality for any running program. Understanding your system at this level
+will really show you what it's capable of and give you a good mental
+understanding of how your system sees the world. Once you really grasp the
+`fork` + `exec` concept you'll see that its right at the core of a Unix system.
+Every process is spawned this way. The simplest example is your shell, it uses
+this very pattern to launch programs.
 
 I'll leave you with two more tips:
 
-1. Uses exec() at the end of scripts to save a process. Remember the example from the beginning where a rake task spawned an `irb` session? The obvious choice in that case is to use `exec`. 
+1. Uses `exec()` at the end of scripts to save a process. Remember the example
+from the beginning where a rake task spawned an `irb` session? The obvious
+choice in that case is to use `exec`.
 
-    Any other variant will require forking a new process which then execs and has the parent wait for it. Using `exec` directly cuts the need for an extra process by transforming the `rake` process directly into an `irb` process. This obviously won't work in situations where you need to shell out and then work with the output, but keep it in mind if the last line of your script just shells out.
+    Any other variant will require forking a new process which then execs and
+    has the parent wait for it. Using `exec` directly cuts the need for an extra
+    process by transforming the `rake` process directly into an `irb` process.
+    This obviously won't work in situations where you need to shell out and then
+    work with the output, but keep it in mind if the last line of your script
+    just shells out.
 
-2. Pass an `Array` instead of a `String`. The backticks method always takes a String, but the `system` method (and many other process spawning methods) will take an Array or a String. 
+2. Pass an `Array` instead of a `String`. The backticks method always takes a
+string, but the `system` method (and many other process spawning methods) will
+take an array or a string. 
 
-    When passed a String, `exec` may decide to spawn a shell to interpret the command, rather than executing it directly. This is handy for stuff like `system('find . | ack foobar -l')` but is very dangerous when user input is involved. With a String shell injection is possible, much like SQL injection, except that if compromised a shell injection could provide an attacker with root access to your system! Using an Array will never spawn a shell but will pass the Array arguments directly as the `ARGV` on the exec'ed process. Always do this.
+    When passed a String, `exec` may decide to spawn a shell to interpret the
+    command, rather than executing it directly. This is handy for stuff like
+    `system('find . | ack foobar -l')` but is very dangerous when user input is
+    involved. An unescaped string makes shell injection is possible. Shell
+    injection is like SQL injection, except that a compromised shell could provide an
+    attacker with root access to your entire system! Using an array will never
+    spawn a shell but will pass the array arguments directly as the `ARGV` on the exec'ed process. 
+    Always do this.
 
-If you enjoyed these exercises then you should try and implement some of the other process spawning primitives I mentioned. With Rubyspec as your guide you can try re-implementing just about anything with confidence. Doing so will surely give you a better understanding of how process spawning works in Ruby, and Unix in general. If you go ahead and implement some pure-Ruby versions of these spawning methods please leave a comment and share your code, I'd love to see it!
+Finally, if you enjoyed these exercises then you should try to implement some of
+the other process spawning primitives I mentioned. With Rubyspec as your guide
+you can try re-implementing just about anything with confidence. Doing so will
+surely give you a better understanding of how process spawning works in both Ruby
+and Unix in general. 
+
+Please leave a comment and share your code if you implement some pure-Ruby versions 
+of these spawning methods. I'd love to see them!
 
 
 
