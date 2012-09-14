@@ -184,8 +184,8 @@ Because one of the reasons rstat.us was developed was to reduce this kind of
 dependency of Twitter, this is a big price to pay, and hypermedia APIs can help
 guard against this kind of brittleness.
 
-In addition to flexibility in representation on both the client and server side, 
-another advantage of a hypermedia API is that the
+In addition to flexibility in representation on both the client and server side,
+another advantage of a hypermedia API is that
 it uses XHTML as its media type, and we just so happen to already have an XHTML
 representation of rstat.us' functionality: the web interface itself! If
 you take a look at the source of [http://rstat.us](http://rstat.us), you can see
