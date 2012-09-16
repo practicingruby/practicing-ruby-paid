@@ -1,4 +1,4 @@
-**BIO GOES HERE**
+*This article was contributed by [Jesse Storimer](http://jstorimer.com). He is the author of [Working With Unix Processes](http://workingwithunixprocesses.com) and [Working With TCP Sockets](http://workingwithtcpsockets.com), a pair of ebooks providing fundamental Unix knowledge to Ruby developers. When he's not at the keyboard he's often enjoying the great Canadian outdoors with his family.*
 
 Like many of you, I discovered Ruby via Rails and web development. That was my
 'in'. But before it was popular for writing web apps, Ruby was popular for its OO
@@ -417,7 +417,7 @@ all green!
 $ mspec -r ./practicing_spawning.rb core/kernel/backtick_spec.rb
 ```
 
-The full source for our `practicing_spawning.rb` file is available [as a gist](). 
+The full source for our `practicing_spawning.rb` file is available [as a gist](https://gist.github.com/3730986). 
 
 ## Closing Notes
 
@@ -442,7 +442,7 @@ this very pattern to launch programs.
 
 I'll leave you with two more tips:
 
-1. Uses `exec()` at the end of scripts to save a process. Remember the example
+1. Use `exec()` at the end of scripts to save a process. Remember the example
 from the beginning where a rake task spawned an `irb` session? The obvious
 choice in that case is to use `exec`.
 
@@ -460,10 +460,10 @@ take an array or a string.
     When passed a String, `exec` may decide to spawn a shell to interpret the
     command, rather than executing it directly. This is handy for stuff like
     `system('find . | ack foobar -l')` but is very dangerous when user input is
-    involved. An unescaped string makes shell injection is possible. Shell
+    involved. An unescaped string makes shell injection possible. Shell
     injection is like SQL injection, except that a compromised shell could provide an
-    attacker with root access to your entire system! Using an array will never
-    spawn a shell but will pass the array arguments directly as the `ARGV` on the exec'ed process. 
+    attacker with root access to your entire system! Using an Array will never
+    spawn a shell but will pass the elements directly as the `ARGV` of the exec'ed process. 
     Always do this.
 
 Finally, if you enjoyed these exercises then you should try to implement some of
