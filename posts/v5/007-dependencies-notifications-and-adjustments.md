@@ -6,21 +6,19 @@ instances of your information-hiding, single-responsibility-discharging,
 message-passing classes in touch with one another?
 
 I became confused about the smartest ways to do this when I started building
-Ruby apps that involved fetch large amounts of data from external services. In
+Ruby apps that involved fetching large amounts of data from external services. In
 these projects, a Rails or Sinatra web application acted as a facade for workers
 querying a large set of APIs. Each API was different from the last, requiring
 different approaches and different dependencies. Some APIs involved five or six
 different steps, and in some cases each step needed to be handled by a different
 object.
 
-I felt I understand object-oriented programming pretty well, yet I struggled
+I felt that I understood object-oriented programming pretty well, yet I struggled
 with specifying the relationships between objects so that each object knew just
 enough about its peers to get the job done. My style was inconsistent. Sometimes
 I would inject a dependency using the constructor, and sometimes I would use a
 setter method. At other times it seemed more natural to have an object directly
 instantiate new instances of whatever objects it needed, on the fly.
-
-### Object Peer Stereotypes
 
 All of this changed when someone turned me onto the book [Growing Object
 Oriented Software, Guided by Tests][GOOS] by Steve Freeman and Nat Pryce. The book has
@@ -34,20 +32,11 @@ distinction. We’ll explore each of these categories as they pertain to Ruby co
 using an example from my real production code: a wrapper for Typhoeus I wrote
 called HttpRequest.
 
-By the way, Gregory wrote about a related topic (what types of arguments to pass
-into a method) back in [Issue 2.14][2-14]. As your objects become more
-sophisticated you’ll find you end up passing fewer basic object types like
-strings, symbols, or numbers, and more of the Argument, Selector, or Curried
-objects that Gregory describes.
-
 ### Dependencies
 
 > Services that the object requires from its peers so it can perform its
 > responsibilities. The object cannot function without these services. It should
 > not be possible to create the object without them.
-
-> ... we insist on dependencies being passed in to the constructor, but
-> notifications and adjustment can be set to defaults and reconfigured later.
 
 I wrote the HttpRequest class so that I could set on_success and on_failure
 callbacks (where Typhoeus only provides an on_complete callback) and to
@@ -102,7 +91,7 @@ end
 
 Note that I’m supplying a default for the options argument, since it’s just a
 hash that gets passed onto Typhoeus::Request, and it’s something you’ll have
-available at the same type you have the URL. Because there is a sensible default
+available at the same time you have the URL. Because there is a sensible default
 (an empty hash), you could argue that this argument is more of an Adjustment,
 described below.
 
@@ -181,7 +170,7 @@ Most of my Adjustments involve component parts of a composite object. For the
 API-intense project where I’m using HttpRequest, I always have one class that
 has overall responsibility for getting all of the data we need for each API.
 That “master” class just does one thing: it coordinates the activities of a set
-of Adjustment peers, are of which are set to sensible defaults:
+of Adjustment peers, all of which are set to sensible defaults:
 
 ```ruby
 class DataFetcher
@@ -363,6 +352,16 @@ As Steve Freeman and Nat Pryce wrote:
 
 When considering how to organize object peers I recommend you favor what’s most
 understandable and flexible, even if it means deviating from the DNA pattern.
+
+TODO: FIND A PLACE FOR THIS:
+---------------------------------------------------------------------------------
+
+By the way, Gregory wrote about a related topic (what types of arguments to pass
+into a method) back in [Issue 2.14][2-14]. As your objects become more
+sophisticated you’ll find you end up passing fewer basic object types like
+strings, symbols, or numbers, and more of the Argument, Selector, or Curried
+objects that Gregory describes.
+
 
 [strategy]: http://en.wikipedia.org/wiki/Strategy_pattern
 [GOOS]: http://www.growing-object-oriented-software.com/
