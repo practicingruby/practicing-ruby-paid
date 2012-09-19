@@ -118,6 +118,12 @@ Internals are now understandle, too.
 
 Tilt
 
+- Opinionated frameworks are overrated (when the opinion doesn't matter from the
+  framework perspective)
+
+- But frameworks shouldn't need to implement N adapters for every option they
+  want to support.
+
 ### Good design is honest
 
 > It does not make a product more innovative, powerful or valuable than it
@@ -125,6 +131,16 @@ Tilt
 > cannot be kept.
 
 Rubyspec
+
+- Exposes how well supported Ruby's functionality is across implementations
+and versions.
+
+- Makes it easy to see how much things change / break in the official Ruby
+  distribution.
+
+- Provides some insights into performance across implementations / versions.
+
+- Gives implementators a level playing field to work with.
 
 ### Good design is long-lasting
 
@@ -147,6 +163,12 @@ CSV
 > the lifecycle of the product.
 
 Spin
+
+Spork:
+  - Needs to be added to your tests
+  - Needs to be added as a Gemfile dependency
+  - Patches Rails
+
 
 ### Good design is as little design as possible
 
