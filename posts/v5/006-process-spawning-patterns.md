@@ -1,4 +1,8 @@
-*This article was contributed by [Jesse Storimer](http://jstorimer.com). He is the author of [Working With Unix Processes](http://workingwithunixprocesses.com) and [Working With TCP Sockets](http://workingwithtcpsockets.com), a pair of ebooks providing fundamental Unix knowledge to Ruby developers. When he's not at the keyboard he's often enjoying the great Canadian outdoors with his family.*
+*This article was contributed by [Jesse Storimer](http://jstorimer.com). He is
+the author of [Working With Unix Processes](http://workingwithunixprocesses.com)
+and [Working With TCP Sockets](http://workingwithtcpsockets.com), a pair of
+ebooks providing fundamental Unix knowledge to Ruby developers. When he's not at
+the keyboard he's often enjoying the great Canadian outdoors with his family.*
 
 Like many of you, I discovered Ruby via Rails and web development. That was my
 'in'. But before it was popular for writing web apps, Ruby was popular for its OO
