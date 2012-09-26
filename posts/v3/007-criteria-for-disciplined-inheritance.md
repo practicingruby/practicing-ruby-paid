@@ -1,4 +1,10 @@
-Inheritance is a key concept in most object-oriented languages, but applying it skillfully can be challenging in practice. Back in 1989, [M. Sakkinen](http://users.jyu.fi/~sakkinen/) wrote a paper called [Disciplined inheritance](http://scholar.google.com/scholar?cluster=5893037045851782349&hl=en&as_sdt=0,7&sciodt=0,7) that addresses these problems and offers some useful criteria for working around them. Despite being more than two decades old, this paper is extremely relevant to the modern Ruby programmer. 
+Inheritance is a key concept in most object-oriented languages, but applying it
+skillfully can be challenging in practice. Back in 1989, [M.
+Sakkinen](http://users.jyu.fi/~sakkinen/) wrote a paper called [Disciplined
+inheritance](http://scholar.google.com/scholar?cluster=5893037045851782349&hl=en&as_sdt=0,7&sciodt=0,7)
+that addresses these problems and offers some useful criteria for working around
+them. Despite being over two decades old, this paper is extremely relevant to
+the modern Ruby programmer.
 
 Sakkinen's central point seems to be that most traditional uses of inheritance lead to poor encapsulation, bloated object contracts, and accidental namespace collisions. He provides two patterns for disciplined inheritance and suggests that by normalizing the way that we model things, we can apply these two patterns to a very wide range of scenarios. He goes on to show that code that conforms to these design rules can easily be modeled as ordinary object composition, exposing a solid alternative to traditional class-based inheritance.
 
@@ -84,11 +90,16 @@ Through its inheritance-based relationships, `StatisticalReport` is able to act 
 
 Unfortunately, the devil is in the details. When viewed from a different angle, it's easy to see a wide range of problems that exist even in this very simple application of class-based inheritance:
 
-1. It is possible to create instances of `EnumerableCollection` and `StatisticalCollection` but not possible to do anything meaningful with them as they are currently written. Although it's not necessarily a bad idea to make use of abstract classes, valid uses of that pattern typically invert the relationship shown here, with the child object filling in a missing piece so that its parent can do a complex job.
+1. `EnumerableCollection` and `StatisticalCollection` can be instantiated, but
+it is not possible to do anything meaningful with them as they are currently
+written. Although it's not always a bad idea to make use of abstract
+classes, valid uses of that pattern typically invert the relationship shown
+here, with the child object filling in a missing piece so that its parent can do
+a complex job.
 
-2. Although `StatisticalReport` relies on only two relatively generic methods from `StatisticalCollection` and `StatisticalCollection` similarly relies on only two methods from `EnumerableCollection`, the use of class inheritance forces a rigid hierarchical relationship between the objects. Even if it's not especially awkward to say a `StatisticalCollection` is an `EnumerableCollection`, it's definitely weird to say that a `StatisticalReport` is also an `EnumerableCollection`. What makes matters worse is that this sort of modeling prevents `StatisticalReport` from inheriting from something more topically related to its domain such as a `HtmlReport` or something similar. As my [favorite OOP rant](http://lists.canonical.org/pipermail/kragen-tol/2011-August/000937.html) proclaims, class hierarchies do not exist simply to satisfy our inner Linnaeus.
+2. Although `StatisticalReport` relies on only two relatively generic methods from `StatisticalCollection` and `StatisticalCollection` similarly relies on only two methods from `EnumerableCollection`, the use of class inheritance forces a rigid hierarchical relationship between the objects. Even if it's not especially awkward to say a `StatisticalCollection` is an `EnumerableCollection`, it's definitely weird to say that a `StatisticalReport` is also an `EnumerableCollection`. What makes matters worse is that this sort of modeling prevents `StatisticalReport` from inheriting from something more related to its domain such as a `HtmlReport` or something similar. As my [favorite OOP rant](http://lists.canonical.org/pipermail/kragen-tol/2011-August/000937.html) proclaims, class hierarchies do not exist simply to satisfy our inner Linnaeus.
 
-3. There is no encapsulation whatsoever between the components in this system. The purely functional nature of both `EnumerableCollection` and `Statistics` make this less of a practical concern in this particular example but is a dangerous characteristic of all code that uses class-based inheritance in Ruby. Any instance variables created within a `StatisticalReport` object will be directly accessible in method calls all the way up its ancestor chain, and the same goes for any methods that `StatisticalReport` defines. Although a bit of discipline can help prevent this from becoming a problem in most simple uses of class inheritance, deep method resolution paths can make accidental collisions of method definitions or instance variable names a serious risk. Such a risk might be mitigated somewhat by the introduction of class-specific privacy controls, but they do not currently exist in Ruby. 
+3. There is no encapsulation whatsoever between the components in this system. The purely functional nature of both `EnumerableCollection` and `Statistics` make this less of a practical concern in this particular example but is a dangerous characteristic of all code that uses class-based inheritance in Ruby. Any instance variables created within a `StatisticalReport` object will be directly accessible in method calls all the way up its ancestor chain, and the same goes for any methods that `StatisticalReport` defines. Although a bit of discipline can help prevent this from becoming a problem in most simple uses of class inheritance, deep method resolution paths can make accidental collisions of method definitions or instance variable names a serious risk. Such a risk might be mitigated by the introduction of class-specific privacy controls, but they do not exist in Ruby. 
 
 4. As a consequence of points 2 and 3, the `StatisticalReport` object ends up with a bloated contract that isn't representative of its domain model. It'd be awkward to call `StatisticalReport#count` or `StatisticalReport#reduce`, but if those inherited methods are not explicitly marked as private in the `StatisticalReport` definition, they will still be callable by clients of the `StatisticalReport` object. Once again, the stateless nature of this program makes the effects less damning in this particular example, but it doesn't take much effort to imagine the inconsistencies that could arise due to this problem. In addition to real risks of unintended side effects, this kind of modeling makes it harder to document the interface of the `StatisticalReport` in a natural way and diminishes the usefulness of Ruby's reflective capabilities.
 
@@ -246,7 +257,7 @@ Regardless of what iteration strategy we end up using, the following points are 
 
 3. There is strict encapsulation between the three components: each have their own namespace, and each can enforce their own privacy controls. It's possible of course to side-step these protections, but they are at least enabled by default. The issue of accidental naming collisions between methods or variables of objects is completely eliminated.
 
-4. As a result of points 2 and 3, the surface of each object is kept narrowly in line with its own domain. In fact, the public interface of `StatisticalReport` has been reduced to its constructor and the `to_s` method, making it about as thin as possible while still being useful. 
+4. As a result of points 2 and 3, the surface of each object is kept narrowly in line with its own domain. In fact, the public interface of `StatisticalReport` has been reduced to its constructor and the `to_s` method, making it as thin as possible while still being useful. 
 
 There are certainly downsides to using aggregation; it is not a golden hammer by any means. But when it comes to **incidental inheritance**, it seems to be the right tool for the job more often than not. I'd love to hear counterarguments to this claim, though, so please do share them if you have something in mind that you don't think would gracefully fit this style of modeling.
 
@@ -258,6 +269,9 @@ In a language like Ruby that lacks both multiple inheritance and true class-spec
 
 In Issue 3.8, we will move on to discuss an essential form of inheritance that Sakkinen refers to as **completely consistent inheritance**. Exploring that topic will get us closer to the concept of mathematical subtypes, which are much more interesting at the theoretical level than incidental inheritance relationships are. But because Ruby's language features make even the simple relationships described in this issue somewhat challenging to manage in an elegant way, I am still looking forward to hearing your ideas and questions about the things I've covered so far.
 
-A major concern I have about incidental inheritance is that I still don't have a clear sense of where to draw the line between the two extremes I've outlined in this article. I definitely want to look further into this area, so please leave a comment if you don't mind sharing your thoughts on this.
+A major concern I have about incidental inheritance is that I still don't have a
+clear sense of where to draw the line between the two extremes I've outlined in
+this article. I definitely want to look further into this area, so please leave
+a comment if you don't mind sharing your thoughts.
 
 

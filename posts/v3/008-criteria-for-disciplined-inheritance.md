@@ -109,7 +109,7 @@ As far as Liskov is concerned, `Prawn::Article` is a perfectly legitimate extens
 
 The downside of using subclassing is that even minor alterations to program requirements can cause encapsulation-related issues to become a real concern. For example, if we decide that we want to add a pair of instance variables that control the fonts used for headers and paragraphs, it would be hard to guarantee that these variables wouldn't clash with the data contained within `Prawn::Document` objects. We can assume that calls to public methods provided by the parent object are safe, but we cannot say the same about referencing instance variables, so a delegation-based model starts to look more appealing.
 
-Suppose we wanted to support the following API, but through the use of delegation rather than subclassing:
+Suppose we wanted to support the following API, but via delegation rather than subclassing:
 
 ```ruby
 Prawn::Article.generate("test.pdf") do
@@ -138,7 +138,8 @@ Prawn::Article.generate("test.pdf") do
 end
 ```
 
-Using a `method_missing` hook and a bit of manual delegation for the `Prawn::Article.generate` class method, it is fairly easy to implement this DSL:
+Using a `method_missing` hook and the `Prawn::Article.generate` class method, it
+is fairly easy to implement this DSL:
 
 ```ruby
 module Prawn
