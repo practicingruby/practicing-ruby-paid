@@ -18,7 +18,7 @@ project.
 
 Most developers understand both the value of allowing systems to evolve over time as
 well as the essential role that stability plays in creating a high quality user
-experience, we are often under external pressure to conform to
+experience. The problem is that we are often under external pressure to conform to
 processes which do not strike a reasonable balance between these two interests,
 leading to a false choice between stagnation and instability. If that tension
 did not exist, what would we do differently?
@@ -34,7 +34,6 @@ we need to.
 - https://github.com/elm-city-craftworks/practicing-ruby-web/issues/73
 
 At least some commits 40 out of 52 weeks
-(summarize major changes / improvements)
 
 * Added syntax highlighting
 * Overhauled our comments system to include mention support, emoji, live
@@ -47,6 +46,141 @@ previews, etc.
 * Overhauling email delivery / payment processing
 
 ![Commit frequency by week](http://i.imgur.com/H8Aql.png)
+
+---
+
+### Pipeline production model
+
+We tend to eschew iterations and large scale release planning in favor of
+shipping a single atomic feature at a time whenever possible. We started working
+this way because of our severely limited resources (we only have about 10 hours 
+a week of development time available on average), but we later found that
+shipping individual features made it much easier to spot and resolve defects in
+newly developed code.
+
+(Describe payment changes here)
+(Note that this isn't always feasible in production, but can be 
+emulated in development -- e.g. site redesign)
+
+### Peer review / demonstrations
+
+We demonstrate all but the most trivial changes to one another, at both the
+functional and the code level. We *start* with the actual experience of using
+the features, and only bother with code reviews once we answer any questions
+that arise at the functional level.
+
+This approach inevitably reveals edge cases and misconceptions, which we
+document with tests. We tend to start this process as early as possible, opening
+a pull request when we have even the most minimal bit of real functionality.
+Rather than having the person developing the feature think of all of what can go
+wrong, we push a big chunk of that responsibility on the reviewer. This is very
+effective, because similar to writing prose, there is a big difference between
+"creative mode" and "editing mode", and this process reflects that.
+
+This process of peer review shakes out MANY defects before we ever roll
+something into production, and it makes it harder for us to cut corners.
+
+### Rapid error detection
+
+We rely on many different ways of detecting problems, and we automate as much as
+we can.
+
+* Travis: Good for catching environmental issues: Did we forget to update a
+configuration file, is a complicated dependency not set up right, etc? Did
+someone simply forget to run the entire test suite before pushing? (Autotest /
+spin+kicker example)
+
+* Exception notifier: Good for catching unexpected failures and providing the
+necessary context for reproducing them.  However, you need to do a lot of fine
+tuning to get these to be useful: i.e. fix any trivial bugs that get triggered by
+bots. Automated error reports are only good if they are almost ALL actionable,
+otherwise you run into a boy called wolf effect. BE CAREFUL ABOUT TIGHT FAILURE
+LOOPS, THEY SEND EMAILS LIKE CRAZY!
+
+* Reports from subscribers: Useful for catching soft failures (i.e ones that 
+aren't causing exceptions), or for providing additional context about hard failures.
+
+* Logs: We watch them when we've rolled out a major change, and we watch them
+whenever we send a broadcast email to make sure that the requests coming back
+look sane. We also will search our logs when we want to investigate problems
+that are hard to diagnose via exception notifier (i.e. workflow issues)
+
+* Dogfooding: Jordan is constantly manually testing the app while developing,
+as that's how we test usability. We are able to sync most of our data from
+production into development to give a realistic environment. I am also
+constantly using the application while writing articles, responding to comments,
+etc, so I am often the first to run into problems before others experience them.
+
+### Revert ruthlessly
+
+Working in terms of individual features makes it easy to revert newly released
+functionality as soon as we find it is defective. This is usually the first step
+for us in filing a bug report. To make this even easier, we often deploy from
+feature branches (which are kept in sync with master) before merging features
+into master, which makes it easy for us to cut back to stable system temporarily
+while fixes are being worked on. That combined with cap rollback go a long way.
+
+This is another one of those things that we started doing from having very
+limited resources: we would learn about a bug and realize we may not get to it
+for a few days, but didn't want to have our quality of service degrade while we
+waited to fix things. Later on, we realized that this approach greatly reduced
+the temptation to put together hackish "quick fixes", which can introduce new
+bugs while fixing old ones.
+
+When we fix issues that we found in older code rather than the current feature
+under development, we revert it in master and then merge it into any active feature
+branches if necessary. If this creates conflicts, we deploy master until we can
+sort out how to get things reverted on the feature branch.
+
+On rare occasions, reverting would be too traumatic or complicated. When that
+happens, we will implement workarounds or disable features at the UI level so
+that the impact on subscribers is minimal.
+
+### Fixes before features
+
+Because we work on a single feature at a time, we don't need to make the same
+compromises between bug fixes and new feature work that often arise in
+iteration or release planning.
+
+Generally speaking, whenever we have to disable a feature temporarily because it
+has a bug in it, we have to make the decision of whether to fix that issue as
+soon as possible or to remove the feature and reimplement it later. Most of the
+time, we choose to stop work temporarily on new feature work and attempt to
+investigate and fix bugs in existing features quickly after detecting them. This
+allows us to sort things out while they're fresh in our minds (we also may even
+have someone who experienced the problem to help us test our fixes!)
+
+However, if we find a defect hard to fix, or if we don't understand how to fix
+it, we think about what the cost of fixing it will be compared to the cost of
+killing the feature off. Doing the investigation early helps us make this
+decision before the issue becomes stale.
+
+This policy encourages us to avoid allowing buggy code to linger, and it also
+makes it so that we put a bit more effort into avoiding getting into this
+situation in the first place.
+
+### Replicate via tests
+
+We do peer reviews on non-trivial bug fixes similar to how we review feature
+work: demonstration at the functional level and inspection at the code level.
+
+I don't do a lot of our development work, but I fairly frequently write extra
+tests to document our fixes, and when I do prepare my own fixes, Jordan does the
+same for me. The basic idea is that our "What if?" and "How does?" kind of
+questions get documented in tests, not just answered in conversation or by
+manual inspection.
+
+We often start at the acceptance testing level, attempting to create a test that
+comes as close to possible to reproducing the failure at the level it was
+actually experienced. We've been improving our acceptance test helpers to make
+this easier, as it can be pretty time consuming.
+
+Because bug reports often reveal other potential sources of failure, we will
+often write some additional tests around those as well, starting again with
+acceptance tests, and layering in unit tests as necessary for non-trivial
+business logic errors.
+
+### NOTES TO INTEGRATE
 
 - No releases / iterations
 - Master kept constantly deployable, deploy one new feature at a time whenever
