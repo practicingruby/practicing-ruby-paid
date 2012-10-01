@@ -315,9 +315,9 @@ rd.read #=> "ping"
 A pipe can be used for IPC by taking advantage of `fork` semantics. If you
 create a pipe before forking then the child process inherits a copy of the pipe
 from its parent. Since both have a copy, one process can write to the pipe while
-the other reads from it, enabling inter-process communication. Since pipes are
-backed by the kernel itself, we can use them to communicate between our separate
-Ruby processes with their own VMs.
+the other reads from it, enabling inter-process communication. Pipes are
+backed by the kernel itself, so we can use them to communicate between our independent
+Ruby processes.
 
 ## Implementing system() with a pipe
 
