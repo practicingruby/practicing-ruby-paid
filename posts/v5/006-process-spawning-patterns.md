@@ -159,7 +159,7 @@ The failing spec title says that `system` spawns a sub-process. If you're
 creating new processes on a Unix system, that means using `fork`:
 
 > ------------------------------------------------------------------------------
->   Kernel.fork  [{ block }]   -> fixnum or nil
+>   Kernel.fork  [{ block }]   -> fixnum or nil  
 >   Process.fork [{ block }]   -> fixnum or nil
 >    
 > ------------------------------------------------------------------------------
@@ -297,7 +297,7 @@ this case because the exception is happening inside the sub-process. The
 sub-process got a copy of everything that the parent had, including the Ruby
 interpreter. So, while all of the code is sourced from the same file, we can't
 depend on regular Ruby features because the processes are actually running on
-their own separate copies of the VM!
+their own separate copies of the Ruby interpreter!
 
 To solve this problem, we need some form of inter-process communication (IPC).
 Keeping with the general theme of this article, we'll use a Unix pipe.
@@ -319,9 +319,9 @@ rd.read #=> "ping"
 A pipe can be used for IPC by taking advantage of `fork` semantics. If you
 create a pipe before forking then the child process inherits a copy of the pipe
 from its parent. Since both have a copy, one process can write to the pipe while
-the other reads from it, enabling inter-process communication. Since pipes are
-backed by the kernel itself, we can use them to communicate between our separate
-Ruby processes with their own VMs.
+the other reads from it, enabling inter-process communication. Pipes are
+backed by the kernel itself, so we can use them to communicate between our independent
+Ruby processes.
 
 ## Implementing system() with a pipe
 
@@ -473,8 +473,8 @@ take an array or a string.
 Finally, if you enjoyed these exercises then you should try to implement some of
 the other process spawning primitives I mentioned. With Rubyspec as your guide
 you can try re-implementing just about anything with confidence. Doing so will
-surely give you a better understanding of how process spawning works in both Ruby
-and Unix in general. 
+surely give you a better understanding of how process spawning works in Ruby, or 
+any Unix environment.
 
 Please leave a comment and share your code if you implement some pure-Ruby versions 
 of these spawning methods. I'd love to see them!
