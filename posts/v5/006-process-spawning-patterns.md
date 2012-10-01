@@ -155,7 +155,7 @@ The failing spec title says that `system` spawns a sub-process. If you're
 creating new processes on a Unix system, that means using `fork`:
 
 > ------------------------------------------------------------------------------
->   Kernel.fork  [{ block }]   -> fixnum or nil
+>   Kernel.fork  [{ block }]   -> fixnum or nil  
 >   Process.fork [{ block }]   -> fixnum or nil
 >    
 > ------------------------------------------------------------------------------
