@@ -293,7 +293,7 @@ this case because the exception is happening inside the sub-process. The
 sub-process got a copy of everything that the parent had, including the Ruby
 interpreter. So, while all of the code is sourced from the same file, we can't
 depend on regular Ruby features because the processes are actually running on
-their own separate copies of the VM!
+their own separate copies of the Ruby interpreter!
 
 To solve this problem, we need some form of inter-process communication (IPC).
 Keeping with the general theme of this article, we'll use a Unix pipe.
