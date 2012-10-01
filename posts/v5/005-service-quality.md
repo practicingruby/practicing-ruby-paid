@@ -49,18 +49,44 @@ previews, etc.
 
 ---
 
-### Pipeline production model
+### Lean development practices
 
-We tend to eschew iterations and large scale release planning in favor of
-shipping a single atomic feature at a time whenever possible. We started working
-this way because of our severely limited resources (we only have about 10 hours 
-a week of development time available on average), but we later found that
-shipping individual features made it much easier to spot and resolve defects in
-newly developed code.
+Because we only have a few hours of development time available each week, we
+need to work very efficiently. We've found that many of the [Lean
+Software Development](http://en.wikipedia.org/wiki/Lean_software_development) 
+practices work well for us, and so we've been gradually adopting them over time.
 
-(Describe payment changes here)
-(Note that this isn't always feasible in production, but can be 
-emulated in development -- e.g. site redesign)
+One of the biggest influences that the Lean mindset has had on us is that we now
+view all work-in-progress code as a form of waste. This way of looking at things 
+has caused us to eschew iteration planning in favor of shipping a single
+improvement or fix at a time. This workflow may seem a bit unrealistic at 
+first glance, but with some practice it is possible to break very 
+complicated features into tiny bite-sized chunks. We now work this way by
+habit, but our comment system was the first thing we approached in 
+this fashion.
+
+When we first implemented comments, we had Markdown support, but not much else. 
+Later on, we layered in various improvements one by one, including syntax 
+highlighting, email notifications, Twitter-style mentions, and Emoji support. 
+With so little development time available each week, it would have taken 
+months to ship our discussion system if we attempted to build it all at once.
+With that in mind, our adoption of a Lean-inspired deployment strategy was not just a
+workflow optimization; it was an absolute necessity. Later on, we also came to 
+realize that this constraint was a source of strength rather than weakness for
+us. Here's why:
+
+*By developing features incrementally, there
+are less moving parts to integrate on each deploy. This also means that there
+are fewer opportunities for defects to be introduced during development.
+When new bits of functionality do fail, finding the root
+cause of the problem is usually easy, and even when it isn't, rolling the system
+back to a working state is much less traumatic. These things combined result in
+a greatly reduced day-to-day maintenance cost, and that means more time can
+be spent on value-producing work.*
+
+As you read through the rest of the guidelines in this article, you'll find that
+while they are useful on their own, they are made much more effective by this
+subtle shift in the way we ship things.
 
 ### Peer review / demonstrations
 
@@ -80,7 +106,7 @@ effective, because similar to writing prose, there is a big difference between
 This process of peer review shakes out MANY defects before we ever roll
 something into production, and it makes it harder for us to cut corners.
 
-### Rapid error detection
+### Early warning system
 
 We rely on many different ways of detecting problems, and we automate as much as
 we can.
@@ -95,7 +121,11 @@ necessary context for reproducing them.  However, you need to do a lot of fine
 tuning to get these to be useful: i.e. fix any trivial bugs that get triggered by
 bots. Automated error reports are only good if they are almost ALL actionable,
 otherwise you run into a boy called wolf effect. BE CAREFUL ABOUT TIGHT FAILURE
-LOOPS, THEY SEND EMAILS LIKE CRAZY!
+LOOPS, THEY SEND EMAILS LIKE CRAZY! Bots will try things that aren't possible
+through the UI.
+
+https://github.com/rails/rails/issues/4127
+http://stackoverflow.com/questions/8881756/googlebot-receiving-missing-template-error-for-an-existing-template
 
 * Reports from subscribers: Useful for catching soft failures (i.e ones that 
 aren't causing exceptions), or for providing additional context about hard failures.
@@ -159,7 +189,7 @@ This policy encourages us to avoid allowing buggy code to linger, and it also
 makes it so that we put a bit more effort into avoiding getting into this
 situation in the first place.
 
-### Replicate via tests
+### Bugs are replicated via tests
 
 We do peer reviews on non-trivial bug fixes similar to how we review feature
 work: demonstration at the functional level and inspection at the code level.
