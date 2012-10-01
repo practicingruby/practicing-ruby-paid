@@ -461,7 +461,7 @@ choice in that case is to use `exec`.
 string, but the `system` method (and many other process spawning methods) will
 take an array or a string. 
 
-    When passed a String, `exec` may decide to spawn a shell to interpret the
+    When passed a String, `exec` may spawn a shell to interpret the
     command, rather than executing it directly. This is handy for stuff like
     `system('find . | ack foobar -l')` but is very dangerous when user input is
     involved. An unescaped string makes shell injection possible. Shell
