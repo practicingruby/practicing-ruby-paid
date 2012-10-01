@@ -469,8 +469,8 @@ take an array or a string.
 Finally, if you enjoyed these exercises then you should try to implement some of
 the other process spawning primitives I mentioned. With Rubyspec as your guide
 you can try re-implementing just about anything with confidence. Doing so will
-surely give you a better understanding of how process spawning works in both Ruby
-and Unix in general. 
+surely give you a better understanding of how process spawning works in Ruby, or 
+any Unix environment.
 
 Please leave a comment and share your code if you implement some pure-Ruby versions 
 of these spawning methods. I'd love to see them!
