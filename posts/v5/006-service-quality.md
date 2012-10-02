@@ -30,6 +30,7 @@ share the guidelines we have developed for minimizing the impact of defects in
 our code without giving up our ability to grow and change our software whenever
 we need to.
 
+
 - https://github.com/elm-city-craftworks/practicing-ruby-web/issues/51
 - https://github.com/elm-city-craftworks/practicing-ruby-web/issues/73
 
@@ -52,9 +53,9 @@ previews, etc.
 ### Lean development practices
 
 Because we only have a few hours of development time available each week, we
-need to work very efficiently. We've found that many of the [Lean
-Software Development](http://en.wikipedia.org/wiki/Lean_software_development) 
-practices work well for us, and so we've been gradually adopting them over time.
+need to work very efficiently. We've found that many of the [Lean Software 
+Development][lean] practices work well for us, and so we've
+been gradually adopting them over time.
 
 One of the biggest influences that the Lean mindset has had on us is that we now
 view all work-in-progress code as a form of waste. This way of looking at things 
@@ -90,6 +91,8 @@ subtle shift in the way we ship things.
 
 ### Peer review / demonstrations
 
+**~~~~~~~~~~~~~~~~~~WORK IN PROGRESS~~~~~~~~~~~~~~~~~~~**
+
 We demonstrate all but the most trivial changes to one another, at both the
 functional and the code level. We *start* with the actual experience of using
 the features, and only bother with code reviews once we answer any questions
@@ -108,65 +111,143 @@ something into production, and it makes it harder for us to cut corners.
 
 ### Early warning system
 
+When something does go wrong, we want to know about it as soon as possible.
 We rely on many different ways of detecting problems, and we automate as much as
 we can.
 
-* Travis: Good for catching environmental issues: Did we forget to update a
-configuration file, is a complicated dependency not set up right, etc? Did
-someone simply forget to run the entire test suite before pushing? (Autotest /
-spin+kicker example)
+Our first line of defense is our continuous integration system. 
+We use [Travis CI][travis], but for our purposes pretty much any CI tool would
+work. Travis does a great job of catching environmental issues for us: things
+like dependency issues, configuration problems, and other subtle things that
+would be hard to notice in development. It also helps protect us from
+ourselves: Even if we forget to run the entire test suite before pushing a set
+of changes, Travis never forgets, and will complain loudly if we've broken the
+build. Most of the mistakes that Travis can detect are quite trivial, but
+catching them before they make it to production helps us keep our service
+stable.
 
-* Exception notifier: Good for catching unexpected failures and providing the
-necessary context for reproducing them.  However, you need to do a lot of fine
-tuning to get these to be useful: i.e. fix any trivial bugs that get triggered by
-bots. Automated error reports are only good if they are almost ALL actionable,
-otherwise you run into a boy called wolf effect. BE CAREFUL ABOUT TIGHT FAILURE
-LOOPS, THEY SEND EMAILS LIKE CRAZY! Bots will try things that aren't possible
-through the UI.
+For the bugs that Travis can't catch (i.e. most of them), we rely on
+the [Exception Notifier][exception-notification] plugin for Rails. While most
+notification systems would probably do the trick for us, we like that Exception
+Notifier is email-based; it fits into our existing workflow nicely. The default
+template for error reports works great for us, because it provides everything
+you tend to get from debugging output during development: session data,
+environment information, the complete request, and a stack trace. If we start to
+notice exception reports roll in soon after we've pushed a change to the system, this
+information is usually all we need in order to find out what caused the problem.
 
-https://github.com/rails/rails/issues/4127
-http://stackoverflow.com/questions/8881756/googlebot-receiving-missing-template-error-for-an-existing-template
+Whenever we're working on features that are part of the critical path of our
+application, we tend to use the UNIX `tail -f` command to watch our production 
+logs in real time. We also occasionally write ad-hoc reports that give us 
+insight into how our system is working. For example, we built the following 
+report to keep an eye on account statuses when we rolled out a partial replacement 
+for our registration system. We wanted to make sure it was possible for folks to
+successfully make it to the 'payment pending' status, and the report showed
+us that it was:
 
-* Reports from subscribers: Useful for catching soft failures (i.e ones that 
-aren't causing exceptions), or for providing additional context about hard failures.
+![Account status report](http://i.imgur.com/NOI0A.png)
 
-* Logs: We watch them when we've rolled out a major change, and we watch them
-whenever we send a broadcast email to make sure that the requests coming back
-look sane. We also will search our logs when we want to investigate problems
-that are hard to diagnose via exception notifier (i.e. workflow issues)
+Our proactive approach to error detection makes it so that we can rely less on
+bug reports from our subscribers, and more on automated reports and alerts. This
+works fairly well most of the time, and we even occasionally send messages
+to people who were affected by bugs in our system letting them know that we fixed 
+their problem before they attempt to contact us. That said, bug reports from
+humans rather than machines can provide a lot of useful context, so we 
+display our email address prominently on our error pages in the application.
+Any email sent to that address makes its to both me and Jordan, so
+that we can deal with them promptly.
 
-* Dogfooding: Jordan is constantly manually testing the app while developing,
-as that's how we test usability. We are able to sync most of our data from
-production into development to give a realistic environment. I am also
-constantly using the application while writing articles, responding to comments,
-etc, so I am often the first to run into problems before others experience them.
+While a lot more can be said about efficient error detection, we have lots of
+other topics to discuss in this article and should try to maintain an even pace.
+But before we move on, here are a few things to think about when applying these
+ideas in your own applications:
 
-### Revert ruthlessly
+*The main reason to automate error detection as much as possible is because the
+people who use your application should not be treated like unpaid QA testers.
+The need for an active conversation with your users every time something goes
+wrong with a system is a sign that you have poor visibility into its failures,
+and ought to fix that. However, be aware of the fact that every automated error
+detection system  requires some fine tuning to get
+right. If your system is exposed to internet traffic of
+any kind, you can expect all sorts of weird stuff to happen, including bots who
+attempt to do things to your application that humans would never do. Fixing or 
+filtering out these kinds of issues can be time consuming, but is essential if
+you want your warning system to not become a potentially dangerous and noisy
+mess.* 
 
-Working in terms of individual features makes it easy to revert newly released
-functionality as soon as we find it is defective. This is usually the first step
-for us in filing a bug report. To make this even easier, we often deploy from
-feature branches (which are kept in sync with master) before merging features
-into master, which makes it easy for us to cut back to stable system temporarily
-while fixes are being worked on. That combined with cap rollback go a long way.
+I'd love to discuss this topic more, so please ask me some questions 
+or share your thoughts once you've finished reading this article if you're
+interested in this kind of thing.
 
-This is another one of those things that we started doing from having very
-limited resources: we would learn about a bug and realize we may not get to it
-for a few days, but didn't want to have our quality of service degrade while we
-waited to fix things. Later on, we realized that this approach greatly reduced
-the temptation to put together hackish "quick fixes", which can introduce new
-bugs while fixing old ones.
+### Ruthless rollbacks
 
-When we fix issues that we found in older code rather than the current feature
-under development, we revert it in master and then merge it into any active feature
-branches if necessary. If this creates conflicts, we deploy master until we can
-sort out how to get things reverted on the feature branch.
+Working on one incremental improvement at a time makes it easy 
+to revert newly released functionality as soon as we find 
+out that it is defective. At first, we got into the habit of 
+rolling things back to a known stable state because we didn't
+know when we'd get around to fixing the bugs we uncovered. Later
+on, we discovered that this approach allows us to take
+our time and get things right rather than rushing to get quick
+fixes out the door.
 
-On rare occasions, reverting would be too traumatic or complicated. When that
-happens, we will implement workarounds or disable features at the UI level so
-that the impact on subscribers is minimal.
+Disciplined revision control practices are essential for supporting
+this kind of workflow. We started out by practicing [Github Flow][gh-flow],
+and that worked out fairly well for us:
+
+> 1. Anything in the master branch is deployable
+> 2. To work on something new, create a descriptively named branch off of master (ie: new-oauth2-scopes)
+> 3. Commit to that branch locally and regularly push your work to the same named branch on the server
+> 4. When you need feedback or help, or you think the branch is ready for merging, open a pull request
+> 5. After someone else has reviewed and signed off on the feature, you can merge it into master
+> 6. Once it is merged and pushed to ‘master’, you can and should deploy immediately
+
+Somewhere down the line, we made a small tweak to the formula by deploying
+directly from our feature branches before merging them into master. This
+approach allows every improvement we ship to get some live testing time in
+production before it gets merged into master, greatly increasing the stability
+of our mainline code. Whenever trouble strikes, we deploy from our master branch
+temporarily, which executes a rollback without explicitly reverting any
+commits.
+
+While this process significantly reduces the amount of defects on our master branch,
+we do occasionally come across failures that are in old code rather than in our
+latest work. When that happens, we tend to fix the issues directly on master
+(merging a branch if it's a complicated change), verify that they work as
+expected in production, and then attempt to merge those changes into any active
+feature branches. Most of the time, these merges can be cleanly applied, and so
+it doesn't interrupt our work on new improvements all that much.
+
+When we do see a lot of complicated merges going on, or repeated rollbacks from
+a feature branch, we take it as a sign that we need to slow down and take a
+closer look at things. If we're having to fix lots of bugs on our master branch,
+it is a sign that we may have merged features into it prematurely, or that the
+integration points in our system have become too brittle and need some 
+refactoring. Alternatively, if we've attempted to deploy a new feature into
+production several times and keep finding new things wrong with it, it may be a
+sign that the feature isn't very well thought out and that we need to go back to
+the drawing board. While neither of these situations are pleasant to deal with,
+the constraints we place on the way we deploy things help us find and fix these
+problems before the spiral out of control.
+
+It's also worth noting that the process of falling back to master whenever
+something goes wrong is a good default, but it is not a one-size-fits-all 
+solution. Sometimes we botch a deploy in a very trivial way, and in those 
+cases, Capistrano's built in `deploy:rollback` command is useful for 
+simply undoing a deploy and then trying again once a fix is ready. At the 
+other extreme, we occasionally introduce changes that would be tricky to 
+revert without complications. In those cases, we do the best we can to 
+temporarily disable features or degrade them gracefully at a UI level,
+so that the defects we spot don't have a widespread effect.
+
+This practice does indeed feel a bit ruthless at times, and it definitely takes
+some getting used to. However, by treating rollbacks as a perfectly acceptable
+response to a newly discovered defect rather than an embarrassing failure, a
+totally different set of priorities are established that help keep things in a
+constant state of health. 
 
 ### Fixes before features
+
+**~~~~~~~~~~~~~~~~~~WORK IN PROGRESS~~~~~~~~~~~~~~~~~~~**
 
 Because we work on a single feature at a time, we don't need to make the same
 compromises between bug fixes and new feature work that often arise in
@@ -190,6 +271,8 @@ makes it so that we put a bit more effort into avoiding getting into this
 situation in the first place.
 
 ### Bugs are replicated via tests
+
+**~~~~~~~~~~~~~~~~~~WORK IN PROGRESS~~~~~~~~~~~~~~~~~~~**
 
 We do peer reviews on non-trivial bug fixes similar to how we review feature
 work: demonstration at the functional level and inspection at the code level.
@@ -251,3 +334,7 @@ COMMENT ON VELOCITY
   projects with faster pace, too.
 
 [mendicant]: http://mendicantuniversity.org
+[travis]: http://about.travis-ci.org/docs/user/getting-started/
+[lean]: http://en.wikipedia.org/wiki/Lean_software_development 
+[exception-notification]: https://github.com/smartinez87/exception_notification
+[gh-flow]: http://scottchacon.com/2011/08/31/github-flow.html

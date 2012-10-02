@@ -5,8 +5,8 @@ ebooks providing fundamental Unix knowledge to Ruby developers. When he's not at
 the keyboard he's often enjoying the great Canadian outdoors with his family.*
 
 Like many of you, I discovered Ruby via Rails and web development. That was my
-'in'. But before it was popular for writing web apps, Ruby was popular for its OO
-fundamentals and for being a great scripting language. One of the reasons for
+'in'. But before it was popular for writing web apps, Ruby was known for its
+object-oriented fundamentals and for being a great scripting language. One of the reasons for
 this latter point is that it's so easy to marry Ruby with command line
 utilities. Here's an example:
 
@@ -77,7 +77,7 @@ Let's start building them.
 ## Harnessing Ourselves With Tests
 
 Before we dive in head first to spawning processes let's rein ourselves in a
-bit. If we're going to re-implement what Ruby already offers then we're going to
+bit. If we're going to re-implement what Ruby already provides then we're going to
 need a way to test our implementation and make sure that it performs the same
 way that Ruby does. Enter [Rubyspec](http://rubyspec.org).
 
@@ -87,7 +87,7 @@ way that Ruby does. Enter [Rubyspec](http://rubyspec.org).
 > code. This project contains specs that describe Ruby language syntax, core
 > library classes, and standard library classes.
 
-Rubyspec provides a spec for the Ruby language itself, and we want to
+Rubyspec provides a specification for the Ruby language itself, and we want to
 re-implement a part of the Ruby language; therefore we can use Rubyspec
 to test our implementation.
 
@@ -103,9 +103,9 @@ $ mspec core/kernel
 ```
 
 To run our custom code against these tests we can use
-the familiar `-r` option with `mspec` to require a custom file that redefines
-our custom methods. Let's do that, while at the same time running the
-`Kernel.system` specs:
+the familiar `-r` option with `mspec` to require a file that redefines
+the methods we want to override. Let's do that, while at the same time 
+running the `Kernel.system` specs:
 
 ```bash
 $ touch practicing_spawning.rb
@@ -181,14 +181,15 @@ processes. This behavior is specified by the fork(2) manpage:
 
 When you `fork`, you start with one process and end up with two processes that
 are *exactly the same*. In some cases, this means that everything is copied from
-one process to the other. In other cases, if [copy-on-write
+one process to the other. But if [copy-on-write
 semantics](http://en.wikipedia.org/wiki/Copy-on-write) are implemented,
-the processes may physically share memory until one of the processes tries to
-modify it, at which point each gets its own copy written out.
+the two processes may physically share memory until one of them tries to
+modify it; then each gets its own copy written out.
 
-We still haven't quite figured out yet how we'd implement the `system` method.
-We know that we can take our Ruby process and create a copy of it with `fork`,
-but then how do we turn the new child process into an `echo` process?
+While understanding `fork` is certainly helpful, we still haven't quite figured
+out how to implement the `system` method. We know that we can take our Ruby 
+process and create a copy of it with `fork`, but then how do we turn the 
+new child process into an `echo` process?
 
 ## Fork + Exec
 
@@ -255,7 +256,7 @@ and `false` for any other value.
 ## Getting Back to Green
 
 Now we need to get the rest of the `system` specs passing. If we have a look at
-the remainder of the failing specs we see the following:
+the remainder of the failures we see the following output:
 
 ```console
 1) 
@@ -292,7 +293,7 @@ exception message along with a stacktrace on its `STDERR`, whereas the spec
 expected that `STDERR` would be empty.
 
 So when the sub-process raises an exception we need to notify the parent process
-of the exception. Note that we can't use Ruby's regular exception handling in
+of what went wrong. Note that we can't use Ruby's regular exception handling in
 this case because the exception is happening inside the sub-process. The
 sub-process got a copy of everything that the parent had, including the Ruby
 interpreter. So, while all of the code is sourced from the same file, we can't
@@ -461,12 +462,12 @@ choice in that case is to use `exec`.
 string, but the `system` method (and many other process spawning methods) will
 take an array or a string. 
 
-    When passed a String, `exec` may spawn a shell to interpret the
+    When passed a string, `exec` may spawn a shell to interpret the
     command, rather than executing it directly. This is handy for stuff like
     `system('find . | ack foobar -l')` but is very dangerous when user input is
     involved. An unescaped string makes shell injection possible. Shell
     injection is like SQL injection, except that a compromised shell could provide an
-    attacker with root access to your entire system! Using an Array will never
+    attacker with root access to your entire system! Using an array will never
     spawn a shell but will pass the elements directly as the `ARGV` of the exec'ed process. 
     Always do this.
 
