@@ -272,7 +272,29 @@ situation in the first place.
 
 ### Bugs are replicated via tests
 
-**~~~~~~~~~~~~~~~~~~WORK IN PROGRESS~~~~~~~~~~~~~~~~~~~**
+One clear lesson we have learned over time is that bugs which are not covered by
+a test inevitably reoccur somewhere down the line. To prevent costly rework, we
+usually write UI-level acceptance tests to replicate defects as the first step 
+in our bug-fixing process rather than the last. This makes sure that the
+intended behavior of the system is verified, rather than just the low-level
+implementation details.
+
+```ruby
+class ProfileTest < ActionDispatch::IntegrationTest
+  test "contact email is validated" do
+    simulate_user do
+      register(Support::SimulatedUser.default)
+      edit_profile(:email => "jordan byron at gmail dot com")
+    end
+
+    assert_content "Contact email is invalid"
+  end
+
+  # ...
+end
+```
+
+
 
 We do peer reviews on non-trivial bug fixes similar to how we review feature
 work: demonstration at the functional level and inspection at the code level.
