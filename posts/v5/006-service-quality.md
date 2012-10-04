@@ -50,7 +50,7 @@ previews, etc.
 
 ---
 
-### Lean development practices
+### Lean development 
 
 Because we only have a few hours of development time available each week, we
 need to work very efficiently. We've found that many of the [Lean Software 
@@ -89,7 +89,7 @@ As you read through the rest of the guidelines in this article, you'll find that
 while they are useful on their own, they are made much more effective by this
 subtle shift in the way we ship things.
 
-### Peer review / demonstrations
+### Continuous demonstration
 
 **~~~~~~~~~~~~~~~~~~WORK IN PROGRESS~~~~~~~~~~~~~~~~~~~**
 
@@ -109,7 +109,7 @@ effective, because similar to writing prose, there is a big difference between
 This process of peer review shakes out MANY defects before we ever roll
 something into production, and it makes it harder for us to cut corners.
 
-### Early warning system
+### Rapid detection  
 
 When something does go wrong, we want to know about it as soon as possible.
 We rely on many different ways of detecting problems, and we automate as much as
@@ -245,7 +245,7 @@ response to a newly discovered defect rather than an embarrassing failure, a
 totally different set of priorities are established that help keep things in a
 constant state of health. 
 
-### Fixes before features
+### Natural selection
 
 **~~~~~~~~~~~~~~~~~~WORK IN PROGRESS~~~~~~~~~~~~~~~~~~~**
 
@@ -270,14 +270,22 @@ This policy encourages us to avoid allowing buggy code to linger, and it also
 makes it so that we put a bit more effort into avoiding getting into this
 situation in the first place.
 
-### Bugs are replicated via tests
+### Immunization 
 
-One clear lesson we have learned over time is that bugs which are not covered by
-a test inevitably reoccur somewhere down the line. To prevent costly rework, we
-usually write UI-level acceptance tests to replicate defects as the first step 
-in our bug-fixing process rather than the last. This makes sure that the
-intended behavior of the system is verified, rather than just the low-level
-implementation details.
+One clear lesson that time has taught us is that bugs which are not covered by
+a test inevitably come back. To prevent this from happening, we
+try to write UI-level acceptance tests to replicate defects as the first step 
+in our bug-fixing process rather than the last.
+
+Adopting this practice was very tedious at first. Even though [Capybara][capybara]
+made it easy to simulate browser-based interactions with our application, 
+dropping down to that level of abstraction every time we found a new
+defect both slowed us down and frustrated us. We eventually realized that we
+needed to reduce the friction of writing our tests if we wanted this good habit
+to stick. To do so, we started to experiment with some ideas I had hinted at
+back in [Issue 4.12.1][pr-4.12.1]: application-specific helper objects for 
+end-to-end testing. We eventually ended up with tests that look something like
+the following example:
 
 ```ruby
 class ProfileTest < ActionDispatch::IntegrationTest
@@ -294,26 +302,77 @@ class ProfileTest < ActionDispatch::IntegrationTest
 end
 ```
 
+If you strip away the syntactic sugar that the `simulate_user` method provides,
+you'll find that this is what is really going on under the hood:
 
+```ruby
+test "contact email is validated" do
+  user = Support::SimulatedUser.new(self)
 
-We do peer reviews on non-trivial bug fixes similar to how we review feature
-work: demonstration at the functional level and inspection at the code level.
+  user.register(Support::SimulatedUser.default)
+  user.edit_profile(:email => "jordan byron at gmail dot com")
 
-I don't do a lot of our development work, but I fairly frequently write extra
-tests to document our fixes, and when I do prepare my own fixes, Jordan does the
-same for me. The basic idea is that our "What if?" and "How does?" kind of
-questions get documented in tests, not just answered in conversation or by
-manual inspection.
+  assert_content "Contact email is invalid"
+end
+```
 
-We often start at the acceptance testing level, attempting to create a test that
-comes as close to possible to reproducing the failure at the level it was
-actually experienced. We've been improving our acceptance test helpers to make
-this easier, as it can be pretty time consuming.
+Even without reading the [implementation of Support::SimulatedUser][simulated-user],
+you have probably already guessed that it is a simple wrapper around Capybara's
+functionality that provides application-specific helpers. This object provides
+us with two main benefits: reduced duplication in our tests and a vocabulary
+that matches our application's domain rather than its delivery mechanism. The
+latter feature is what reduces the pain of assembling tests to go along 
+with our bug reports.
 
-Because bug reports often reveal other potential sources of failure, we will
-often write some additional tests around those as well, starting again with
-acceptance tests, and layering in unit tests as necessary for non-trivial
-business logic errors.
+Let's take a moment to consider the broader context of how the this email
+validation test came into existence in the first place. Like many changes we
+make to Practicing Ruby, this particular one was triggered by an exception
+report which revealed to us that we had not been sanity checking email 
+addresses before updating them. This problem was causing a 500 error to be 
+raised rather than failing gracefully with a useful error message, which pretty
+much guaranteed a miserable experience for anyone who encountered it. The steps
+to reproduce this issue from scratch are roughly as follows:
+
+1. The user registers for Practicing Ruby
+1. The user attempts to edit their profile with a badly formatted email address
+1. The user SHOULD see a message telling them their email is invalid, but
+instead encounters a 500 error and a generic "We're sorry, something went wrong"
+message.
+
+If you compare these steps to the ones that are covered by the test, you'll see
+they are almost identical to one another. While the verbal description is
+something that may be easier to read for non-programmers, the tests communicate
+the same idea at nearly the same level of abstraction and clarity to anyone who
+knows how to write Ruby code. Because of this, it isn't nearly as easy for us to
+come up with a valid excuse for not writing a test or putting it off until
+later.
+
+Of course, old habits die hard, and occasionally we still cut corners when
+trying to fix bugs. Every time we encounter an interaction that our
+`SimulatedUser` has not yet been programmed to handle, we experience the same
+friction that makes it frustrating to write acceptance tests in the first place.
+When that happens, it's tempting to put things off or to cobble together a test
+in haste that verifies the behavior, but in a sloppy way that doesn't make
+future tests easier to write. The lesson here is simple: even the most
+disciplined processes can easily break down when life gets too busy or too
+stressful.
+
+To mitigate these issues, we rely once again on the same practice which allows 
+us to let fewer bugs slip into production in the first place: active peer
+review. Whenever one of us fixes a bug, the other one reviews it for quality and
+completeness. This process puts a bit of peer pressure on both of us to not be sloppy
+about our bug fixes, and also helps us catch issues that would otherwise hide
+away in our individual blind spots. This practice reduces the amount of 
+repeated attempts to properly fix a bug, and also reduces the likelihood that
+defects will resurface. Any time not spent hunting down
+old bugs or trying to pin down new ones is time we can spend on things that
+actually make our software more valuable, and so we don't mind investing a little
+more time up front to help make that happen.
+
+### Reflections
+
+Do we follow these processes perfectly consistently and completely? Of course
+not! But we're getting better and better at them.
 
 ### NOTES TO INTEGRATE
 
@@ -360,3 +419,6 @@ COMMENT ON VELOCITY
 [lean]: http://en.wikipedia.org/wiki/Lean_software_development 
 [exception-notification]: https://github.com/smartinez87/exception_notification
 [gh-flow]: http://scottchacon.com/2011/08/31/github-flow.html
+[capybara]: https://github.com/jnicklas/capybara
+[pr-4.12.1]: http://practicingruby.com/articles/66
+[simulated-user]: https://github.com/elm-city-craftworks/practicing-ruby-web/blob/f00f89b0a547829aea4ced523a3d23a136f1a6a7/test/support/simulated_user.rb
