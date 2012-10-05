@@ -247,28 +247,82 @@ constant state of health.
 
 ### Natural selection
 
-**~~~~~~~~~~~~~~~~~~WORK IN PROGRESS~~~~~~~~~~~~~~~~~~~**
+Every time we find a defect in one of our features, we ask ourselves whether
+that feature is important enough to us to be worth fixing at all. Properly
+fixing even the most simple bugs takes time away from our work on other
+improvements, and so we are easily tempted to cut our losses by removing
+defective code rather than attempting to fix it. Whether we can get away with
+that or not ultimately depends on the situation.
 
-Because we work on a single feature at a time, we don't need to make the same
-compromises between bug fixes and new feature work that often arise in
-iteration or release planning.
+Sometimes, defects are severe enough that they need to be dealt with right away,
+and in those cases we [stop the line][autonomation] to give the issue the
+attention it deserves. The best example of this we've encountered in recent
+times was that we neglected to update our omni-auth version before Github shut
+down an old version of their API, and that disabled logins temporarily for all
+Practicing Ruby subscribers. We had an emergency fix out within hours, but it
+predictably broke some stuff. Over the next couple days, we added fixes for
+the edge cases we hadn't considered until the system stabilized again. Because
+this wasn't the kind of defect we could easily work around or rollback from, we
+were working under pressure, and attempting to work on other things during that
+time would have only made matters worse.
 
-Generally speaking, whenever we have to disable a feature temporarily because it
-has a bug in it, we have to make the decision of whether to fix that issue as
-soon as possible or to remove the feature and reimplement it later. Most of the
-time, we choose to stop work temporarily on new feature work and attempt to
-investigate and fix bugs in existing features quickly after detecting them. This
-allows us to sort things out while they're fresh in our minds (we also may even
-have someone who experienced the problem to help us test our fixes!)
+At the other extreme, some defects are so trivially easy to fix that it makes
+sense to take care of them as soon as you detect them. A few weeks before this
+article was published I noticed our broadcast email system was treating our
+plain text messages as if they were HTML that needed to be escaped, which caused
+some text to be mangled. If you don't count the accompanying test, fixing this
+problem was [a one-line change][htmlescape] to our production code. Tiny bugs 
+like this are best to fix right away, as it helps keep them from accumulating 
+over time.
 
-However, if we find a defect hard to fix, or if we don't understand how to fix
-it, we think about what the cost of fixing it will be compared to the cost of
-killing the feature off. Doing the investigation early helps us make this
-decision before the issue becomes stale.
+The vast majority of defects we discover are somewhere between these two
+extremes, and figuring out how to deal with them is not nearly as
+straightforward. The lesson we've gradually learned over time is that it is
+better to assume that a feature can either be cut or simplified and then try to
+prove ourselves wrong rather than doing things the other way around. However, we
+still forget this rule on occasion, and we inevitably end up paying the price
+for it.
 
-This policy encourages us to avoid allowing buggy code to linger, and it also
-makes it so that we put a bit more effort into avoiding getting into this
-situation in the first place.
+Take for example our work on making account cancellation easier for subscribers.
+We had assumed that what folks would want is an easy to find link on their
+account settings page that would automatically cancel their account with no
+further action required on their end. While this assumption is valid on its own,
+it lead us down a very deep rabbit hole. In order to make cancellation
+*automatic*, we'd need to handle API calls to both Mailchimp and Stripe
+(depending on the subscriber's payment provider), and we'd also need to handle
+the case where there was no payment provider at all. There were also lots of
+other little things to consider, most of which we didn't even think about until
+we started implementing the feature. After a few hours of discussion and
+development work, we had a partially completed feature which *almost* worked,
+but still had some remaining issues with it. Almost immediately after deploying
+it to production, we rolled it back and decided it simply wasn't ready yet.
+
+After listening to Jordan and I complain about what a frustrating day we had, my
+wife Jia asked us why we hadn't considered simply handling the cancellation process 
+manually for the time being. We went on to explain to her that we wanted to make
+it so that subscribers didn't have to email us and have a back-and-forth
+exchange in order to cancel their accounts, because we felt that would be a
+terrible experience for them. It was at that point that she suggested that we
+might be able to make it so that every time a customer clicks the "unsubscribe"
+link, and email gets sent to us with the information necessary to manually
+cancel their account -- a process that takes us only a few seconds to complete
+and only happens a few times a week.
+
+Although it took us a little while to let this idea in, we eventually realized
+that it was the exact right thing to do, at least as a stopgap measure.
+Implementing the semi-automatic process was so much simpler than the fully-automatic one that
+we were able to build and ship it in a fraction of the time that we spent
+*discussing* the more complicated feature. So rather than fixing the problems
+with our very complex code, we replaced it with something more simple and
+accepted that our initial efforts were a sunk cost. Even though this may have
+temporarily bruised our egos a bit, it was the right thing to do.
+
+Killing code is not an easy thing to do emotionally, but these small sacrifices
+go a long way to improving the overall quality of your projects. This is why we
+can't just decide whether a bug is worth fixing based on the utility of the
+individual feature it effects: we need to think about whether our time would be
+better spent working on other things. It is only worth resolving defects 
+if the answer to that question is "No!"
 
 ### Immunization 
 
@@ -422,3 +476,5 @@ COMMENT ON VELOCITY
 [capybara]: https://github.com/jnicklas/capybara
 [pr-4.12.1]: http://practicingruby.com/articles/66
 [simulated-user]: https://github.com/elm-city-craftworks/practicing-ruby-web/blob/f00f89b0a547829aea4ced523a3d23a136f1a6a7/test/support/simulated_user.rb
+[autonomation]: http://en.wikipedia.org/wiki/Autonomation
+[htmlescape]: https://github.com/elm-city-craftworks/practicing-ruby-web/commit/223ca92a0b769713ce3c2137de76a8f34f06647e
