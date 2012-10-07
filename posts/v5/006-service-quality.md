@@ -30,7 +30,7 @@ benefit to us has been greater than the sum of its parts. In other words,
 this article forms a comprehensive recipe for keeping software stable 
 as it grows -- without wasting tons of time and money!
 
-### Lean development 
+### Rule 1: Work incrementally
 
 Because we only have a few hours of development time available each week, we
 need to work very efficiently. We've found that many of the [Lean Software 
@@ -69,7 +69,7 @@ As you read through the rest of the guidelines in this article, you'll find that
 while they are useful on their own, they are made much more effective by this
 subtle shift in the way we ship things.
 
-### Continuous demonstration
+### Rule 2: Review everything
 
 It is no secret that code reviews are useful for driving up code quality and
 reducing the number of defects that get introduced into production in the first
@@ -120,7 +120,7 @@ quickly, because we usually tend to only look at small bits of functionality at
 a time. When working on larger multi-faceted changes, we will often do the
 reviews in stages to prevent reviews from dragging on forever.
 
-### Rapid detection  
+### Rule 3: Stay alert
 
 When something does go wrong, we want to know about it as soon as possible.
 We rely on many different ways of detecting problems, and we automate as much as
@@ -190,7 +190,7 @@ I'd love to discuss this topic more, so please ask me some questions
 or share your thoughts once you've finished reading this article if you're
 interested in this kind of thing.
 
-### Ruthless rollbacks
+### Rule 4: Rollback ruthlessly
 
 Working on one incremental improvement at a time makes it easy 
 to revert newly released functionality as soon as we find 
@@ -258,7 +258,7 @@ response to a newly discovered defect rather than an embarrassing failure, a
 totally different set of priorities are established that help keep things in a
 constant state of health. 
 
-### Natural selection
+### Rule 5: Minimize effort
 
 Every time we find a defect in one of our features, we ask ourselves whether
 that feature is important enough to us to be worth fixing at all. Properly
@@ -337,7 +337,7 @@ individual feature it effects: we need to think about whether our time would be
 better spent working on other things. It is only worth resolving defects 
 if the answer to that question is "No!"
 
-### Immunization 
+### Rule 6: Prevent regressions 
 
 One clear lesson that time has taught us is that bugs which are not covered by
 a test inevitably come back. To prevent this from happening, we
