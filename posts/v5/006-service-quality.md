@@ -1,54 +1,34 @@
-The easiest way to stabilize a software project is to stop
-changing its requirements. When no new functionality gets added to a system, and no existing
-functionality is modified, the number of defects will gradually decline over
-time as long as the code is actively maintained. However, because we live in a
-world in which continuous improvement is now the norm, the concept of
-permanently freezing a codebase seems like an archaic practice.
+Software projects need to evolve over time, but they also need to avoid
+collapsing under their own weight. This balancing
+act is something that most software developers understand, but it is often 
+hard to communicate its importance to non-technical stakeholders and 
+managers. Because of this disconnect, projects tend to operate under the
+false assumption that projects must stagnate in order to stabilize. 
 
-The cost of our modern agility is that stability is a much harder problem to
-solve when everything is constantly changing under foot. If the demand for new 
-features come in faster than it takes for programmers to truly understand the
-existing functionality of the systems they are working on, defects 
-inevitably accumulate. Over time, buggy code gets layered on top of other buggy
-code, and that causes systems to degrade even faster. Sooner or later, a feature
-freeze happens out of necessity, and talks of "the big rewrite" become
-inevitable. Depending on the context, this unplanned stagnation
-may end up being just as limiting as it would have been to ship a fixed-scope
-project.
+This fundamental misconception about how to maintain a stable codebase has some
+disasterous effects: It causes risk-averse organizations to produce stale 
+software that quickly becomes irrelevant, while risk-seeking organizations ship 
+buggy code in order to rush features out the door faster than their 
+competitors. In either case, the people who depend on the software produced by
+these organizations give up something they shouldn't have to.
 
-Most developers understand both the value of allowing systems to evolve over time as
-well as the essential role that stability plays in creating a high quality user
-experience. The problem is that we are often under external pressure to conform to
-processes which do not strike a reasonable balance between these two interests,
-leading to a false choice between stagnation and instability. If that tension
-did not exist, what would we do differently?
+I have always been interested in this problem, because I feel it is at the 
+root of why so many software projects fail. However, my work on Practicing Ruby
+has forced me to become much more personally invested in solving it. As someone
+attempting to maintain a very high quality experience on a shoestring budget, I
+now understand what it is like to look at this problem from a stakeholder's
+point of view. In this article, I will share the lessons I've learned from the
+work Jordan Byron and I have been doing to maintain Practicing Ruby's web
+application.
 
-Over the last couple years, Jordan Byron and I have been trying to answer that
-question for ourselves, at first with our work on [Mendicant
-University][mendicant], and now with Practicing Ruby. In this article, I will
-share the guidelines we have developed for minimizing the impact of defects in
-our code without giving up our ability to grow and change our software whenever
-we need to.
-
-
-- https://github.com/elm-city-craftworks/practicing-ruby-web/issues/51
-- https://github.com/elm-city-craftworks/practicing-ruby-web/issues/73
-
-At least some commits 40 out of 52 weeks
-
-* Added syntax highlighting
-* Overhauled our comments system to include mention support, emoji, live
-previews, etc.
-* Added email notifications for various things
-* Added collections / volumes support
-* Added caching
-* Added a bunch of Mailchimp workarounds
-* Completely redesigned the site
-* Overhauling email delivery / payment processing
-
-![Commit frequency by week](http://i.imgur.com/H8Aql.png)
-
----
+In particular, I will discuss the techniques that have allowed us to make 
+the most out our very limited development time, which is often as little 
+as 5-10 hours per week. We didn't invent any of these practices; we picked 
+them up mostly by studying what works for other people. However, we've learned
+that these ideas are complimentary to one another, and so the net 
+benefit to us has been greater than the sum of its parts. In other words,
+this article forms a comprehensive recipe for keeping software stable 
+as it grows -- without wasting tons of time and money!
 
 ### Lean development 
 
@@ -91,23 +71,54 @@ subtle shift in the way we ship things.
 
 ### Continuous demonstration
 
-**~~~~~~~~~~~~~~~~~~WORK IN PROGRESS~~~~~~~~~~~~~~~~~~~**
+It is no secret that code reviews are useful for driving up code quality and
+reducing the number of defects that get introduced into production in the first
+place. However, figuring out how to conduct a good review is something that
+takes a bit of fine tuning to get right.
 
-We demonstrate all but the most trivial changes to one another, at both the
-functional and the code level. We *start* with the actual experience of using
-the features, and only bother with code reviews once we answer any questions
-that arise at the functional level.
+We've found through trial and error that code reviews generally go a lot better
+if you start by simply walking through how things work at a functional level.
+The reviewer attempts to use the new feature while its developer answers any 
+questions that come up along the way. Whenever an unanticipated
+edge case or inconsistency is found, we immediately file a ticket for it. We
+repeat this process until all open questions or unexpected issues have been 
+documented.
 
-This approach inevitably reveals edge cases and misconceptions, which we
-document with tests. We tend to start this process as early as possible, opening
-a pull request when we have even the most minimal bit of real functionality.
-Rather than having the person developing the feature think of all of what can go
-wrong, we push a big chunk of that responsibility on the reviewer. This is very
-effective, because similar to writing prose, there is a big difference between
-"creative mode" and "editing mode", and this process reflects that.
+Unless the feature's developer has specific technical questions for the
+reviewer, we don't bother with in-depth reviews of implementation details until
+all functional issues have been addressed. This prevents us from spending time
+on bikeshed arguments about potential refactorings, or hypothetical sources of
+failure at the code level. Doing things this way also reminds us that the
+external quality of our system is our highest priority, and that while clean
+code makes building a better product easier, it is means, not an end in itself.
 
-This process of peer review shakes out MANY defects before we ever roll
-something into production, and it makes it harder for us to cut corners.
+Once a feature seems to work as expected in the eyes of both the developer and
+the reviewer, the next area we turn our attention to is the tests. It is the
+reviewer's responsibility to make sure that the tests cover the issues brought
+up during the review, and also generally exercise the feature well enough to
+prevent it from silently breaking. Sometimes the reviewer will ask the developer
+of the feature to write the tests, other times it is easier for the reviewer to
+write the tests themselves rather than trying to explain what is needed. In
+either case, the end result of this round of changes is that the feature's
+requirements end up getting pinned down a bit more than it might have been 
+at the outset. Because many of these tests can be written at the UI level, it is
+common to have still not discussed implementation details at this stage of a
+review.
+
+By now, the feature is tested well enough, and its functionality has been 
+exercised more than a few times. That means that a spot check of its source code 
+is in order. Generally speaking, the goal is not to make the code perfect, 
+but to identify both low-cost improvements that can be done right away, 
+and any serious warning signs of potential problems that may make the 
+code hard to maintain or error-prone. We see everything else as 
+something that can be dealt with later -- if and when a feature needs to be 
+built on top of or modified.
+
+While this may sound like a very rigorous practice, it isn't as daunting as it
+seems. Most of the time, we can cycle through all the stages of our review very
+quickly, because we usually tend to only look at small bits of functionality at
+a time. When working on larger multi-faceted changes, we will often do the
+reviews in stages to prevent reviews from dragging on forever.
 
 ### Rapid detection  
 
@@ -191,8 +202,8 @@ our time and get things right rather than rushing to get quick
 fixes out the door.
 
 Disciplined revision control practices are essential for supporting
-this kind of workflow. We started out by practicing [Github Flow][gh-flow],
-and that worked out fairly well for us:
+this kind of workflow. We started out by practicing [Github Flow][gh-flow]
+in its original form, and that worked out fairly well for us:
 
 > 1. Anything in the master branch is deployable
 > 2. To work on something new, create a descriptively named branch off of master (ie: new-oauth2-scopes)
@@ -207,7 +218,9 @@ approach allows every improvement we ship to get some live testing time in
 production before it gets merged into master, greatly increasing the stability
 of our mainline code. Whenever trouble strikes, we deploy from our master branch
 temporarily, which executes a rollback without explicitly reverting any
-commits.
+commits. As it turns out, this approach is very similar to [Github's more recent
+deployment practices][gh-deploy-aug-2012], minus all their fancy robotic
+helpers.
 
 While this process significantly reduces the amount of defects on our master branch,
 we do occasionally come across failures that are in old code rather than in our
@@ -425,48 +438,28 @@ more time up front to help make that happen.
 
 ### Reflections
 
-Do we follow these processes perfectly consistently and completely? Of course
-not! But we're getting better and better at them.
+Do we follow all of these practices completely and consistently without fail? Of
+course not! But we do try to follow them most of the time, and have
+found that they work best when taken together as a group. That is not to say
+that removing or changing any one ingredient would spoil the soup, but only that
+it is hard for us to guess what their effects would be like in isolation.
 
-### NOTES TO INTEGRATE
+It's important to point out that we adopted these ideas organically rather
+than carefully designing a process for ourselves to rigidly follow. This article
+is more of a description of how we viewed things at the time this article was
+published than it is a prescription for how people ought to approach all
+projects, all the time. We've found that it works best to maintain a consistent
+broad-based goal (ours is to make the best possible user experience with the
+least effort), and to continuously tweak your processes as needed to meet that
+goal, rather than the other way around. Maintaining a bit of fluidity about the
+way you approach processes are essential, because rigid processes can kill a
+project even faster than rigid code can.
 
-- No releases / iterations
-- Master kept constantly deployable, deploy one new feature at a time whenever
-  we're ready. (Slow form of continuous deployment)
-- Peer review on every non-trivial change: Demo at functional and code level.
-- We don't do rigorous TDD, but we clarify any assumptions or prove the answer
-  to any questions via tests: if we have a doubt about a edge case, we write a
-  test for it.
-- The demo process catches many bugs before the code ever hits production.
-- Immune system: Continuous integration, exception notifier, logs, user reports,
-  bugs we find on our own while using the system.
-- Exception notifier is one of our most valuable resources, but we needed to do
-  a lot of work to make it usable: crawlers like to break stuff! If you are
-  getting mostly noise for error reports then you will be more likely to
-  ignore them.
-- Rollback immediately when a bug is detected unless it has a very minor impact on
-  very few people.  (cap rollback or branch swapping)
-- When rollback isn't feasible, hide the feature or work around the problem at
-  the UI level until the issue is resolved.
-- To make this easier, we will deploy from topic branches until a feature seems
-  stable enough to merge into master. (Regularly merging master into those
-  branches to keep them fresh)
-- If a bug is detected in an old changeset, the fix is applied on master, and
-  then merged into the topic branch. If there are conflicts on the topic branch,
-  we revert to master until those can be resolved.
-- Every time we encounter a defect which affects quality of service, feature
-  work is halted until that issue is fixed, or the affected code is removed.
-- We review each other's fixes and put peer pressure on tests: this is the one
-  area where we're very strict about testing. I don't do much development
-  myself, but I will definitely write tests to verify any suspicions I have
-  about the suitability of a fix. (Link to some real commit messages)
-
-COMMENT ON VELOCITY
-
-- This process would work great for a side project or open source web app, or in
-  any environment in which moving slow is OK and you have lots of trust with the
-  stakeholders. With some modifications, it could probably be adopted to larger
-  projects with faster pace, too.
+In the end, much of this is very subjective and context dependent. I've shared
+what works for us in the hopes that it'll be helpful to you, but I want to
+hear about your own experiences as well. Because our own process is
+nothing more than an amalgamation of good ideas that other people have come up
+with, I'd love to hear what you think might be worth adding to our recipe.
 
 [mendicant]: http://mendicantuniversity.org
 [travis]: http://about.travis-ci.org/docs/user/getting-started/
@@ -478,3 +471,4 @@ COMMENT ON VELOCITY
 [simulated-user]: https://github.com/elm-city-craftworks/practicing-ruby-web/blob/f00f89b0a547829aea4ced523a3d23a136f1a6a7/test/support/simulated_user.rb
 [autonomation]: http://en.wikipedia.org/wiki/Autonomation
 [htmlescape]: https://github.com/elm-city-craftworks/practicing-ruby-web/commit/223ca92a0b769713ce3c2137de76a8f34f06647e
+[gh-deploy-aug-2012]: https://github.com/blog/1241-deploying-at-github
