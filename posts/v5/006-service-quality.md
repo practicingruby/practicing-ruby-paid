@@ -1,9 +1,9 @@
 Software projects need to evolve over time, but they also need to avoid
 collapsing under their own weight. This balancing
-act is something that most software developers understand, but it is often 
-hard to communicate its importance to non-technical stakeholders and 
-managers. Because of this disconnect, projects tend to operate under the
-false assumption that projects must stagnate in order to stabilize. 
+act is something that most programmers understand, but it is often 
+hard to communicate its importance to non-technical stakeholders. 
+Because of this disconnect, many projects operate under the
+false assumption that they must stagnate in order to stabilize. 
 
 This fundamental misconception about how to maintain a stable codebase has some
 disasterous effects: It causes risk-averse organizations to produce stale 
@@ -32,16 +32,11 @@ as it grows -- without wasting tons of time and money!
 
 ### Rule 1: Work incrementally
 
-Because we only have a few hours of development time available each week, we
-need to work very efficiently. We've found that many of the [Lean Software 
-Development][lean] practices work well for us, and so we've
-been gradually adopting them over time.
-
-One of the biggest influences that the Lean mindset has had on us is that we now
+Inspired by [Lean Software Development][lean] practices, we now
 view all work-in-progress code as a form of waste. This way of looking at things 
 has caused us to eschew iteration planning in favor of shipping a single
 improvement or fix at a time. This workflow may seem a bit unrealistic at 
-first glance, but with some practice it is possible to break very 
+first glance, but with some practice it gets easier to break very 
 complicated features into tiny bite-sized chunks. We now work this way by
 habit, but our comment system was the first thing we approached in 
 this fashion.
@@ -56,14 +51,15 @@ workflow optimization; it was an absolute necessity. Later on, we also came to
 realize that this constraint was a source of strength rather than weakness for
 us. Here's why:
 
-*By developing features incrementally, there
-are less moving parts to integrate on each deploy. This also means that there
-are fewer opportunities for defects to be introduced during development.
-When new bits of functionality do fail, finding the root
+> Developing features incrementally reduces the amount of moving parts 
+to integrate on each deploy. This in turn limits the amount of new
+defects introduced during development.
+
+> When new bits of functionality do fail, finding the root
 cause of the problem is usually easy, and even when it isn't, rolling the system
 back to a working state is much less traumatic. These things combined result in
 a greatly reduced day-to-day maintenance cost, and that means more time can
-be spent on value-producing work.*
+be spent on value-producing work.
 
 As you read through the rest of the guidelines in this article, you'll find that
 while they are useful on their own, they are made much more effective by this
@@ -173,18 +169,20 @@ other topics to discuss in this article and should try to maintain an even pace.
 But before we move on, here are a few things to think about when applying these
 ideas in your own applications:
 
-*The main reason to automate error detection as much as possible is because the
+> The main reason to automate error detection as much as possible is because the
 people who use your application should not be treated like unpaid QA testers.
 The need for an active conversation with your users every time something goes
 wrong with a system is a sign that you have poor visibility into its failures,
 and ought to fix that. However, be aware of the fact that every automated error
 detection system  requires some fine tuning to get
-right. If your system is exposed to internet traffic of
+right. 
+
+>If your system is exposed to internet traffic of
 any kind, you can expect all sorts of weird stuff to happen, including bots who
 attempt to do things to your application that humans would never do. Fixing or 
 filtering out these kinds of issues can be time consuming, but is essential if
 you want your warning system to not become a potentially dangerous and noisy
-mess.* 
+mess.
 
 I'd love to discuss this topic more, so please ask me some questions 
 or share your thoughts once you've finished reading this article if you're
@@ -203,14 +201,14 @@ fixes out the door.
 
 Disciplined revision control practices are essential for supporting
 this kind of workflow. We started out by practicing [Github Flow][gh-flow]
-in its original form, and that worked out fairly well for us:
+in its original form, which consisted of the following steps:
 
-> 1. Anything in the master branch is deployable
-> 2. To work on something new, create a descriptively named branch off of master (ie: new-oauth2-scopes)
-> 3. Commit to that branch locally and regularly push your work to the same named branch on the server
-> 4. When you need feedback or help, or you think the branch is ready for merging, open a pull request
-> 5. After someone else has reviewed and signed off on the feature, you can merge it into master
-> 6. Once it is merged and pushed to ‘master’, you can and should deploy immediately
+1. Anything in the master branch is deployable 
+2. To work on something new, create a descriptively named branch off of master (ie: new-oauth2-scopes)
+3. Commit to that branch locally and regularly push your work to the same named branch on the server
+4. When you need feedback or help, or you think the branch is ready for merging, open a pull request
+5. After someone else has reviewed and signed off on the feature, you can merge it into master
+6. Once it is merged and pushed to ‘master’, you can and should deploy immediately
 
 Somewhere down the line, we made a small tweak to the formula by deploying
 directly from our feature branches before merging them into master. This
@@ -230,27 +228,21 @@ expected in production, and then attempt to merge those changes into any active
 feature branches. Most of the time, these merges can be cleanly applied, and so
 it doesn't interrupt our work on new improvements all that much.
 
-When we do see a lot of complicated merges going on, or repeated rollbacks from
-a feature branch, we take it as a sign that we need to slow down and take a
-closer look at things. If we're having to fix lots of bugs on our master branch,
-it is a sign that we may have merged features into it prematurely, or that the
-integration points in our system have become too brittle and need some 
-refactoring. Alternatively, if we've attempted to deploy a new feature into
-production several times and keep finding new things wrong with it, it may be a
-sign that the feature isn't very well thought out and that we need to go back to
-the drawing board. While neither of these situations are pleasant to deal with,
-the constraints we place on the way we deploy things help us find and fix these
-problems before the spiral out of control.
+> In a healthy system, rollbacks should be easy, particularly when feature
+branches are used. When this process does not go smoothly, it is usually a 
+sign of a deeper problem:
 
-It's also worth noting that the process of falling back to master whenever
-something goes wrong is a good default, but it is not a one-size-fits-all 
-solution. Sometimes we botch a deploy in a very trivial way, and in those 
-cases, Capistrano's built in `deploy:rollback` command is useful for 
-simply undoing a deploy and then trying again once a fix is ready. At the 
-other extreme, we occasionally introduce changes that would be tricky to 
-revert without complications. In those cases, we do the best we can to 
-temporarily disable features or degrade them gracefully at a UI level,
-so that the defects we spot don't have a widespread effect.
+> 1) If lots of bugs need to be fixed on the master branch,
+it is a sign that features may have been merged prematurely, or that
+ the system's integration points have become too brittle and need some 
+refactoring.
+
+> 2) If a new feature repeatedly fails in production despite attempts to fix
+its, it may be a sign that the feature isn't very well thought out and that
+a redesign is in order.
+
+> While neither of these situations are pleasant to deal with, addressing them
+right away helps prevent them from spiraling out of control.
 
 This practice does indeed feel a bit ruthless at times, and it definitely takes
 some getting used to. However, by treating rollbacks as a perfectly acceptable
@@ -391,7 +383,7 @@ that matches our application's domain rather than its delivery mechanism. The
 latter feature is what reduces the pain of assembling tests to go along 
 with our bug reports.
 
-Let's take a moment to consider the broader context of how the this email
+Let's take a moment to consider the broader context of how this email
 validation test came into existence in the first place. Like many changes we
 make to Practicing Ruby, this particular one was triggered by an exception
 report which revealed to us that we had not been sanity checking email 
@@ -429,12 +421,22 @@ us to let fewer bugs slip into production in the first place: active peer
 review. Whenever one of us fixes a bug, the other one reviews it for quality and
 completeness. This process puts a bit of peer pressure on both of us to not be sloppy
 about our bug fixes, and also helps us catch issues that would otherwise hide
-away in our individual blind spots. This practice reduces the amount of 
-repeated attempts to properly fix a bug, and also reduces the likelihood that
-defects will resurface. Any time not spent hunting down
-old bugs or trying to pin down new ones is time we can spend on things that
-actually make our software more valuable, and so we don't mind investing a little
-more time up front to help make that happen.
+away in our individual blind spots. 
+
+> Any time not spent hunting down old bugs or trying to pin down new ones is 
+time that can be spent on value-producting work. Automated testing can really
+help in this context, but only if the friction of writing new high level tests
+is reduced as much as possible.
+
+> Even with convenient application-level test helpers, it can still be tedious
+to test behaviors which haven't been considered before. This makes it tempting
+to cut corners, or to leave out testing entirely in the hopes that someone will
+get to it later. To prevent this, bug fixes can be reviewed for quality just
+like improvements are, and tests can be augmented as needed.
+
+While it does require a little bit of discipline, this practice is an 
+investment that always pays off in the end. The trick is to make 
+it easier over time so that it doesn't bog you down.
 
 ### Reflections
 
@@ -452,14 +454,14 @@ projects, all the time. We've found that it works best to maintain a consistent
 broad-based goal (ours is to make the best possible user experience with the
 least effort), and to continuously tweak your processes as needed to meet that
 goal, rather than the other way around. Maintaining a bit of fluidity about the
-way you approach processes are essential, because rigid processes can kill a
+way you approach processes is essential, because rigid processes can kill a
 project even faster than rigid code can.
 
 In the end, much of this is very subjective and context dependent. I've shared
 what works for us in the hopes that it'll be helpful to you, but I want to
-hear about your own experiences as well. Because our own process is
+hear about your own experiences as well. Because our process is
 nothing more than an amalgamation of good ideas that other people have come up
-with, I'd love to hear what you think might be worth adding to our recipe.
+with, I'd love to hear what you think might be worth adding to the mix.
 
 [mendicant]: http://mendicantuniversity.org
 [travis]: http://about.travis-ci.org/docs/user/getting-started/
