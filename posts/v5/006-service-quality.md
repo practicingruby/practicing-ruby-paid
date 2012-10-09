@@ -17,20 +17,10 @@ root of why so many software projects fail. However, my work on Practicing Ruby
 has forced me to become much more personally invested in solving it. As someone
 attempting to maintain a very high quality experience on a shoestring budget, I
 now understand what it is like to look at this problem from a stakeholder's
-point of view. In this article, I will share the lessons I've learned from the
-work Jordan Byron and I have been doing to maintain Practicing Ruby's web
-application.
+point of view. In this article, I will share the lessons that Jordan Byron and 
+I have learned from working on Practicing Ruby's web application.
 
-In particular, I will discuss the techniques that have allowed us to make 
-the most out our very limited development time, which is often as little 
-as 5-10 hours per week. We didn't invent any of these practices; we picked 
-them up mostly by studying what works for other people. However, we've learned
-that these ideas are complimentary to one another, and so the net 
-benefit to us has been greater than the sum of its parts. In other words,
-this article forms a comprehensive recipe for keeping software stable 
-as it grows -- without wasting tons of time and money!
-
-### Rule 1: Work incrementally
+### Lesson 1: Work incrementally
 
 Inspired by [Lean Software Development][lean] practices, we now
 view all work-in-progress code as a form of waste. This way of looking at things 
@@ -65,58 +55,70 @@ As you read through the rest of the guidelines in this article, you'll find that
 while they are useful on their own, they are made much more effective by this
 subtle shift in the way we ship things.
 
-### Rule 2: Review everything
+### Lesson 2: Review everything
 
 It is no secret that code reviews are useful for driving up code quality and
 reducing the number of defects that get introduced into production in the first
 place. However, figuring out how to conduct a good review is something that
-takes a bit of fine tuning to get right.
+takes a bit of fine tuning to get right. Here is the set of steps we eventually
+settled on:
 
-We've found through trial and error that code reviews generally go a lot better
-if you start by simply walking through how things work at a functional level.
-The reviewer attempts to use the new feature while its developer answers any 
-questions that come up along the way. Whenever an unanticipated
+1. The reviewer attempts to actually use the new feature while its developer 
+answers any questions that come up along the way. Whenever an unanticipated
 edge case or inconsistency is found, we immediately file a ticket for it. We
 repeat this process until all open questions or unexpected issues have been 
 documented.
 
-Unless the feature's developer has specific technical questions for the
-reviewer, we don't bother with in-depth reviews of implementation details until
-all functional issues have been addressed. This prevents us from spending time
-on bikeshed arguments about potential refactorings, or hypothetical sources of
-failure at the code level. Doing things this way also reminds us that the
-external quality of our system is our highest priority, and that while clean
-code makes building a better product easier, it is means, not an end in itself.
+    Unless the feature's developer has specific technical questions for the
+    reviewer, we don't bother with in-depth reviews of implementation details until
+    all functional issues have been addressed. This prevents us from spending time
+    on bikeshed arguments about potential refactorings, or hypothetical sources of
+    failure at the code level. Doing things this way also reminds us that the
+    external quality of our system is our highest priority, and that while clean
+    code makes building a better product easier, it is means, not an end in itself.
 
-Once a feature seems to work as expected in the eyes of both the developer and
+1. Once a feature seems to work as expected in the eyes of both the developer and
 the reviewer, the next area we turn our attention to is the tests. It is the
 reviewer's responsibility to make sure that the tests cover the issues brought
 up during the review, and also generally exercise the feature well enough to
 prevent it from silently breaking. Sometimes the reviewer will ask the developer
 of the feature to write the tests, other times it is easier for the reviewer to
-write the tests themselves rather than trying to explain what is needed. In
-either case, the end result of this round of changes is that the feature's
-requirements end up getting pinned down a bit more than it might have been 
-at the outset. Because many of these tests can be written at the UI level, it is
-common to have still not discussed implementation details at this stage of a
-review.
+write the tests themselves rather than trying to explain what is needed. 
 
-By now, the feature is tested well enough, and its functionality has been 
+    In either case, the end result of this round of changes is that the feature's
+    requirements end up getting pinned down a bit more than it might have been 
+    at the outset. Because many of these tests can be written at the UI level, it is
+    common to have still not discussed implementation details at this stage of a
+    review.
+
+1. By now, the feature is tested well enough, and its functionality has been 
 exercised more than a few times. That means that a spot check of its source code 
-is in order. Generally speaking, the goal is not to make the code perfect, 
+is in order. The goal is not to make the code perfect, 
 but to identify both low-cost improvements that can be done right away, 
 and any serious warning signs of potential problems that may make the 
 code hard to maintain or error-prone. We see everything else as 
 something that can be dealt with later -- if and when a feature needs to be 
 built on top of or modified.
 
+Even though these items are listed in order, they're better though of as layers
+rather than procedural steps. You need to start at the outermost layer, and then
+dig down as needed to fully answer each question that comes up during a review.
 While this may sound like a very rigorous practice, it isn't as daunting as it
-seems. Most of the time, we can cycle through all the stages of our review very
-quickly, because we usually tend to only look at small bits of functionality at
-a time. When working on larger multi-faceted changes, we will often do the
-reviews in stages to prevent reviews from dragging on forever.
+seems. You can get an idea of what it looks like by reading through 
+the conversation on [this pull request][pr-76]. 
 
-### Rule 3: Stay alert
+> The real benefit of reviewing functionality first, tests second, and
+> implementation last is that it helps make sure that the right kinds of
+> conversations happen at the the right time. If a feature isn't implemented
+> correctly or is poorly usable, it doesn't matter how well written its tests
+> are. Likewise, if test coverage is inadequate, it isn't wise to recommend 
+> major refactorings to production code. This simple prioritization helps keep
+> the focus on improving the *application* rather than just the code.
+
+Even with a very good review process, bad things still end up happening. That's
+where an early warning system can really come in handy.
+
+### Lesson 3: Stay alert
 
 When something does go wrong, we want to know about it as soon as possible.
 We rely on many different ways of detecting problems, and we automate as much as
@@ -188,7 +190,7 @@ I'd love to discuss this topic more, so please ask me some questions
 or share your thoughts once you've finished reading this article if you're
 interested in this kind of thing.
 
-### Rule 4: Rollback ruthlessly
+### Lesson 4: Rollback ruthlessly
 
 Working on one incremental improvement at a time makes it easy 
 to revert newly released functionality as soon as we find 
@@ -250,7 +252,7 @@ response to a newly discovered defect rather than an embarrassing failure, a
 totally different set of priorities are established that help keep things in a
 constant state of health. 
 
-### Rule 5: Minimize effort
+### Lesson 5: Minimize effort
 
 Every time we find a defect in one of our features, we ask ourselves whether
 that feature is important enough to us to be worth fixing at all. Properly
@@ -284,52 +286,50 @@ The vast majority of defects we discover are somewhere between these two
 extremes, and figuring out how to deal with them is not nearly as
 straightforward. The lesson we've gradually learned over time is that it is
 better to assume that a feature can either be cut or simplified and then try to
-prove ourselves wrong rather than doing things the other way around. However, we
-still forget this rule on occasion, and we inevitably end up paying the price
-for it.
+prove ourselves wrong rather than doing things the other way around.
 
-Take for example our work on making account cancellation easier for subscribers.
-We had assumed that what folks would want is an easy to find link on their
-account settings page that would automatically cancel their account with no
-further action required on their end. While this assumption is valid on its own,
-it lead us down a very deep rabbit hole. In order to make cancellation
-*automatic*, we'd need to handle API calls to both Mailchimp and Stripe
-(depending on the subscriber's payment provider), and we'd also need to handle
-the case where there was no payment provider at all. There were also lots of
-other little things to consider, most of which we didn't even think about until
-we started implementing the feature. After a few hours of discussion and
-development work, we had a partially completed feature which *almost* worked,
-but still had some remaining issues with it. Almost immediately after deploying
-it to production, we rolled it back and decided it simply wasn't ready yet.
+One area where we failed to keep things simple at first was in our work on
+account cancellation. Because we were developing feature in the middle a
+transition to a new payment provider, it ended up being more complicated to
+implement than we expected it to be. After several hours of discussion and
+development work, we ended up with a feature that almost worked, but still had
+many kinks to be ironed out. Almost immediately after we deployed it to
+production, we noticed that it wasn't working the way we expected it to and
+immediately rolled it back.
 
-After listening to Jordan and I complain about what a frustrating day we had, my
-wife Jia asked us why we hadn't considered simply handling the cancellation process 
-manually for the time being. We went on to explain to her that we wanted to make
-it so that subscribers didn't have to email us and have a back-and-forth
-exchange in order to cancel their accounts, because we felt that would be a
-terrible experience for them. It was at that point that she suggested that we
-might be able to make it so that every time a customer clicks the "unsubscribe"
-link, and email gets sent to us with the information necessary to manually
-cancel their account -- a process that takes us only a few seconds to complete
-and only happens a few times a week.
+We thought for some time about what would be needed in order to fix the
+remaining issues, but eventually came to realize that we had overlooked an
+obvious shortcut: Instead of fully automating cancellations, we could make it so
+the unsubscribe button sent us an email with all the details necessary to close
+accounts upon request. This process only takes a few seconds to do manually, and
+only happens a few times a week. Most importantly, the semi-automatic
+approach was easy to understand with few potential points of failure, and could
+be designed, implemented, in tested in less time than it took for us to think
+through the issues of the more complicated system. In other words, it required
+less effort to ship this simple system than it would have taken to fix the
+complicated one, so we scrapped the old code.
 
-Although it took us a little while to let this idea in, we eventually realized
-that it was the exact right thing to do, at least as a stopgap measure.
-Implementing the semi-automatic process was so much simpler than the fully-automatic one that
-we were able to build and ship it in a fraction of the time that we spent
-*discussing* the more complicated feature. So rather than fixing the problems
-with our very complex code, we replaced it with something more simple and
-accepted that our initial efforts were a sunk cost. Even though this may have
-temporarily bruised our egos a bit, it was the right thing to do.
+Every situation is different, but hopefully these examples have driven home the
+point that dealing with bugs requires effort that may or may not be better spent
+elsewhere. In summary:
 
-Killing code is not an easy thing to do emotionally, but these small sacrifices
-go a long way to improving the overall quality of your projects. This is why we
-can't just decide whether a bug is worth fixing based on the utility of the
-individual feature it effects: we need to think about whether our time would be
-better spent working on other things. It is only worth resolving defects 
-if the answer to that question is "No!"
+> Critical flaws and trivial errors both deserve immediate attention: the former
+> because of their impact on people, the latter due to the fact that they get
+> harder to fix as they accumulate. Unfortunately, most bugs are in
+> between these two extremes and need to be evaluated on a case-by-case basis.
 
-### Rule 6: Prevent regressions 
+> You can't just decide whether a bug is worth fixing based on the utility of the
+> individual feature it effects: you need to think about whether our time would be
+> better spent working on other things. It is only worth resolving defects 
+> if the answer to that question is "No!". Even if it is emotionally challenging
+> to do so, sometimes it makes sense to kill off a single buggy feature if doing
+> so improves the overall quality of your system.
+
+Of course, if you do decide to fix a bug, you need to do what you can to prevent
+that time investment from going to waste. That's where regression testing
+becomes so important.
+
+### Lesson 6: Prevent regressions 
 
 One clear lesson that time has taught us is that bugs which are not covered by
 a test inevitably come back. To prevent this from happening, we
@@ -431,8 +431,8 @@ is reduced as much as possible.
 > Even with convenient application-level test helpers, it can still be tedious
 to test behaviors which haven't been considered before. This makes it tempting
 to cut corners, or to leave out testing entirely in the hopes that someone will
-get to it later. To prevent this, bug fixes can be reviewed for quality just
-like improvements are, and tests can be augmented as needed.
+get to it later. To prevent this, bug fixes are reviewed for quality just
+like improvements are, and tests get augmented as needed.
 
 While it does require a little bit of discipline, this practice is an 
 investment that always pays off in the end. The trick is to make 
@@ -447,7 +447,7 @@ that removing or changing any one ingredient would spoil the soup, but only that
 it is hard for us to guess what their effects would be like in isolation.
 
 It's important to point out that we adopted these ideas organically rather
-than carefully designing a process for ourselves to rigidly follow. This article
+than carefully designing a process for ourselves to rigidly follow. This
 is more of a description of how we viewed things at the time this article was
 published than it is a prescription for how people ought to approach all
 projects, all the time. We've found that it works best to maintain a consistent
@@ -474,3 +474,4 @@ with, I'd love to hear what you think might be worth adding to the mix.
 [autonomation]: http://en.wikipedia.org/wiki/Autonomation
 [htmlescape]: https://github.com/elm-city-craftworks/practicing-ruby-web/commit/223ca92a0b769713ce3c2137de76a8f34f06647e
 [gh-deploy-aug-2012]: https://github.com/blog/1241-deploying-at-github
+[pr-76]: https://github.com/elm-city-craftworks/practicing-ruby-web/pull/76
