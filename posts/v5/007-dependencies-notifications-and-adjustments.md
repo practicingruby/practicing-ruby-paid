@@ -1,11 +1,37 @@
-One of the challenges in object-oriented programming is determining the right
-relationships between collaborating objects in a system. Even objects which have
-been well thought out individually can be tricky to integrate if specific
-attention was not given to how they would relate to other objects.
+The main challenge of object-oriented programming lies not in building
+objects, but in understanding and defining their relationships to
+each other and to the outside world. Object-oriented programming
+promises to help us produce software that is resilient and easy to 
+change, but these benefits can only be realized when the integration points
+between objects are allowed to take center stage in design discussions.
 
-Peer object stereotypes are useful for thinking through design and clarifying
-the purpose of object relationships; they're not meant to be rigidly imposed but
-instead provide a useful categorization to make design discussions easier.
+The challenge of sensibly connecting a set of objects together to perform a
+complex task is one that confounds beginner and experienced programmers 
+alike. The question of how to put instances of information-hiding, 
+single-responsibility-discharging, message-passing classes in touch 
+with one another is hard to answer. In fact, it is hard to even 
+reason about it without getting trapped by analysis paralysis. This 
+explains why so many of us who are otherwise decent programmers 
+struggle with this particular aspect of object-oriented programming. 
+
+But like so many other problems we encounter in our work, this one can
+be simplified greatly by introducing a common vocabulary and some rough
+heuristics that make thinking and communicating about our code easier.
+For reasoning about this particular design challenge, the 
+"Object Peer Stereotypes" described in [Growing Object Oriented Software, Guided
+by Tests][GOOS] give us some very useful conceptual tools 
+to work with.
+
+In this article, we will explore the three stereotypical relationships 
+between an object and its peers that were described in GOOS: 
+dependencies, notifications, and adjustments. Taken together, these 
+rough categorizations do a good job of helping identify the kind of
+connection that exists between two objects, and that makes it easier
+to think about the rules that apply to that kind of relationship 
+within a particular context. By the time you're done reading, you will
+be able to easily identify these stereotypes in any system, 
+and that will enable you to have a more nuanced view of the 
+relationships that exist within it.
 
 ## Dependencies
 
@@ -31,6 +57,8 @@ affected through its API. It lets us control how much a change to one
 object will impact other parts of the system by ensuring that there
 are no unexpected dependencies between unrelated component
 
+* Stripe payments
+* Generic payment gateway
 
 ## Notifications
 
@@ -57,6 +85,14 @@ queue, etc. (TAKE A LOOK THROUGH THE DEMETER ARTICLE, TRY TO COME UP WITH
 A COUPLE EXAMPLES OF DIFFERENT KINDS OF NOTIFICATIONS AND DISCUSS THEIR
 TRADEOFFS, INCLUDING THE #call INTERFACE)
 
+---examples---
+
+* Most use of logging systems
+* Event loops
+* Typhoeus
+* Mike's example? (Which is really quite good, if you start with usage example)
+* Mailhopper
+
 ## Adjustments
 
 > Peers that adjust the object’s behavior to the wider needs of the system. This
@@ -68,10 +104,17 @@ form required by some other object.
 
 * Adjustments can be initialized to use sensible defaults where appropriate
 
-* CONSIDER SOMETHING LIKE FasterCSV::Row. SOME ADJUSTMENTS ARE TO MAKE DATA MORE
+* SOME ADJUSTMENTS ARE TO MAKE DATA MORE
 EASY TO WORK WITH, OTHERS ARE ADAPTERS MEANT TO FORCE DATA TO CONFORM TO AN
 EXISTING CONTRACT, OTHERS ARE MEANT TO WRAP DISTINCT STRATEGIES IN A COMMON
 INTERFACE (possibly overlapping too much here), ARE THERE OTHER KINDS?
+
+---examples---
+
+* Draper
+* FasterCSV::Row
+* Enumerator!
+* Arguments and Results
 
 ## To think about
 
@@ -89,3 +132,6 @@ depends on, but not how it works."
 
 CONTINUE READING THIS!
 https://groups.google.com/forum/?fromgroups=#!msg/growing-object-oriented-software/BehKoB1eiFQ/UOcf39B7DYgJ
+
+
+[GOOS]:  http://www.growing-object-oriented-software.com/
