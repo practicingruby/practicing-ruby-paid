@@ -10,7 +10,7 @@ disasterous effects: It causes risk-averse organizations to produce stale
 software that quickly becomes irrelevant, while risk-seeking organizations ship 
 buggy code in order to rush features out the door faster than their 
 competitors. In either case, the people who depend on the software produced by
-these organizations give up something they shouldn't have to.
+these teams give up something they shouldn't have to.
 
 I have always been interested in this problem, because I feel it is at the 
 root of why so many software projects fail. However, my work on Practicing Ruby
@@ -18,7 +18,8 @@ has forced me to become much more personally invested in solving it. As someone
 attempting to maintain a very high quality experience on a shoestring budget, I
 now understand what it is like to look at this problem from a stakeholder's
 point of view. In this article, I will share the lessons that Jordan Byron and 
-I have learned from working on Practicing Ruby's web application.
+I have learned from trying to keep Practicing Ruby's web application stable as
+it grows.
 
 ### Lesson 1: Work incrementally
 
@@ -53,11 +54,11 @@ be spent on value-producing work.
 
 As you read through the rest of the guidelines in this article, you'll find that
 while they are useful on their own, they are made much more effective by this
-subtle shift in the way we ship things.
+shift in the way we ship things.
 
 ### Lesson 2: Review everything
 
-It is no secret that code reviews are useful for driving up code quality and
+It is no secret that code reviews are useful for driving up quality and
 reducing the number of defects that get introduced into production in the first
 place. However, figuring out how to conduct a good review is something that
 takes a bit of fine tuning to get right. Here is the set of steps we eventually
@@ -72,7 +73,7 @@ documented.
     Unless the feature's developer has specific technical questions for the
     reviewer, we don't bother with in-depth reviews of implementation details until
     all functional issues have been addressed. This prevents us from spending time
-    on bikeshed arguments about potential refactorings, or hypothetical sources of
+    on bikeshed arguments about refactorings, or hypothetical sources of
     failure at the code level. Doing things this way also reminds us that the
     external quality of our system is our highest priority, and that while clean
     code makes building a better product easier, it is means, not an end in itself.
@@ -80,14 +81,14 @@ documented.
 1. Once a feature seems to work as expected in the eyes of both the developer and
 the reviewer, the next area we turn our attention to is the tests. It is the
 reviewer's responsibility to make sure that the tests cover the issues brought
-up during the review, and also generally exercise the feature well enough to
-prevent it from silently breaking. Sometimes the reviewer will ask the developer
+up during the review, and to verify that they exercise the 
+feature well enough to prevent it from silently breaking. Sometimes the reviewer will ask the developer
 of the feature to write the tests, other times it is easier for the reviewer to
 write the tests themselves rather than trying to explain what is needed. 
 
     In either case, the end result of this round of changes is that the feature's
-    requirements end up getting pinned down a bit more than it might have been 
-    at the outset. Because many of these tests can be written at the UI level, it is
+    requirements become clearer as the tests are updated to cover more subtle
+    details. Because many of these tests can be written at the UI level, it is
     common to have still not discussed implementation details at this stage of a
     review.
 
@@ -96,44 +97,48 @@ exercised more than a few times. That means that a spot check of its source code
 is in order. The goal is not to make the code perfect, 
 but to identify both low-cost improvements that can be done right away, 
 and any serious warning signs of potential problems that may make the 
-code hard to maintain or error-prone. We see everything else as 
+code hard to maintain or error-prone. Everything else is 
 something that can be dealt with later -- if and when a feature needs to be 
-built on top of or modified.
+improved or modified.
 
 Even though these items are listed in order, they're better though of as layers
 rather than procedural steps. You need to start at the outermost layer, and then
 dig down as needed to fully answer each question that comes up during a review.
-While this may sound like a very rigorous practice, it isn't as daunting as it
-seems. You can get an idea of what it looks like by reading through 
-the conversation on [this pull request][pr-76]. 
+While this may sound like a very rigorous procedure, it isn't as daunting as it
+seems. You can get an idea of what it looks like in practice by reading through 
+the conversation on [this pull request][pr-76]. Here's why we invest the extra
+effort:
 
-> The real benefit of reviewing functionality first, tests second, and
-> implementation last is that it helps make sure that the right kinds of
+> Reviewing functionality first, tests second, and
+> implementation last helps ensure that the right kinds of
 > conversations happen at the the right time. If a feature isn't implemented
 > correctly or is poorly usable, it doesn't matter how well written its tests
 > are. Likewise, if test coverage is inadequate, it isn't wise to recommend 
-> major refactorings to production code. This simple prioritization helps keep
-> the focus on improving the *application* rather than just the code.
+> major refactorings to production code. This simple prioritization keeps
+> the focus on improving the *application* rather than the *implementation*.
 
 Even with a very good review process, bad things still end up happening. That's
-where an early warning system can really come in handy.
+why the remaining four lessons focus on what to do when things go wrong, but keep
+in mind that actively reviewed projects help prevent unexpected failures from
+happening in the first place.
 
 ### Lesson 3: Stay alert
 
-When something does go wrong, we want to know about it as soon as possible.
+When something breaks, we want to know about it as soon as possible.
 We rely on many different ways of detecting problems, and we automate as much as
 we can.
 
 Our first line of defense is our continuous integration system. 
 We use [Travis CI][travis], but for our purposes pretty much any CI tool would
 work. Travis does a great job of catching environmental issues for us: things
-like dependency issues, configuration problems, and other subtle things that
-would be hard to notice in development. It also helps protect us from
-ourselves: Even if we forget to run the entire test suite before pushing a set
-of changes, Travis never forgets, and will complain loudly if we've broken the
-build. Most of the mistakes that Travis can detect are quite trivial, but
-catching them before they make it to production helps us keep our service
-stable.
+like unexpected changes in dependencies, application configuration problems,
+platform-specific failures, and other subtle things that would be hard to 
+notice in development. More importantly, it helps protect us from ourselves: Even if we 
+forget to run the entire test suite before pushing a set of changes, 
+Travis never forgets, and will complain loudly if we've broken the 
+build. Most of the mistakes that continuous integration can detect are quite 
+trivial, but catching them before they make it to production helps us 
+keep our service stable.
 
 For the bugs that Travis can't catch (i.e. most of them), we rely on
 the [Exception Notifier][exception-notification] plugin for Rails. While most
@@ -149,7 +154,7 @@ Whenever we're working on features that are part of the critical path of our
 application, we tend to use the UNIX `tail -f` command to watch our production 
 logs in real time. We also occasionally write ad-hoc reports that give us 
 insight into how our system is working. For example, we built the following 
-report to keep an eye on account statuses when we rolled out a partial replacement 
+report to track account statuses when we rolled out a partial replacement 
 for our registration system. We wanted to make sure it was possible for folks to
 successfully make it to the 'payment pending' status, and the report showed
 us that it was:
@@ -159,76 +164,82 @@ us that it was:
 Our proactive approach to error detection makes it so that we can rely less on
 bug reports from our subscribers, and more on automated reports and alerts. This
 works fairly well most of the time, and we even occasionally send messages
-to people who were affected by bugs in our system letting them know that we fixed 
-their problem before they attempt to contact us. That said, bug reports from
-humans rather than machines can provide a lot of useful context, so we 
-display our email address prominently on our error pages in the application.
-Any email sent to that address makes its to both me and Jordan, so
-that we can deal with them promptly.
+to people who were affected by bugs with either an apology and a note that we
+fixed the problem, or a link to a ticket where they can track our progress on
+resolving the issue. We do display our email address on all of our error pages,
+but we place a high priority on making sure that subscribers only need to use
+it to provide extra context for us, rather than to simply notify us that a
+problem exists.
 
-While a lot more can be said about efficient error detection, we have lots of
-other topics to discuss in this article and should try to maintain an even pace.
-But before we move on, here are a few things to think about when applying these
-ideas in your own applications:
+Before we move on to the next lesson, here are a few things to remember about
+this topic:
 
 > The main reason to automate error detection as much as possible is because the
 people who use your application should not be treated like unpaid QA testers.
 The need for an active conversation with your users every time something goes
-wrong with a system is a sign that you have poor visibility into its failures,
-and ought to fix that. However, be aware of the fact that every automated error
-detection system  requires some fine tuning to get
-right. 
+wrong is a sign that you have poor visibility into your application's failures,
+and it will pay off to fix that. However, be aware of the fact that every automated error
+detection system requires some fine tuning to get right, and that you may need
+to make pragmatic compromises from time to time.
 
->If your system is exposed to internet traffic of
-any kind, you can expect all sorts of weird stuff to happen, including bots who
-attempt to do things to your application that humans would never do. Fixing or 
-filtering out these kinds of issues can be time consuming, but is essential if
-you want your warning system to not become a potentially dangerous and noisy
-mess.
+> Automated error detection is almost always a good thing: the main question is how extensive
+> you want it to be. For small projects, something as simple as maintaining a
+> detailed log file will be enough, for larger projects much more sophisticated
+> systems will be needed. The key is to choose a strategy that works for your
+> particular context, rather than trying to find a one-size-fits-all
+> solution.
 
-I'd love to discuss this topic more, so please ask me some questions 
-or share your thoughts once you've finished reading this article if you're
-interested in this kind of thing.
+If automated error detection interests you, please post a
+comment about your experiences after you finish reading this article. It
+is a very complex topic, and I feel like I've only scratched the surface
+of it in my own work, so I'd love to hear some stories from our readers.
 
 ### Lesson 4: Rollback ruthlessly
 
 Working on one incremental improvement at a time makes it easy 
 to revert newly released functionality as soon as we find 
 out that it is defective. At first, we got into the habit of 
-rolling things back to a known stable state because we didn't
-know when we'd get around to fixing the bugs we uncovered. Later
+rolling things back to a stable state because we didn't
+know when we'd get around to fixing the bugs we encountered. Later
 on, we discovered that this approach allows us to take
-our time and get things right rather than rushing to get quick
-fixes out the door.
+our time and get things right rather than shipping quick
+fixes that felt like rushed hacks.
 
-Disciplined revision control practices are essential for supporting
-this kind of workflow. We started out by practicing [Github Flow][gh-flow]
+In order to make rollbacks painless, good revision control processes
+are essential. We started out by practicing [Github Flow][gh-flow]
 in its original form, which consisted of the following steps:
 
-1. Anything in the master branch is deployable 
-2. To work on something new, create a descriptively named branch off of master (ie: new-oauth2-scopes)
-3. Commit to that branch locally and regularly push your work to the same named branch on the server
-4. When you need feedback or help, or you think the branch is ready for merging, open a pull request
-5. After someone else has reviewed and signed off on the feature, you can merge it into master
-6. Once it is merged and pushed to ‘master’, you can and should deploy immediately
+1. Anything in the master branch is deployable.
+
+2. To work on something new, create a descriptively named branch off of master.
+
+3. Commit to that local branch and regularly push your work to the server.
+
+4. When you need feedback or help, or you want to merge, open a pull request.
+
+5. After someone else has reviewed the feature, you can merge it into master.
+
+6. Once it is merged and pushed to ‘master’, you can and should deploy
+immediately.
 
 Somewhere down the line, we made a small tweak to the formula by deploying
 directly from our feature branches before merging them into master. This
 approach allows every improvement we ship to get some live testing time in
-production before it gets merged into master, greatly increasing the stability
-of our mainline code. Whenever trouble strikes, we deploy from our master branch
-temporarily, which executes a rollback without explicitly reverting any
+production before it gets merged, greatly increasing the stability
+of our mainline code. Whenever trouble strikes, we redeploy from our master branch, 
+which executes a rollback without explicitly reverting any
 commits. As it turns out, this approach is very similar to [Github's more recent
-deployment practices][gh-deploy-aug-2012], minus all their fancy robotic
+deployment practices][gh-deploy-aug-2012], minus their fancy robotic
 helpers.
 
 While this process significantly reduces the amount of defects on our master branch,
 we do occasionally come across failures that are in old code rather than in our
-latest work. When that happens, we tend to fix the issues directly on master
-(merging a branch if it's a complicated change), verify that they work as
-expected in production, and then attempt to merge those changes into any active
+latest work. When that happens, we tend to fix the issues directly on master, 
+verify that they work as expected in production, and then attempt to merge those changes into any active
 feature branches. Most of the time, these merges can be cleanly applied, and so
-it doesn't interrupt our work on new improvements all that much.
+it doesn't interrupt our work on new improvements all that much. But when things
+get messy, it is a reminder for us to take a step back and look at the big
+picture:
 
 > In a healthy system, rollbacks should be easy, particularly when feature
 branches are used. When this process does not go smoothly, it is usually a 
@@ -236,21 +247,23 @@ sign of a deeper problem:
 
 > 1) If lots of bugs need to be fixed on the master branch,
 it is a sign that features may have been merged prematurely, or that
- the system's integration points have become too brittle and need some 
+ the application's integration points have become too brittle and need some 
 refactoring.
 
 > 2) If a new feature repeatedly fails in production despite attempts to fix
-its, it may be a sign that the feature isn't very well thought out and that
+it, it may be a sign that the feature isn't very well thought out and that
 a redesign is in order.
 
 > While neither of these situations are pleasant to deal with, addressing them
-right away helps prevent them from spiraling out of control.
+right away helps prevent them from spiraling out of control. This makes sure
+that small flaws do not later become a bigs one, and reduces the project's
+pain points over the long haul.
 
-This practice does indeed feel a bit ruthless at times, and it definitely takes
-some getting used to. However, by treating rollbacks as a perfectly acceptable
-response to a newly discovered defect rather than an embarrassing failure, a
-totally different set of priorities are established that help keep things in a
-constant state of health. 
+Despite these benefits, this practice does feel a bit ruthless at times, 
+and it definitely takes some getting used to. However, by treating rollbacks 
+as a perfectly acceptable response to a newly discovered defect rather 
+than an embarrassing failure, a totally different set of priorities are 
+established that help keep things in a constant state of health. 
 
 ### Lesson 5: Minimize effort
 
@@ -261,10 +274,12 @@ improvements, and so we are easily tempted to cut our losses by removing
 defective code rather than attempting to fix it. Whether we can get away with
 that or not ultimately depends on the situation.
 
-Sometimes, defects are severe enough that they need to be dealt with right away,
+---
+
+**Critical defects:** Sometimes, bugs are severe enough that they need to be dealt with right away,
 and in those cases we [stop the line][autonomation] to give the issue the
-attention it deserves. The best example of this we've encountered in recent
-times was that we neglected to update our omni-auth version before Github shut
+attention it deserves. The best example of this that we've encountered in recent
+times was that we neglected to update our omniauth dependency before Github shut
 down an old version of their API, and that disabled logins temporarily for all
 Practicing Ruby subscribers. We had an emergency fix out within hours, but it
 predictably broke some stuff. Over the next couple days, we added fixes for
@@ -273,28 +288,28 @@ this wasn't the kind of defect we could easily work around or rollback from, we
 were working under pressure, and attempting to work on other things during that
 time would have only made matters worse.
 
-At the other extreme, some defects are so trivially easy to fix that it makes
-sense to take care of them as soon as you detect them. A few weeks before this
-article was published I noticed our broadcast email system was treating our
+**Trivial defects:** At the other extreme, some bugs are so easy to fix that it makes
+sense to take care of them as soon as you notice them. A few weeks before this
+article was published, I noticed that our broadcast email system was treating our
 plain text messages as if they were HTML that needed to be escaped, which caused
 some text to be mangled. If you don't count the accompanying test, fixing this
 problem was [a one-line change][htmlescape] to our production code. Tiny bugs 
 like this are best to fix right away, as it helps keep them from accumulating 
 over time.
 
-The vast majority of defects we discover are somewhere between these two
-extremes, and figuring out how to deal with them is not nearly as
-straightforward. The lesson we've gradually learned over time is that it is
+**Moderate defects:** Most of the bugs we discover are somewhere 
+between these two extremes, and figuring out how to deal with them is not nearly as
+straightforward. We've gradually learned that it is
 better to assume that a feature can either be cut or simplified and then try to
-prove ourselves wrong rather than doing things the other way around.
+prove ourselves wrong rather than thinking that it absolutely must be fixed.
 
 One area where we failed to keep things simple at first was in our work on
-account cancellation. Because we were developing feature in the middle a
-transition to a new payment provider, it ended up being more complicated to
-implement than we expected it to be. After several hours of discussion and
-development work, we ended up with a feature that almost worked, but still had
-many kinks to be ironed out. Almost immediately after we deployed it to
-production, we noticed that it wasn't working the way we expected it to and
+account cancellation. Because we were in the middle of a transition to a 
+new payment provider, this feature ended up being more complicated to
+implement than we expected. After several hours of discussion and
+development, we ended up with something that almost worked, but still had
+many kinks to be ironed out. Almost immediately after we deployed the feature
+to production, we noticed that it wasn't working as expected and
 immediately rolled it back.
 
 We thought for some time about what would be needed in order to fix the
@@ -309,6 +324,8 @@ through the issues of the more complicated system. In other words, it required
 less effort to ship this simple system than it would have taken to fix the
 complicated one, so we scrapped the old code.
 
+---
+
 Every situation is different, but hopefully these examples have driven home the
 point that dealing with bugs requires effort that may or may not be better spent
 elsewhere. In summary:
@@ -319,20 +336,20 @@ elsewhere. In summary:
 > between these two extremes and need to be evaluated on a case-by-case basis.
 
 > You can't just decide whether a bug is worth fixing based on the utility of the
-> individual feature it effects: you need to think about whether our time would be
+> individual feature it effects: you need to think about whether your time would be
 > better spent working on other things. It is only worth resolving defects 
 > if the answer to that question is "No!". Even if it is emotionally challenging
 > to do so, sometimes it makes sense to kill off a single buggy feature if doing
 > so improves the overall quality of your system.
 
 Of course, if you do decide to fix a bug, you need to do what you can to prevent
-that time investment from going to waste. That's where regression testing
-becomes so important.
+that time investment from going to waste. Regression testing can help with that,
+and that's why we've included it as the sixth and final lesson in this article.
 
 ### Lesson 6: Prevent regressions 
 
-One clear lesson that time has taught us is that bugs which are not covered by
-a test inevitably come back. To prevent this from happening, we
+One clear pattern that time has taught us is that all bugs that are not covered by
+a test eventually come back. To prevent this from happening, we
 try to write UI-level acceptance tests to replicate defects as the first step 
 in our bug-fixing process rather than the last.
 
@@ -378,7 +395,7 @@ end
 Even without reading the [implementation of Support::SimulatedUser][simulated-user],
 you have probably already guessed that it is a simple wrapper around Capybara's
 functionality that provides application-specific helpers. This object provides
-us with two main benefits: reduced duplication in our tests and a vocabulary
+us with two main benefits: reduced duplication in our tests, and a vocabulary
 that matches our application's domain rather than its delivery mechanism. The
 latter feature is what reduces the pain of assembling tests to go along 
 with our bug reports.
@@ -388,7 +405,7 @@ validation test came into existence in the first place. Like many changes we
 make to Practicing Ruby, this particular one was triggered by an exception
 report which revealed to us that we had not been sanity checking email 
 addresses before updating them. This problem was causing a 500 error to be 
-raised rather than failing gracefully with a useful error message, which pretty
+raised rather than failing gracefully with a useful failure message, which pretty
 much guaranteed a miserable experience for anyone who encountered it. The steps
 to reproduce this issue from scratch are roughly as follows:
 
@@ -402,7 +419,7 @@ If you compare these steps to the ones that are covered by the test, you'll see
 they are almost identical to one another. While the verbal description is
 something that may be easier to read for non-programmers, the tests communicate
 the same idea at nearly the same level of abstraction and clarity to anyone who
-knows how to write Ruby code. Because of this, it isn't nearly as easy for us to
+knows how to write Ruby code. Because of this, it isn't as easy for us to
 come up with a valid excuse for not writing a test or putting it off until
 later.
 
@@ -423,6 +440,9 @@ completeness. This process puts a bit of peer pressure on both of us to not be s
 about our bug fixes, and also helps us catch issues that would otherwise hide
 away in our individual blind spots. 
 
+In summary, this approach towards regression testing has taught us the following
+lesson:
+
 > Any time not spent hunting down old bugs or trying to pin down new ones is 
 time that can be spent on value-producting work. Automated testing can really
 help in this context, but only if the friction of writing new high level tests
@@ -430,19 +450,20 @@ is reduced as much as possible.
 
 > Even with convenient application-level test helpers, it can still be tedious
 to test behaviors which haven't been considered before. This makes it tempting
-to cut corners, or to leave out testing entirely in the hopes that someone will
-get to it later. To prevent this, bug fixes are reviewed for quality just
-like improvements are, and tests get augmented as needed.
+to cut corners, or to leave out testing entirely in the hopes that someone else 
+will get to it later. To prevent this, bug fixes should be reviewed for 
+quality just like improvements are, and their tests should be augmented as
+needed whenever they seem to come up short.
 
-While it does require a little bit of discipline, this practice is an 
-investment that always pays off in the end. The trick is to make 
-it easier over time so that it doesn't bog you down.
+While it does require a little bit of will power, this habit can work
+wonders over time. The trick is to make practicing it as easy as 
+possible so that it doesn't bog you down.
 
 ### Reflections
 
 Do we follow all of these practices completely and consistently without fail? Of
 course not! But we do try to follow them most of the time, and have
-found that they work best when taken together as a group. That is not to say
+found that they work best when done together. That is not to say
 that removing or changing any one ingredient would spoil the soup, but only that
 it is hard for us to guess what their effects would be like in isolation.
 
@@ -453,9 +474,8 @@ published than it is a prescription for how people ought to approach all
 projects, all the time. We've found that it works best to maintain a consistent
 broad-based goal (ours is to make the best possible user experience with the
 least effort), and to continuously tweak your processes as needed to meet that
-goal, rather than the other way around. Maintaining a bit of fluidity about the
-way you approach processes is essential, because rigid processes can kill a
-project even faster than rigid code can.
+goal. Working habits need to be treated with a bit of fluidity, because brittle
+processes can kill a project even faster than brittle code can.
 
 In the end, much of this is very subjective and context dependent. I've shared
 what works for us in the hopes that it'll be helpful to you, but I want to
