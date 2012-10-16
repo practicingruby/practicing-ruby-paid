@@ -1,13 +1,13 @@
 *This article was contributed by [Jesse Storimer](http://jstorimer.com). He is
-the author of [Working With Unix Processes](http://workingwithunixprocesses.com)
-and [Working With TCP Sockets](http://workingwithtcpsockets.com), a pair of
+the author of [Working with Unix Processes](http://workingwithunixprocesses.com)
+and [Working with TCP Sockets](http://workingwithtcpsockets.com), a pair of
 ebooks providing fundamental Unix knowledge to Ruby developers. When he's not at
-the keyboard he's often enjoying the great Canadian outdoors with his family.*
+the keyboard, he's often enjoying the great Canadian outdoors with his family.*
 
 Like many of you, I discovered Ruby via Rails and web development. That was my
-'in'. But before it was popular for writing web apps, Ruby was known for its
+"in." But before it was popular for writing web apps, Ruby was known for its
 object-oriented fundamentals and for being a great scripting language. One of the reasons for
-this latter point is that it's so easy to marry Ruby with command line
+this latter benefit is that it's so easy to marry Ruby with command-line
 utilities. Here's an example:
 
 ```ruby
@@ -17,8 +17,8 @@ end
 ```
 
 There's something simple and beautiful in the combination of Ruby and the
-command line here: the backticks are barely detectable. This code will technically 
-accomplish what you think it will; it will drop you into an app-specific console, 
+command line here--the backticks are barely detectable. This code will technically 
+accomplish what you think it will: it will drop you into an app-specific console  that is
 basically an `irb` session with your app already required. But do you know what's 
 going on inside that backtick method? 
 
@@ -41,28 +41,28 @@ end
 
 In order to make this decision, you need to understand what these methods are
 doing under the hood. The differences may be trivial for spawning a development
-console, but picking one of these over another in a production environment can
+console, but picking one of these methods over another in a production environment can
 have major implications.
 
-In this article we're going to re-implement the key parts of these process spawning
+In this article, we're going to reimplement the key parts of these process-spawning
 primitives to get a better understanding of how they work and where they're most
-applicable. Afterwards you'll have a greater understanding of how process
+applicable. Afterward, you'll have a greater understanding of how process
 spawning works regardless of programming language and you'll have a grip on
-which methods are most applicable given different situations.
+which methods are most applicable in different situations.
 
-## Starting Somewhere
+## Starting somewhere
 
-I have already hinted at a few different process spawning methods, but Ruby has
-a ton of them. Off the top of my head there's: `Kernel#system`,
+I have already hinted at a few different process-spawning methods--Ruby has
+a ton of them. Off the top of my head, there's: `Kernel#system`,
 <code>Kernel#\`</code>, `IO.popen`, `Process.spawn`, `open`, `shell`, `open3`,
 `pty`, and probably more. All of these ship with Ruby, some in the core and
 others in the standard library.
 
 All of these spawning methods boil down to the same pattern, but we're not going
-to implement them all. To save time we'll stick with implementing `system` and
-the backticks method. For the unfamiliar, either of these methods can be called
+to implement them all. To save time, we'll stick with implementing `system` and
+the backtick method. Either of these methods can be called
 with a shell command as the argument. Both handle the command in slightly
-different ways with slightly different outputs.
+different ways with slightly different outputs:
 
 ``` 
 system('ls -l') #=> true
@@ -74,10 +74,10 @@ system('boohoo') #=> nil
 
 Let's start building them.
 
-## Harnessing Ourselves With Tests
+## Harnessing ourselves with tests
 
-Before we dive in head first to spawning processes let's rein ourselves in a
-bit. If we're going to re-implement what Ruby already provides then we're going to
+Before we dive into spawning process head first, let's rein ourselves in a
+bit. If we're going to reimplement what Ruby already provides, we're going to
 need a way to test our implementation and make sure that it performs the same
 way that Ruby does. Enter [Rubyspec](http://rubyspec.org).
 
@@ -87,11 +87,11 @@ way that Ruby does. Enter [Rubyspec](http://rubyspec.org).
 > code. This project contains specs that describe Ruby language syntax, core
 > library classes, and standard library classes.
 
-Rubyspec provides a specification for the Ruby language itself, and we want to
-re-implement a part of the Ruby language; therefore we can use Rubyspec
+RubySpec provides a specification for the Ruby language itself, and we want to
+reimplement a part of the Ruby language; therefore, we can use RubySpec
 to test our implementation.
 
-In order to use these specs to drive our implementation we need to get two
+To use these specs to drive our implementation, we need to get two
 things: RubySpec itself, and its testing library mspec. You can check
 out [this README](https://github.com/rubyspec/rubyspec/blob/master/README) 
 for installation instructions. To verify that things are working as 
@@ -102,7 +102,7 @@ directory:
 $ mspec core/kernel
 ```
 
-To run our custom code against these tests we can use
+To run our custom code against these tests, we can use
 the familiar `-r` option with `mspec` to require a file that redefines
 the methods we want to override. Let's do that, while at the same time 
 running the `Kernel.system` specs:
@@ -114,7 +114,7 @@ $ mspec -r ./practicing_spawning.rb core/kernel/system_spec.rb
 
 Should be all green so far!
 
-## Breaking the Test
+## Breaking the test
 
 Let's begin our implementation by causing the tests to fail:
 
@@ -149,13 +149,13 @@ end
 
 If you've ever used the `system` method, this test should be easy to
 understand. It says that shelling out to `echo` should output the echoed string.
-If you [dig in](https://github.com/rubyspec/mspec/blob/master/lib/mspec/matchers/output_to_fd.rb#L68-70)
-to the `output_to_fd` method that's part of `mspec` you'll see that it's
+If you [dig into](https://github.com/rubyspec/mspec/blob/master/lib/mspec/matchers/output_to_fd.rb#L68-70)
+ the `output_to_fd` method that's part of `mspec`, you'll see that it's
 expecting this output on `STDOUT`.
 
-## Fork and Subprocesses
+## fork and subprocesses
 
-The failing spec title says that `system` spawns a sub-process. If you're
+The failing spec title says that `system` spawns a subprocess. If you're
 creating new processes on a Unix system, that means using `fork`:
 
 > ------------------------------------------------------------------------------
@@ -186,20 +186,20 @@ semantics](http://en.wikipedia.org/wiki/Copy-on-write) are implemented,
 the two processes may physically share memory until one of them tries to
 modify it; then each gets its own copy written out.
 
-While understanding `fork` is certainly helpful, we still haven't quite figured
+Although understanding `fork` is certainly helpful, we still haven't quite figured
 out how to implement the `system` method. We know that we can take our Ruby 
-process and create a copy of it with `fork`, but then how do we turn the 
+process and create a copy of it with `fork`, but how do we then turn the 
 new child process into an `echo` process?
 
-## Fork + Exec
+## fork + exec
 
 The `fork` + `exec` pattern for spawning processes is the blueprint upon which
-most all process spawning is built. We've already looked at `fork`, so what
+most process spawning is built. We've already looked at `fork`, so what
 about `exec`?
 
-Very simply, `exec` transforms the current process into another process. Using
-`exec` you can transform a Ruby process into an `ls` process, another Ruby
-process, or an `echo` process.
+`exec` transforms the current process into another process. Using
+`exec`, you can transform a Ruby process into an `ls` process, another Ruby
+process, or an `echo` process:
 
 ```ruby
 puts 'hi from Ruby'
@@ -207,14 +207,14 @@ exec('ls')
 puts 'bye from Ruby' # will never be reached
 ```
 
-This program will never get to the last line of Ruby code. Once it has done
-`exec('ls')` the Ruby program no longer exists. It has been transformed to `ls`.
+This program will never get to the last line of Ruby code. Once it has performed
+`exec('ls')`, the Ruby program no longer exists. It has been transformed to `ls`.
 So there's no possible way for it to get back to this Ruby program and finish
 execution.
 
-## Finally, A Passing Test
+## Finally, a passing test
 
-With `fork` and `exec` we now have the building blocks that we need to implement
+With `fork` and `exec`, we now have the building blocks that we need to implement
 our own `system` method. Here's the most basic implementation:
 
 ```ruby
@@ -225,8 +225,8 @@ module Kernel
     # Create a new subprocess that will just exec the requested program.
     pid = fork { exec(*args) }
 
-    # Since fork() allows both processes to work in parallel we must tell the
-    # parent process to wait for the child to exit. Otherwise the parent would
+    # Because fork() allows both processes to work in parallel, we must tell the
+    # parent process to wait for the child to exit. Otherwise, the parent would
     # continue in parallel with the child and would be unable to process its
     # return value.
     _, status = Process.waitpid2(pid)
@@ -237,8 +237,8 @@ module Kernel
 end
 ```
 
-If we run this against the same spec as before we get more tests passing, but
-not all of them. Still, getting that initial spec passing means we're headed
+If we run this against the same spec as before, more tests pass, but
+not all of them. Still, getting that initial spec to pass means that we're headed
 in the right direction.
 
 There are three very simple Unix programming primitives in use here: `fork`,
@@ -246,17 +246,17 @@ There are three very simple Unix programming primitives in use here: `fork`,
 cornerstone of Unix process spawning. The third player here, `wait`, is often
 used in unison with these two. It tells the parent process to wait for the child
 process before continuing, rather than continuing execution in parallel. This is
-a pretty common pattern when spawning shell commands because you usually want to
+a pretty common pattern when spawning shell commands, because you usually want to
 wait for the output of the command.
 
-In this case we collect the status of the child when it exits and return the
-result of `success?`. This is `true` for a successful exit status code (ie. 0)
+In this case, we collect the status of the child when it exits and return the
+result of `success?`. This result is `true` for a successful exit status code (i.e., 0)
 and `false` for any other value.
 
-## Getting Back to Green
+## Getting back to green
 
-Now we need to get the rest of the `system` specs passing. If we have a look at
-the remainder of the failures we see the following output:
+Now we need to get the rest of the `system` specs passing. In
+the remainder of the failures, we see the following output:
 
 ```console
 1) 
@@ -286,28 +286,28 @@ it "does not write to stderr when command execution fails" do
 end
 ```
 
-Both of these specs are testing the same situation, trying to `exec` a command
-that doesn't exist. When this case happens it actually raises an exception in
-the sub-process. This is evidenced by the fact that failure #2 above prints an
+Both of these specs are testing the same situation: trying to `exec` a command
+that doesn't exist. When this happens, it actually raises an exception in
+the subprocess, as is evidenced by the previously listed failure #2, which prints an
 exception message along with a stacktrace on its `STDERR`, whereas the spec
 expected that `STDERR` would be empty.
 
-So when the sub-process raises an exception we need to notify the parent process
+So when the subprocess raises an exception, we need to notify the parent process
 of what went wrong. Note that we can't use Ruby's regular exception handling in
-this case because the exception is happening inside the sub-process. The
-sub-process got a copy of everything that the parent had, including the Ruby
-interpreter. So, while all of the code is sourced from the same file, we can't
+this case because the exception is happening inside the subprocess. The
+subprocess got a copy of everything that the parent had, including the Ruby
+interpreter. So although all of the code is sourced from the same file, we can't
 depend on regular Ruby features because the processes are actually running on
 their own separate copies of the Ruby interpreter!
 
-To solve this problem, we need some form of inter-process communication (IPC).
+To solve this problem, we need some form of interprocess communication (IPC).
 Keeping with the general theme of this article, we'll use a Unix pipe.
 
-## The Pipe
+## The pipe
 
 A call to `IO.pipe` in Ruby will return two `IO` objects, one readable and
-one writable. Together they form a one-way data 'pipe'. Data is written
-to one `IO` object and read from the other.
+one writable. Together, they form a one-way data 'pipe'. Data is written
+to one `IO` object and read from the other:
 
 ```ruby
 rd, wr = IO.pipe
@@ -318,9 +318,9 @@ rd.read #=> "ping"
 ```
 
 A pipe can be used for IPC by taking advantage of `fork` semantics. If you
-create a pipe before forking then the child process inherits a copy of the pipe
-from its parent. Since both have a copy, one process can write to the pipe while
-the other reads from it, enabling inter-process communication. Pipes are
+create a pipe before forking, the child process inherits a copy of the pipe
+from its parent. As both have a copy, one process can write to the pipe while
+the other reads from it, enabling IPC. Pipes are
 backed by the kernel itself, so we can use them to communicate between our independent
 Ruby processes.
 
@@ -338,7 +338,7 @@ module Kernel
 
     # Create a new subprocess that will just exec the requested program.
     pid = fork do
-      # The sub-process closes its copy of the reading end of the pipe
+      # The subprocess closes its copy of the reading end of the pipe
       # because it only needs to write.
       rd.close
 
@@ -346,7 +346,7 @@ module Kernel
         exec(*args)
       rescue SystemCallError
 
-        # In case of failure write a byte to the pipe to signal that an exception
+        # In case of failure, write a byte to the pipe to signal that an exception
         # occurred and exit with an unsuccessful code.
         wr.write('.')
         exit 1
@@ -360,8 +360,8 @@ module Kernel
     # Tell the parent to wait.
     _, status = Process.waitpid2(pid)
 
-    # If the reading end of the pipe has no data then there was no exception
-    # and we fall back to the exit status code of the sub-process. Otherwise
+    # If the reading end of the pipe has no data, there was no exception
+    # and we fall back to the exit status code of the subprocess. Otherwise,
     # we return nil to denote the error case.
     if rd.eof?
       status.success?
@@ -378,8 +378,8 @@ All green!
 
 ## Implementing backticks
 
-Now that we've got the fundamentals under our belts we can apply it to the
-implementation of other process spawning methods. Let's do backticks.
+Now that you've got the fundamentals under your belt, we can apply these concepts to the
+implementation of other process-spawning methods. Let's do backticks:
 
 ```ruby
 # practicing_spawning.rb
@@ -387,9 +387,9 @@ module Kernel
   def `(str)
     rd, wr = IO.pipe
 
-    # Create a new subprocess that will just exec the requested program.
+    # Create a new subprocess that will exec just the requested program.
     pid = fork do
-      # The sub-process closes its copy of the reading end of the pipe
+      # The subprocess closes its copy of the reading end of the pipe
       # because it only needs to write.
       rd.close
 
@@ -424,37 +424,37 @@ $ mspec -r ./practicing_spawning.rb core/kernel/backtick_spec.rb
 
 The full source for our `practicing_spawning.rb` file is available [as a gist](https://gist.github.com/3730986). 
 
-## Closing Notes
+## Closing notes
 
-I find there's something special about spawning processes. You get to dig down
+I find something special in spawning processes. You get to dig down
 below the top layer of your programming language to the lower layer where All
-Things Are One. When dealing with things like `fork`, `exec`, and `wait`, your
+Things Are One. When dealing with things such as `fork`, `exec`, and `wait`, your
 operating system treats all processes equally. Any Ruby process can transform
-into a C program, or a Python process, or vice versa. Similarly you can `wait`
-on processes written in any language. At this layer of abstraction there's only
+into a C program, or a Python process, or vice versa. Similarly, you can `wait`
+on processes written in any language. At this layer of abstraction, there are only
 the system and its primitives.
 
-We spend a lot of our mental energy worrying about good principles like
-abstraction, decoupling, efficiency. In digging down a layer and seeing what
+We spend a lot of our mental energy worrying about good principles such as
+abstraction, decoupling, efficiency. When digging down a layer and learning what
 your operating system is capable of, you see an extremely robust and abstract
 system. It cares not how you implement your programs but offers the same
 functionality for any running program. Understanding your system at this level
 will really show you what it's capable of and give you a good mental
 understanding of how your system sees the world. Once you really grasp the
-`fork` + `exec` concept you'll see that its right at the core of a Unix system.
-Every process is spawned this way. The simplest example is your shell, it uses
+`fork` + `exec` concepts, you'll see that these are right at the core of a Unix system.
+Every process is spawned this way. The simplest example is your shell, which uses
 this very pattern to launch programs.
 
 I'll leave you with two more tips:
 
-1. Use `exec()` at the end of scripts to save a process. Remember the example
-from the beginning where a rake task spawned an `irb` session? The obvious
+1. Use `exec()` at the end of scripts to save a process. Remember the early example
+in which a rake task spawned an `irb` session? The obvious
 choice in that case is to use `exec`.
 
-    Any other variant will require forking a new process which then execs and
-    has the parent wait for it. Using `exec` directly cuts the need for an extra
+    Any other variant will require forking a new process that then execs and
+    has the parent wait for it. Using `exec` directly eliminates the need for an extra
     process by transforming the `rake` process directly into an `irb` process.
-    This obviously won't work in situations where you need to shell out and then
+    This trick obviously won't work in situations where you need to shell out and then
     work with the output, but keep it in mind if the last line of your script
     just shells out.
 
@@ -463,7 +463,7 @@ string, but the `system` method (and many other process spawning methods) will
 take an array or a string. 
 
     When passed a string, `exec` may spawn a shell to interpret the
-    command, rather than executing it directly. This is handy for stuff like
+    command, rather than executing it directly. This approach is handy for stuff like
     `system('find . | ack foobar -l')` but is very dangerous when user input is
     involved. An unescaped string makes shell injection possible. Shell
     injection is like SQL injection, except that a compromised shell could provide an
@@ -471,14 +471,11 @@ take an array or a string.
     spawn a shell but will pass the elements directly as the `ARGV` of the exec'ed process. 
     Always do this.
 
-Finally, if you enjoyed these exercises then you should try to implement some of
-the other process spawning primitives I mentioned. With Rubyspec as your guide
-you can try re-implementing just about anything with confidence. Doing so will
-surely give you a better understanding of how process spawning works in Ruby, or 
+Finally, if you enjoyed these exercises, try to implement some of
+the other process spawning primitives I mentioned. With RubySpec as your guide,
+you can try reimplementing just about anything with confidence. Doing so will
+surely give you a better understanding of how process spawning works in Ruby--or 
 any Unix environment.
 
 Please leave a comment and share your code if you implement some pure-Ruby versions 
 of these spawning methods. I'd love to see them!
-
-
-
