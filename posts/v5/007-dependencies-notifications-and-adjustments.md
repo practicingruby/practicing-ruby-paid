@@ -25,13 +25,10 @@ to work with.
 In this article, we will explore the three stereotypical relationships 
 between an object and its peers that were described in GOOS: 
 dependencies, notifications, and adjustments. Taken together, these 
-rough categorizations do a good job of helping identify the kind of
-connection that exists between two objects, and that makes it easier
-to think about the rules that apply to that kind of relationship 
-within a particular context. By the time you're done reading, you will
-be able to easily identify these stereotypes in any system, 
-and that will enable you to have a more nuanced view of the 
-relationships that exist within it.
+rough categorizations do a good job of identifying the kinds of
+connections that exist between objects, and that makes it easier
+to develop a more nuanced view of how they communicate with 
+one another. Let's start learning how to spot them!
 
 ## Dependencies
 
@@ -86,6 +83,36 @@ A COUPLE EXAMPLES OF DIFFERENT KINDS OF NOTIFICATIONS AND DISCUSS THEIR
 TRADEOFFS, INCLUDING THE #call INTERFACE)
 
 ---examples---
+```ruby
+logger.fatal { "Argument 'foo' not given." }
+```
+
+```ruby
+logger.formatter = proc do |severity, datetime, progname, msg|
+  "#{datetime}: #{msg}\n"
+end
+```
+
+```ruby
+require "typhoeus"
+require "json"
+
+hydra     = Typhoeus::Hydra.new
+user_data = {}
+
+%w[sandal jordanbyron sindhri].each do |github_nickname|
+  request = Typhoeus::Request.new("https://api.github.com/users/#{github_nickname}", 
+                                  :follow_location => true)                                
+  request.on_complete { |response| user_data[github_nickname] = JSON.parse(response.body) }
+  hydra.queue(request)
+end
+
+hydra.run
+
+puts user_data.map { |k,v| "#{k} is #{v['name']}" }
+```
+
+
 
 * Most use of logging systems
 * Event loops

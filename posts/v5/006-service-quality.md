@@ -483,6 +483,10 @@ hear about your own experiences as well. Because our process is
 nothing more than an amalgamation of good ideas that other people have come up
 with, I'd love to hear what you think might be worth adding to the mix.
 
+> **UPDATE**: Although this article recommends using `tail -f` to watch logs in real
+> time, it may be [better to use less +F][less], because it makes scrollbacks
+> easier and can resume realtime monitoring at any time. Thanks to @sduckett for the suggestion.
+
 [mendicant]: http://mendicantuniversity.org
 [travis]: http://about.travis-ci.org/docs/user/getting-started/
 [lean]: http://en.wikipedia.org/wiki/Lean_software_development 
@@ -495,3 +499,4 @@ with, I'd love to hear what you think might be worth adding to the mix.
 [htmlescape]: https://github.com/elm-city-craftworks/practicing-ruby-web/commit/223ca92a0b769713ce3c2137de76a8f34f06647e
 [gh-deploy-aug-2012]: https://github.com/blog/1241-deploying-at-github
 [pr-76]: https://github.com/elm-city-craftworks/practicing-ruby-web/pull/76
+[less]: http://blog.libinpan.com/2009/07/less-is-better-than-tail/
