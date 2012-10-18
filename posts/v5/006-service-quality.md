@@ -256,7 +256,7 @@ a redesign is in order.
 
 > While neither of these situations are pleasant to deal with, addressing them
 right away helps prevent them from spiraling out of control. This makes sure
-that small flaws do not later become a bigs one, and reduces the project's
+that small flaws do not evolve into big ones, and reduces the project's
 pain points over the long haul.
 
 Despite these benefits, this practice does feel a bit ruthless at times, 
