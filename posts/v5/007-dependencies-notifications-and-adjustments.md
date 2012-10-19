@@ -34,20 +34,32 @@ one another. Let's start learning how to spot them!
 
 > Services that the object requires from its peers so it can perform its
 > responsibilities. The object cannot function without these services. It should
-> not be possible to create the object without them.
+> not be possible to create the object without them -- GOOS (52)
 
-* Dependencies are essential services that an object can't do its job without.
-(e.g. a Canvas object in a graphics system, a client for a payment gateway, etc.)
+We commonly think of dependencies as being third-party libraries or
+services, but all non-trivial projects also have internal dependencies. 
+Whether they are internal or external, dependency relationships need to be
+explicitly defined and carefully managed in order to prevent brittleness.
 
-* Dependencies are injected via the constructor if they're needed object-wide,
-otherwise they are passed as required function parameters. (It is essential to
-ensure that dependencies are never in a null state)
+Alistair Cockburn's [ports and adapters][ports-and-adapters] pattern provides
+one way of dealing with this problem: define interfaces in the application's
+domain language that covers slices of functionality (ports), and then build 
+implementation-specific objects which implement those interfaces (adapters).
+This allows dependencies to be reasoned about at a higher level of abstraction,
+and makes it so that systems can change more easily.
 
-* Hidden dependencies lead to brittle code
+We applied this pattern (albeit without recognizing it by name) when thinking
+through how Newman should handle its email dependency. We knew from the outset
+that we'd need to support some sort of test mailer, and that it should be a
+drop-in replacement for its real mailer. We also anticipated that down the line
+we may want to support delivery mechanisms other than the `mail` gem, and
+figured that some sort of adapter-based approach would be a good fit.
 
-* Can be internal dependencies (on other business objects), external
-dependencies (third-party libraries), or adapters. (IS THIS A USEFUL WAY TO
-BREAK THINGS DOWN?)
+* Describe the protocol here
+* Show at least a method or two for each mailer
+* SHow some in use examples.
+
+
 
 > Encapsulation: Ensures that the behavior of an object can only be
 affected through its API. It lets us control how much a change to one
@@ -62,69 +74,153 @@ are no unexpected dependencies between unrelated component
 > Peers that need to be kept up to date with the object’s activity. The object
 > will notify interested peers whenever it changes state or performs a
 > significant action. Notifications are ‘fire and forget’; the object neither
-> knows nor cares which peers are listening.
+> knows nor cares which peers are listening -- GOOS (52)
 
-* Notifications are a one-way communication mechanism: listeners cannot call
-back to the notifier, return a value, or raise an exception, otherwise they may
-interrupt other listeners (there are probably some caveats to this, but this
-is a heuristic, not a hard and fast rule)
+Because Ruby is a message-oriented programming language, it is easy to model
+many kinds of object relationships as notifications. Doing so greatly reduces
+the coupling between objects, and helps establish a straight-line flow from a 
+system's inputs to its outputs.
 
-* Notifier can use a sensible default for notifications (such as an empty
-collection)
-
-* The abstraction of a notification cuts both ways: The notifier does not know
-how its listeners will handle the messages it broadcasts to them, and the
-listeners do not have knowledge of the identity or processes involved in
-notification.
-
-* Can be codeblocks, objects stored in an array, things on the other end of a
-queue, etc. (TAKE A LOOK THROUGH THE DEMETER ARTICLE, TRY TO COME UP WITH
-A COUPLE EXAMPLES OF DIFFERENT KINDS OF NOTIFICATIONS AND DISCUSS THEIR
-TRADEOFFS, INCLUDING THE #call INTERFACE)
-
----examples---
-```ruby
-logger.fatal { "Argument 'foo' not given." }
-```
+Notification-based modeling is especially useful when designing framework code,
+because it is important for frameworks to know as little as possible about the
+applications that are built on top of them. The following example shows a
+general pattern popularized by the [rack web server interface][rack], but in
+the context of an email-based system. Without getting bogged down in the
+details, try to think through what happens when the 
+`Newman::Server#tick` method is called: 
 
 ```ruby
-logger.formatter = proc do |severity, datetime, progname, msg|
-  "#{datetime}: #{msg}\n"
+module Newman
+  class Server
+    # NOTE: the mailer, apps, logger, and settings dependencies
+    # are initialized when a Server instance is instantiated
+
+    def tick
+      mailer.messages.each do |request|
+        response = mailer.new_message(:to   => request.from,
+                                      :from => settings.service.default_sender)
+
+        process_request(request, response) && response.deliver
+      end
+
+      # ... error handling code omitted
+    end
+
+
+    def process_request(request, response)
+      apps.each do |app|
+        app.call(:request  => request,
+                 :response => response,
+                 :settings => settings,
+                 :logger   => logger)
+      end
+
+      return true
+
+      # ... error handling code omitted
+    end
+  end
 end
 ```
 
+Did you figure it out? Let's walk through the process step by step now to
+confirm:
+
+1. The `tick` method walks over each incoming message currently queued up by the
+`mailer` object (i.e. the request)
+
+2. A placeholder `response` message is constructed, addressed to the sender of
+the request.
+
+3. The `process_request` method is called, which iterates over a
+collection, executing the `call` method on each element and passing along
+several dependencies that can be used to finish building a meaningful
+response message.
+
+4. Once `process_request` completes successfully, the response is delivered.
+the `request`, `response`, `settings`, and `logger` objects.
+
+Because `Newman::Server` has a notification-based relationship with its
+`apps` collection, it does not know or care about the structure of those
+objects. In fact, the contract is so simple that a trivial `Proc` object 
+can serve as a fully functioning callback:
+
 ```ruby
-require "typhoeus"
-require "json"
+Greeter = ->(params) { |params| params[:response].subject = "Hello World!" }
 
-hydra     = Typhoeus::Hydra.new
-user_data = {}
-
-%w[sandal jordanbyron sindhri].each do |github_nickname|
-  request = Typhoeus::Request.new("https://api.github.com/users/#{github_nickname}", 
-                                  :follow_location => true)                                
-  request.on_complete { |response| user_data[github_nickname] = JSON.parse(response.body) }
-  hydra.queue(request)
-end
-
-hydra.run
-
-puts user_data.map { |k,v| "#{k} is #{v['name']}" }
+server.apps = [Greeter]
+server.tick
 ```
 
+If we wanted to make things a bit more interesting, we could add request
+and response logging into the mix, using Newman's built in features:
 
+```ruby
+Greeter = ->(params) { |params| params[:response].subject = "Hello World!" }
 
-* Most use of logging systems
-* Event loops
-* Typhoeus
-* Mike's example? (Which is really quite good, if you start with usage example)
-* Mailhopper
+server.apps = [Newman::RequestLogger, Greeter, Newman::ResponseLogger]
+server.tick
+```
+
+These objects make use of a mixin that simplifies email logging, but as you can
+see from the following code, they have no knowledge of the `Newman::Server`
+object and rely entirely on the parameters being passed into their `#call`
+method:
+
+```ruby
+module Newman
+  class << (RequestLogger = Object.new)
+    include EmailLogger
+
+    def call(params)
+      log_email(params[:logger], "REQUEST", params[:request]) 
+    end
+  end
+
+  class << (ResponseLogger = Object.new)
+    include EmailLogger
+
+    def call(params)
+      log_email(params[:logger], "RESPONSE", params[:response])
+    end
+  end
+end
+```
+
+Taken together, these four objects combined form a cohesive workflow:
+
+1. The server receives incoming emails and passes them on to its `apps` for
+processing, along with a placeholder `response` object.
+
+2. The request logger inspects the incoming email and records debugging 
+information.
+
+3. The greeter sets the subject of the outgoing response to "Hello World".
+
+4. The response logger inspects the outgoing email and records debugging
+information.
+
+5. The server sends the response email.
+
+The remarkable thing is not this semi-mundane process, but that the
+objects involved knows virtually nothing about they collaborators, nor
+are they aware of their position in the sequence of events. Context-independence
+ is a powerful thing, because it allows each object to be reasoned
+about, tested, and developed in isolation.
+
+The implications of notification-based modeling extend far beyond
+context-independence, but it wouldn't be easy to summarize them in 
+a few short sentences. Fortunately, this topic has been covered 
+extensively in other Practicing Ruby articles, particularly in 
+[Issue 4.11][pr-4.11] and [Issue 5.2][pr-5.2]. Be sure to
+read those articles if you haven't already; they are among the finest in our
+collection.
 
 ## Adjustments
 
 > Peers that adjust the object’s behavior to the wider needs of the system. This
 includes policy objects that make decisions on the object’s behalf...and
-component parts of the object if it’s a composite.
+component parts of the object if it’s a composite -- GOOS (52)
 
 * The job of an adjustment is to shoehorn some data / functionality into the
 form required by some other object.
@@ -161,4 +257,8 @@ CONTINUE READING THIS!
 https://groups.google.com/forum/?fromgroups=#!msg/growing-object-oriented-software/BehKoB1eiFQ/UOcf39B7DYgJ
 
 
-[GOOS]:  http://www.growing-object-oriented-software.com/
+[GOOS]: http://www.growing-object-oriented-software.com/
+[rack]: http://rack.github.com/
+[pr-4.11]: https://practicingruby.com/articles/64
+[pr-5.2]: https://practicingruby.com/articles/71
+[ports-and-adapters]: http://alistair.cockburn.us/Hexagonal+architecture
