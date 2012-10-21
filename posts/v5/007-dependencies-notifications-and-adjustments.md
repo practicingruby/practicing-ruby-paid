@@ -334,6 +334,33 @@ collection.
 includes policy objects that make decisions on the object’s behalf...and
 component parts of the object if it’s a composite -- GOOS (52)
 
+```ruby
+Newman::Message.new(:to => ..., :from => ..., :subject => ...) do |params| 
+  Mail::Message.new(params).deliver
+end
+
+---
+
+inbox = Mail::IMAP.new(retriever_settings).all(:delete_after_find => true)
+
+inbox.map do |message|
+  Newman::Message.new(:to      => message.to,      :from => message.from,
+                      :subject => message.subject, :body => message.body)
+end
+
+---
+
+inbox = Marshal.load(Marshal.dump(Mail::TestMailer.deliveries))
+Mail::TestMailer.deliveries.clear
+
+inbox.map do |message|
+  Newman::Message.new(:to      => message.to,      :from => message.from,
+                      :subject => message.subject, :body => message.body)
+end
+```
+
+^ possible alternative?
+
 
 This example kinda sucks, find a better one :-/
 
@@ -368,6 +395,8 @@ subscribers = store[:subscribers]
 
 subscribers.create("test@test.com")
 subscribers.create("gregory@practicingruby.com")
+```
+
 
 Newman::Recorder implements basic mechanics for storing records with
 autoincrementing ids, but it does not have direct awareness of the underlying
