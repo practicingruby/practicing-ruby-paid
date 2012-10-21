@@ -387,6 +387,7 @@ inbox.map do |message|
   Newman::Message.new(:to      => message.to,      :from => message.from,
                       :subject => message.subject, :body => message.body)
 end
+```
 
 
 Adjustments are often simple compositions, so this rule should be kept in mind:
