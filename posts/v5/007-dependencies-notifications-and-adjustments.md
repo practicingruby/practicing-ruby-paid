@@ -30,23 +30,22 @@ connections that exist between objects, and that makes it easier
 to develop a more nuanced view of how they communicate with 
 one another. Let's start learning how to spot them!
 
+**EXPLICITLY MENTION NEWMAN**
+
 ## Dependencies
 
 > Services that the object requires from its peers so it can perform its
 > responsibilities. The object cannot function without these services. It should
 > not be possible to create the object without them -- GOOS (52)
 
-We commonly think of dependencies as being third-party libraries or
-services, but all non-trivial projects also have internal dependencies. 
 Whether they are internal or external, dependency relationships need to be
-explicitly defined and carefully managed in order to prevent brittleness.
-
+carefully managed in order to prevent brittleness. 
 Alistair Cockburn's [ports and adapters][ports-and-adapters] pattern provides
 one way of dealing with this problem: define interfaces in the application's
 domain language that covers slices of functionality (ports), and then build 
-implementation-specific objects which implement those interfaces (adapters).
+implementation-specific objects that implement those interfaces (adapters).
 This allows dependencies to be reasoned about at a higher level of abstraction,
-and makes it so that systems can change more easily.
+and makes it so that systems can be easily changed.
 
 We applied this pattern (albeit without recognizing it by name) when thinking
 through how Newman should handle its email dependency. We knew from the outset
@@ -55,10 +54,131 @@ drop-in replacement for its real mailer. We also anticipated that down the line
 we may want to support delivery mechanisms other than the `mail` gem, and
 figured that some sort of adapter-based approach would be a good fit.
 
-* Describe the protocol here
+Constructing a port involves thinking through the various ways a 
+subsystem will be used within your application and then 
+mapping a protocol to those use cases. In the case of Newman, we expected
+our email dependency would need to support the following requirements:
+
+1) Read configuration data from a `Newman::Settings` object if necessary.
+
+```ruby
+mailer = AnyMailAdapter.new(settings)
+```
+
+2) Retrieve all messages from an inbox, deleting them from the server in the
+process.
+
+```ruby
+mailer.messages.each do |message|
+  do_something_exciting(message) 
+end
+```
+
+3) Construct a complete message and deliver it immediately.
+
+```ruby
+mailer.deliver_message(:to      => "test@test.com",
+                       :from    => "gregory@practicingruby.com",
+                       :subject => "A special offer for you!!!",
+                       :body    => "Send me your credit card number, plz!")
+```
+
+4) Construct a message incrementally and then deliver it later, if at all. 
+
+```ruby
+message = mailer.new_message(:to   => "test@test.com",
+                             :from => "gregory@practicingruby.com")
+
+if bank_account.balance < 1_000_000_000
+  message.subject = "Can I interest you in some prescription painkillers?"
+  message.body    = "Best prices anywhere on the internets!!!"
+  messsage.deliver
+end
+```
+
+Although you can make an educated guess about how to implement adapters
+for this port based on the previous examples, there are many
+unanswered questions lurking just beneath the surface. This is where
+the difference between *interfaces* and *protocols* becomes important:
+
+> An interface defines whether two things can fit together, a protocol 
+defines whether two things can *work together* (GOOS XX)
+
+If you revisit the code examples shown above, you'll notice that the interface
+requirements for a Newman-compatible mail adapter are roughly as follows:
+
+* The constructor accepts one argument (the settings object).
+* The `messages` method returns an collection that responds to `each` and yields
+an object for each message in the inbox.
+* The `deliver_message` accepts one argument (a parameters hash).
+* The `new_message` method accepts a parameters hash, and returns
+an object representing the message. At a minimum, the object allows certain fields
+to be set (i.e. `subject` and `body`) and responds to a `deliver` method.
+
+Building an object that satisifies these requirements is trivial, but there is
+no guarantee that doing so will result in an adapter that conforms to the
+*protocol* that Newman expects. Unfortunately, protocols are much harder
+to reason about and define than interfaces are.
+
+Like many Ruby libraries, Newman relies on loose [duck typing][duck typing] 
+rather than a formal behavioral contract to determine whether one adapter can 
+serve as a drop-in replacement for another. The `Newman::Mailer` object is used
+by default, and so it defines the canonical implementation that 
+other adapters are expected to mimic at the functional level, even if they 
+handle things very differently under the hood. This implicit contract makes 
+it possible for `Newman::TestMailer` to stand in for 
+a `Newman::Mailer` object, even though it stores all incoming and 
+outgoing messages in memory rather than relying on SMTP and IMAP. Because
+the two objects respond to the same messages in similar ways, the systems
+that depend on them are unaware of their differences in implementation -- they
+are just two different adapters that both fit in the same port.
+
+If you read through the source of the [Newman::Mailer][newman-mailer] 
+and [Newman::TestMailer][newman-testmailer] objects, you will find that
+several compromises have been for the sake of convenience:
+
+* Arguments for the `new_message` and `deliver_message` methods on both 
+adapters are directly delegated to a `Mail::Message` object, and the
+return value of `messages` on both objects is a collection of `Mail::Message`
+objects. This implicitly ties those methods to the mail gem, and is an 
+example of what GOOS calls a *hidden dependency*.
+
+* The `Newman::TestMailer` object is a singleton object, but it
+implements a constructor in order to maintain interface compatibility 
+with `Newman::Mailer`. This is an example of how constraints 
+from external dependencies can affect the projects that rely on them.
+
+* Configuration data is completely ignored by `Newman::TestMailer`. Because
+all of its operations are done in memory, it has no need for SMTP and IMAP
+settings, but it accepts the object anyway for the sake of maintaining 
+interface compatibility.
+
+All of these warts stem from protocol issues: the first is an example of where
+the protocol is too implicit, the latter two are examples of where specific
+details of how `Newman::Mailer` is structured influence its replaceability in
+awkward ways. 
+
+Yadda yadda yadda.
+
+The reason we made these compromises is that we expected application developers
+to not use Newman's mailer objects directly, but instead interact with our
+higher level system... (expand)
+
+
+(discuss tradeoffs... does a good job of making Mailer / TestMailer hot
+swappable, but a poor job of completely isolating the mail gem dependency,
+and accordingly, a poor job of making it possible for third-party adapters
+to be introduced -- the more you leave undefined the more flexible a protocol
+is, but also the more easy it is to have implementation-specific behavior leak
+through and possibly break things)
+
+# ...
+
+* a, &b are abstraction leaks!
+* Mail::Message is a hidden dependency*
+
 * Show at least a method or two for each mailer
 * SHow some in use examples.
-
 
 
 > Encapsulation: Ensures that the behavior of an object can only be
@@ -262,3 +382,6 @@ https://groups.google.com/forum/?fromgroups=#!msg/growing-object-oriented-softwa
 [pr-4.11]: https://practicingruby.com/articles/64
 [pr-5.2]: https://practicingruby.com/articles/71
 [ports-and-adapters]: http://alistair.cockburn.us/Hexagonal+architecture
+[newman-mailer]: http://elm-city-craftworks.github.com/newman/lib/newman/mailer.html
+[newman-testmailer]: http://elm-city-craftworks.github.com/newman/lib/newman/test_mailer.html
+[duck typing]: http://en.wikipedia.org/wiki/Duck_typing
