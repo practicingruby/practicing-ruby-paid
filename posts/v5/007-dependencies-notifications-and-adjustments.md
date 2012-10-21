@@ -359,16 +359,34 @@ inbox.map do |message|
 end
 ```
 
+Also show Newman::EmailLogger as a class.
 
-* The job of an adjustment is to shoehorn some data / functionality into the
-form required by some other object.
+```ruby
+module Newman
+  class << (EmailLogger = Object.new)
+    def log_email(logger, prefix, email)
+      logger.debug(prefix) { "\n#{email}" }
+      logger.info(prefix) { email_summary(email) }
+    end
 
-* Adjustments can be initialized to use sensible defaults where appropriate
+    def email_summary(email)
+      { :from     => email.from,
+        :to       => email.to,
+        :bcc      => email.bcc,
+        :subject  => email.subject,
+        :reply_to => email.reply_to }
+    end    
+  end
 
-* SOME ADJUSTMENTS ARE TO MAKE DATA MORE
-EASY TO WORK WITH, OTHERS ARE ADAPTERS MEANT TO FORCE DATA TO CONFORM TO AN
-EXISTING CONTRACT, OTHERS ARE MEANT TO WRAP DISTINCT STRATEGIES IN A COMMON
-INTERFACE (possibly overlapping too much here), ARE THERE OTHER KINDS?
+  RequestLogger = ->(params) {  
+    EmailLogger.log_email(params[:logger], "REQUEST", params[:request])
+  }
+
+  ResponseLogger = ->(params) {
+    EmailLogger.log_email(params[:logger], "RESPONSE", params[:request])
+  }
+end
+```
 
 ---examples---
 
