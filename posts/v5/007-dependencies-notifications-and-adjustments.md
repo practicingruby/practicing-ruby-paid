@@ -359,63 +359,6 @@ inbox.map do |message|
 end
 ```
 
-^ possible alternative?
-
-
-This example kinda sucks, find a better one :-/
-
-```ruby
-class MailingList
-  def initialize(storage)
-    @subscribers = subscribers
-  end
-
-  def subscribe(email)
-    @subscribers.create(email)
-  end
-
-  def unsubscribe(email)
-    subscriber = find(email)
-
-    @subscribers.destroy(subscriber.id) if subscriber
-  end
-
-  def subscribed?(email)
-    !!find(email)
-  end
-
-  def subscribers
-    @subscribers.map { |s| s.contents }
-  end
-end
-
-store     = Newman::Store.new(“sample.store”)
-
-subscribers = store[:subscribers]
-
-subscribers.create("test@test.com")
-subscribers.create("gregory@practicingruby.com")
-```
-
-
-Newman::Recorder implements basic mechanics for storing records with
-autoincrementing ids, but it does not have direct awareness of the underlying
-persistence strategy
-
-Newman::Store is meant to be a very simple persistence mechanism for things like
-storing mailing list subscribers and things like that (making it possible to use
-Newman for simple stand-alone applications). 
-
-
-Store is an adjustment that sits on top of Recorder, and the two objects
-combined form a composite: autoincrementing persistent records. However, by
-modeling this as an adjustment relationship, the two objects can change
-independently of one another, and are allowed to focus on their core purpose.
-
-The explicit relationship is `Recorder.new(column, store)` (start with this!), but
-syntactic sugar allows the bridge to extend from the other side as well:
-`store[:column].recorder_method`
-
 
 * The job of an adjustment is to shoehorn some data / functionality into the
 form required by some other object.
