@@ -333,33 +333,9 @@ collection.
 > Peers that adjust the object’s behavior to the wider needs of the system. This
 includes policy objects that make decisions on the object’s behalf...and
 component parts of the object if it’s a composite -- GOOS (52)
-
-```ruby
-Newman::Message.new(:to => ..., :from => ..., :subject => ...) do |params| 
-  Mail::Message.new(params).deliver
-end
-
----
-
-inbox = Mail::IMAP.new(retriever_settings).all(:delete_after_find => true)
-
-inbox.map do |message|
-  Newman::Message.new(:to      => message.to,      :from => message.from,
-                      :subject => message.subject, :body => message.body)
-end
-
----
-
-inbox = Marshal.load(Marshal.dump(Mail::TestMailer.deliveries))
-Mail::TestMailer.deliveries.clear
-
-inbox.map do |message|
-  Newman::Message.new(:to      => message.to,      :from => message.from,
-                      :subject => message.subject, :body => message.body)
-end
 ```
 
-Also show Newman::EmailLogger as a class.
+Show Newman::EmailLogger as a class.
 
 ```ruby
 module Newman
@@ -387,6 +363,31 @@ module Newman
   }
 end
 ```
+
+```ruby
+Newman::Message.new(:to => ..., :from => ..., :subject => ...) do |params| 
+  Mail::Message.new(params).deliver
+end
+
+---
+
+inbox = Mail::IMAP.new(retriever_settings).all(:delete_after_find => true)
+
+inbox.map do |message|
+  Newman::Message.new(:to      => message.to,      :from => message.from,
+                      :subject => message.subject, :body => message.body)
+end
+
+---
+
+inbox = Marshal.load(Marshal.dump(Mail::TestMailer.deliveries))
+Mail::TestMailer.deliveries.clear
+
+inbox.map do |message|
+  Newman::Message.new(:to      => message.to,      :from => message.from,
+                      :subject => message.subject, :body => message.body)
+end
+
 
 Adjustments are often simple compositions, so this rule should be kept in mind:
 
