@@ -383,17 +383,15 @@ module Newman
   }
 
   ResponseLogger = ->(params) {
-    EmailLogger.log_email(params[:logger], "RESPONSE", params[:request])
+    EmailLogger.log_email(params[:logger], "RESPONSE", params[:response])
   }
 end
 ```
 
----examples---
+Adjustments are often simple compositions, so this rule should be kept in mind:
 
-* Draper
-* FasterCSV::Row
-* Enumerator!
-* Arguments and Results
+> The API of a composite object should not be more complicated than that of any
+> of its components -- GOOS (54)
 
 ## To think about
 
