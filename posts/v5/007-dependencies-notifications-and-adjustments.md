@@ -102,7 +102,7 @@ unanswered questions lurking just beneath the surface. This is where
 the difference between *interfaces* and *protocols* becomes important:
 
 > An interface defines whether two things can fit together, a protocol 
-defines whether two things can *work together* (GOOS XX)
+defines whether two things can *work together* (GOOS 58)
 
 If you revisit the code examples shown above, you'll notice that the interface
 requirements for a Newman-compatible mail adapter are roughly as follows:
@@ -137,57 +137,49 @@ If you read through the source of the [Newman::Mailer][newman-mailer]
 and [Newman::TestMailer][newman-testmailer] objects, you will find that
 several compromises have been for the sake of convenience:
 
-* Arguments for the `new_message` and `deliver_message` methods on both 
+1. Arguments for the `new_message` and `deliver_message` methods on both 
 adapters are directly delegated to a `Mail::Message` object, and the
-return value of `messages` on both objects is a collection of `Mail::Message`
-objects. This implicitly ties those methods to the mail gem, and is an 
-example of what GOOS calls a *hidden dependency*.
+return value of `messages` on both adapters is a collection 
+of `Mail::Message` objects. This implicitly ties the interface of those 
+methods to the mail gem, and is what GOOS calls a *hidden dependency*.
 
-* The `Newman::TestMailer` object is a singleton object, but it
+1. The `Newman::TestMailer` object is a singleton object, but it
 implements a constructor in order to maintain interface compatibility 
 with `Newman::Mailer`. This is an example of how constraints 
-from external dependencies can affect the projects that rely on them.
+from dependencies can spill over into client code.
 
-* Configuration data is completely ignored by `Newman::TestMailer`. Because
+1. Configuration data is completely ignored by `Newman::TestMailer`. Because
 all of its operations are done in memory, it has no need for SMTP and IMAP
-settings, but it accepts the object anyway for the sake of maintaining 
-interface compatibility.
+settings, but it needs to accept the settings object anyway for the 
+sake of maintaining interface compatibility.
 
-All of these warts stem from protocol issues: the first is an example of where
-the protocol is too implicit, the latter two are examples of where specific
-details of how `Newman::Mailer` is structured influence its replaceability in
-awkward ways. 
+All of these warts stem from protocol issue. The first issue due to
+underspecification: Newman has a clear protocol for creating, retrieving, and
+sending messages, but it does not clearly define what it expects the messages
+themselves to look like. The coupling between the interface of `Newman::Mailer`
+and that of `Mail::Message` makes it so that other adapters must also inherit
+this hidden dependency. Because `Newman::TestMailer` also depends 
+upon `Mail::Message`, this constraint does not complicate its implementation,
+but it certainly does make it harder to build adapters that aren't dependent 
+on the mail gem.
 
-Yadda yadda yadda.
+On the flip side, the second and third issues are a result of 
+overspecification. We didn't want to make `Newman::TestMailer` a singleton, 
+but because the underlying `Mail::TestMailer` is implemented that way,
+we didn't have much of a choice. Our decision to implement a fake constructor
+in order to maintain compatibility with `Newman::Mailer` is something I was
+never happy with, but I also couldn't think of a better
+alternative. I am somewhat less concerned about `Mailer::TestMailer` having to
+accept a settings object that it doesn't actually use, but it does feel like one
+extra hoop to jump through simply for the sake of consistency.
 
-The reason we made these compromises is that we expected application developers
-to not use Newman's mailer objects directly, but instead interact with our
-higher level system... (expand)
-
-
-(discuss tradeoffs... does a good job of making Mailer / TestMailer hot
-swappable, but a poor job of completely isolating the mail gem dependency,
-and accordingly, a poor job of making it possible for third-party adapters
-to be introduced -- the more you leave undefined the more flexible a protocol
-is, but also the more easy it is to have implementation-specific behavior leak
-through and possibly break things)
-
-# ...
-
-* a, &b are abstraction leaks!
-* Mail::Message is a hidden dependency*
-
-* Show at least a method or two for each mailer
-* SHow some in use examples.
-
-
-> Encapsulation: Ensures that the behavior of an object can only be
-affected through its API. It lets us control how much a change to one
-object will impact other parts of the system by ensuring that there
-are no unexpected dependencies between unrelated component
-
-* Stripe payments
-* Generic payment gateway
+Despite these rough edges, Newman's way of handling its email dependency is a
+good example of the [ports and adapters][ports-and-adapters] pattern in the 
+wild. If anything, it serves as a reminder that the hard part of writing loosely
+coupled code is not in the creation of duck-typed adapters, but in clearly
+defining the protocol for our ports. This takes us beyond the idea of "coding to
+an interface rather than an implementation", and is something worth ruminating
+over.
 
 ## Notifications
 
@@ -341,6 +333,60 @@ collection.
 > Peers that adjust the object’s behavior to the wider needs of the system. This
 includes policy objects that make decisions on the object’s behalf...and
 component parts of the object if it’s a composite -- GOOS (52)
+
+
+This example kinda sucks, find a better one :-/
+
+```ruby
+class MailingList
+  def initialize(storage)
+    @subscribers = subscribers
+  end
+
+  def subscribe(email)
+    @subscribers.create(email)
+  end
+
+  def unsubscribe(email)
+    subscriber = find(email)
+
+    @subscribers.destroy(subscriber.id) if subscriber
+  end
+
+  def subscribed?(email)
+    !!find(email)
+  end
+
+  def subscribers
+    @subscribers.map { |s| s.contents }
+  end
+end
+
+store     = Newman::Store.new(“sample.store”)
+
+subscribers = store[:subscribers]
+
+subscribers.create("test@test.com")
+subscribers.create("gregory@practicingruby.com")
+
+Newman::Recorder implements basic mechanics for storing records with
+autoincrementing ids, but it does not have direct awareness of the underlying
+persistence strategy
+
+Newman::Store is meant to be a very simple persistence mechanism for things like
+storing mailing list subscribers and things like that (making it possible to use
+Newman for simple stand-alone applications). 
+
+
+Store is an adjustment that sits on top of Recorder, and the two objects
+combined form a composite: autoincrementing persistent records. However, by
+modeling this as an adjustment relationship, the two objects can change
+independently of one another, and are allowed to focus on their core purpose.
+
+The explicit relationship is `Recorder.new(column, store)` (start with this!), but
+syntactic sugar allows the bridge to extend from the other side as well:
+`store[:column].recorder_method`
+
 
 * The job of an adjustment is to shoehorn some data / functionality into the
 form required by some other object.
