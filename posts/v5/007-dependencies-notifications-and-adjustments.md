@@ -375,70 +375,90 @@ module Newman
 end
 ```
 
-While this is a subtle difference, it lifts up and centralizes the concept of
+While this is a subtle change, it lifts up and centralizes the concept of
 "email logging" into a single object, rather than mixing helper methods into
 various objects that need that functionality. This helps define the borders
 between distinct concepts within the code, and establishes `EmailLogger` as an
 adjustment to the much more general `Logger` object it depends upon.
 
-The philosophical distinction between these two objects is what matters her. 
+The philosophical distinction between these two objects is what matters here. 
 A `Logger` has very abstract responsibilities; it must record arbitrary strings 
 at various levels of severity, and then format them and output them to various 
 streams. `EmailLogger` on the other hand, is extremely concrete in its
 responsibilities; it uses a `Logger` to report debugging information about
-an email message. (... explain why this matters! ...)
+an email message. The details of how the actual logging happens are hidden from
+`EmailLogger`'s clients, making it easier to treat as a black box.
+
+Simple designs can also emerge from climbing the latter of abstraction, 
+i.e. moving from a very specific context to a much more general one. For
+example, it might not be a bad idea to introduce an object into Newman 
+which encapsulates the concept of an email message, but leaves the exact
+delivery mechanism up to the individual adapters:
 
 ```ruby
-Newman::Message.new(:to => ..., :from => ..., :subject => ...) do |params| 
-  Mail::Message.new(params).deliver
-end
+# this code would be in an adapter or application code
+message = Newman::Message.new { |params| Mail::Message.new(params).deliver }
 
----
+# elsewhere, no knowledge of the dependency on the mail gem would be necessary:
+message.to      = "test@test.com"
+message.from    = "gregory@practicingruby.com"
+message.subject = "You have won twenty bazillion dollars!"
+message.body    = "Please send us a hair sample to confirm your ID"
 
-inbox = Mail::IMAP.new(retriever_settings).all(:delete_after_find => true)
+message.deliver
+```
 
-inbox.map do |message|
-  Newman::Message.new(:to      => message.to,      :from => message.from,
-                      :subject => message.subject, :body => message.body)
-end
+This kind of object is trivial to implement, because it is nothing more
+than a value object with a trivial callback mechanism bolted on top of it:
 
----
+```ruby
+module Newman 
+  class Message
+    def initialize(&delivery_callback)
+      self.delivery_callback = delivery_callback
+    end
 
-inbox = Marshal.load(Marshal.dump(Mail::TestMailer.deliveries))
-Mail::TestMailer.deliveries.clear
+    attr_accessor :to, :from, :subject, :body
 
-inbox.map do |message|
-  Newman::Message.new(:to      => message.to,      :from => message.from,
-                      :subject => message.subject, :body => message.body)
+    def deliver
+      raise NotImplementedError unless delivery_callback
+
+      delivery_callback.(:to      => to,      :from => from, 
+                         :subject => subject, :body => body)
+    end
+
+    private
+
+    attr_accessor :delivery_callback
+  end
 end
 ```
 
+Despite its simplicity, this object provides a useful benefit: it explicitly
+separates the protocol of message delivery from its implementation. If all
+mail adapters for Newman were expected to return only `Newman::Message` objects, 
+then any message-processing code within Newman (either in the server or in
+application code) would have a well-defined interface to work against. Although
+this requirement would make adapters slightly more cumbersome to write, it would
+completely eliminate the hidden dependency issue that we talked about earlier.
 
-Adjustments are often simple compositions, so this rule should be kept in mind:
+Regardless of which direction they are pointed in, adjustment relationships are
+very closely related to the concept of object composition in general. With that
+in mind, the authors of GOOS have a useful rule to consider when desiging 
+composite objects:
 
 > The API of a composite object should not be more complicated than that of any
 > of its components -- GOOS (54)
 
-Fair warning: my interpretation may be different than what the GOOS authors
-intended, but I think some flexibility is useful here.
+Notice that in both the `Newman::EmailLogger` example and the `Newman::Message`
+object, the result of composition is that a more complex system is being wrapped
+by something with fewer methods and concepts to worry about. When applied
+repeatedly, this kind of design causes software to become more simple as it
+grows.
 
-## To think about
+## Reflections
 
-* What is the difference between "internals" and "peers"? Are peers any objects
-exposed to the larger system, and internals more like Prawn's core objects, Ruby
-core objects, etc?
-
-> We should mock an object’s peers—its dependencies, notifications, 
-and adjustments... not its internals.
-
-> find the right boundaries for an object so that it plays well with its
-neighbors—a caller wants to know what an object does and what it
-depends on, but not how it works."
-
-
-CONTINUE READING THIS!
-https://groups.google.com/forum/?fromgroups=#!msg/growing-object-oriented-software/BehKoB1eiFQ/UOcf39B7DYgJ
-
+Fill me in!
 
 [GOOS]: http://www.growing-object-oriented-software.com/
 [rack]: http://rack.github.com/
