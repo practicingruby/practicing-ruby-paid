@@ -333,9 +333,18 @@ collection.
 > Peers that adjust the object’s behavior to the wider needs of the system. This
 includes policy objects that make decisions on the object’s behalf...and
 component parts of the object if it’s a composite -- GOOS (52)
-```
 
-Show Newman::EmailLogger as a class.
+Adjustment relationships are hard to summarize, because they can exist in so 
+many forms. But regardless of the form they take on, adjustments tend to be
+used to bridge the gap between different levels of abstraction. Some are used
+to raise the level of abstraction by wrapping a specific object in a more
+generic interface, and others are designed to do the opposite. 
+
+For an example of climbing down the ladder of abstraction, consider 
+`Newman::EmailLogger`. It is implemented as a module in Newman for convenience,
+but it could easily be reimagined as a stateless peer object of `RequestLogger`
+and `ResponseLogger`. Such a redesign would yield something similar to the
+following code:
 
 ```ruby
 module Newman
@@ -344,6 +353,8 @@ module Newman
       logger.debug(prefix) { "\n#{email}" }
       logger.info(prefix) { email_summary(email) }
     end
+
+    private
 
     def email_summary(email)
       { :from     => email.from,
@@ -363,6 +374,19 @@ module Newman
   }
 end
 ```
+
+While this is a subtle difference, it lifts up and centralizes the concept of
+"email logging" into a single object, rather than mixing helper methods into
+various objects that need that functionality. This helps define the borders
+between distinct concepts within the code, and establishes `EmailLogger` as an
+adjustment to the much more general `Logger` object it depends upon.
+
+The philosophical distinction between these two objects is what matters her. 
+A `Logger` has very abstract responsibilities; it must record arbitrary strings 
+at various levels of severity, and then format them and output them to various 
+streams. `EmailLogger` on the other hand, is extremely concrete in its
+responsibilities; it uses a `Logger` to report debugging information about
+an email message. (... explain why this matters! ...)
 
 ```ruby
 Newman::Message.new(:to => ..., :from => ..., :subject => ...) do |params| 
@@ -394,6 +418,9 @@ Adjustments are often simple compositions, so this rule should be kept in mind:
 
 > The API of a composite object should not be more complicated than that of any
 > of its components -- GOOS (54)
+
+Fair warning: my interpretation may be different than what the GOOS authors
+intended, but I think some flexibility is useful here.
 
 ## To think about
 
