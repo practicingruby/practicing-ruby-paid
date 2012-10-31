@@ -1,19 +1,19 @@
-> **CREDIT:** While this article is my own work, it is based on ideas I got from
+> **CREDIT:** Although this article is my own work, it is based on ideas I got from
 > a very different but interesting early draft from Practicing Ruby reader
-> [Mike Subelsky][subelsky]. I owe him a huge hat tip for suggesting that we should cover
-> this topic, and for helping me get started with it.
+> [Mike Subelsky][subelsky]. I owe him a huge hat tip for suggesting that we cover
+> this topic and for helping me get started with it.
 
 The challenge of sensibly connecting a set of objects together to perform a
 complex task is one that confounds programmers of all skill levels. In fact, 
 it is hard to reason about the relationships between objects without getting 
 trapped by analysis paralysis. With that in mind, it is no surprise that so
-many of us  struggle with this particular aspect of object-oriented programming. 
+many of us struggle with this particular aspect of object-oriented programming. 
 
 But like so many other problems we encounter in our work, this one can
 be simplified greatly by introducing a common vocabulary and some rough
 heuristics that make thinking and communicating about our code easier.
 For reasoning about this particular design challenge, the 
-"Object Peer Stereotypes" described in [Growing Object Oriented Software, Guided
+"Object Peer Stereotypes" described in [Growing Object-Oriented Software, Guided
 by Tests][GOOS] give us some very useful conceptual tools 
 to work with.
 
@@ -21,13 +21,13 @@ In this article, we will explore the three stereotypical relationships
 between an object and its peers that were described in GOOS: 
 dependencies, notifications, and adjustments. Taken together, these 
 rough categorizations do a good job of identifying the kinds of
-connections that exist between objects, and that makes it easier
+connections that exist between objects, which makes it easier
 to develop a more nuanced view of how they communicate with each other.
 
 The specific examples in this article are based on code from 
 [Newman][newman] (my experimental email-based microframework), but the
 general concepts that we'll discuss are relevant to all object-oriented 
-software. If your keep your own projects in the back of your mind as you
+software. If you keep your own projects in the back of your mind as you
 read on, you'll easily find similarities between Newman's design 
 challenges and your own.
 
@@ -35,27 +35,27 @@ challenges and your own.
 
 > Services that the object requires from its peers so it can perform its
 > responsibilities. The object cannot function without these services. It should
-> not be possible to create the object without them -- GOOS (pg. 52)
+> not be possible to create the object without them. (GOOS, pg. 52)
 
 Whether they are internal or external, dependency relationships need to be
 carefully managed in order to prevent brittleness. 
 Alistair Cockburn's [ports and adapters][ports-and-adapters] pattern provides
 one way of dealing with this problem: define abstract *ports* in the 
 application's domain language that covers slices of functionality, and then build 
-implementation-specific *adapters* with compatible interfaces. This allows dependencies 
-to be reasoned about at a higher level of abstraction, and makes it so that systems 
+implementation-specific *adapters* with compatible interfaces. This approach allows dependencies 
+to be reasoned about at a higher level of abstraction and makes it so that systems 
 can be easily changed.
 
 We applied this pattern (albeit without recognizing it by name) when thinking
 through how Newman should handle its email dependency. We knew from the outset
-that we'd need to support some sort of test mailer, and that it should be a
+that we'd need to support some sort of test mailer and that it should be a
 drop-in replacement for its real mailer. We also anticipated that down the line
-we may want to support delivery mechanisms other than the `mail` gem, and
+we might want to support delivery mechanisms other than the `mail` gem and
 figured that some sort of adapter-based approach would be a good fit.
 
 Constructing a port involves thinking through the various ways a 
 subsystem will be used within your application and then 
-mapping a protocol to those use cases. In Newman, we expected
+mapping a protocol to those use cases. In Newman, we expected that
 our email dependency would need to support the following requirements:
 
 1) Read configuration data from a `Newman::Settings` object if necessary.
@@ -101,7 +101,7 @@ unanswered questions lurking just beneath the surface. This is where
 the difference between *interfaces* and *protocols* becomes important:
 
 > An interface defines whether two things can fit together, a protocol 
-defines whether two things can *work together* (GOOS pg. 58)
+defines whether two things can *work together* (GOOS, pg. 58)
 
 If you revisit the code examples shown above, you'll notice that the interface
 requirements for a Newman-compatible mail adapter are roughly as follows:
@@ -110,11 +110,11 @@ requirements for a Newman-compatible mail adapter are roughly as follows:
 * The `messages` method returns an collection that responds to `each` and yields
 an object for each message in the inbox.
 * The `deliver_message` accepts one argument (a parameters hash).
-* The `new_message` method accepts a parameters hash, and returns
+* The `new_message` method accepts a parameters hash and returns
 an object representing the message. At a minimum, the object allows certain fields
-to be set (i.e. `subject` and `body`) and responds to a `deliver` method.
+to be set (i.e., `subject` and `body`) and responds to a `deliver` method.
 
-Building an object that satisifies these requirements is trivial, but there is
+Building an object that satisfies these requirements is trivial, but there is
 no guarantee that doing so will result in an adapter that conforms to the
 *protocol* that Newman expects. Unfortunately, protocols are much harder
 to reason about and define than interfaces are.
@@ -122,7 +122,7 @@ to reason about and define than interfaces are.
 Like many Ruby libraries, Newman relies on loose [duck typing][duck typing] 
 rather than a formal behavioral contract to determine whether one adapter can 
 serve as a drop-in replacement for another. The `Newman::Mailer` object is used
-by default, and so it defines the canonical implementation that 
+by default, so it defines the canonical implementation that 
 other adapters are expected to mimic at the functional level -- even if they 
 handle things very differently under the hood. This implicit contract makes 
 it possible for `Newman::TestMailer` to stand in for 
@@ -134,20 +134,20 @@ are just two different adapters that both fit in the same port.
 
 If you read through the source of the [Newman::Mailer][newman-mailer] 
 and [Newman::TestMailer][newman-testmailer] objects, you will find that
-several compromises have been for the sake of convenience:
+several compromises have been made for the sake of convenience:
 
 1. Arguments for the `new_message` and `deliver_message` methods on both 
-adapters are directly delegated to a `Mail::Message` object, and the
+adapters are directly delegated to the `Mail::Message` constructor, and the
 return value of `messages` on both adapters is a collection 
-of `Mail::Message` objects. This implicitly ties the interface of those 
-methods to the mail gem, and is what GOOS calls a *hidden dependency*.
+of `Mail::Message` objects. This design implicitly ties the interface of those 
+methods to the mail gem; it's what GOOS calls a *hidden dependency*.
 
-1. The `Newman::TestMailer` object is a singleton object, but it
+2. The `Newman::TestMailer` object is a singleton object, but it
 implements a fake constructor in order to maintain interface compatibility 
 with `Newman::Mailer`. This is an example of how constraints 
 from dependencies can spill over into client code.
 
-1. Configuration data is completely ignored by `Newman::TestMailer`. Because
+3. Configuration data is completely ignored by `Newman::TestMailer`. Because
 all of its operations are done in memory, it has no need for SMTP and IMAP
 settings, but it needs to accept the settings object anyway for the 
 sake of maintaining interface compatibility.
@@ -176,8 +176,8 @@ Despite these rough edges, Newman's way of handling its email dependency is a
 good example of the [ports and adapters][ports-and-adapters] pattern in the 
 wild. If anything, it serves as a reminder that the hard part of writing loosely
 coupled code is not in the creation of duck-typed adapters, but in clearly
-defining the protocol for our ports. This takes us beyond the idea of "coding to
-an interface rather than an implementation", and is something worth ruminating
+defining the protocol for our ports. This concept takes us beyond the idea of "coding to
+an interface rather than an implementation" and is worth ruminating
 over.
 
 ## Notifications
@@ -185,19 +185,21 @@ over.
 > Peers that need to be kept up to date with the object’s activity. The object
 > will notify interested peers whenever it changes state or performs a
 > significant action. Notifications are ‘fire and forget’; the object neither
-> knows nor cares which peers are listening -- GOOS (pg. 52)
+> knows nor cares which peers are listening. (GOOS, pg. 52)
 
 Because Ruby is a message-oriented programming language, it is easy to model
 many kinds of object relationships as notifications. Doing so greatly reduces
-the coupling between objects, and helps establish a straight-line flow from a 
+the coupling between objects and helps establish a straight-line flow from a 
 system's inputs to its outputs.
 
 Notification-based modeling is especially useful when designing framework code,
 because it is important for frameworks to know as little as possible about the
 applications that are built on top of them. The general design of
 the extremely popular [rack web server interface][rack] leverages these ideas to
-great effect, and has established an interesting pattern that other Ruby
-projects are starting to follow. We have designed Newman using a similar
+great effect; it assumes that its applications implement a meaningful
+`call` method, but otherwise remains blissfully ignorant of their behaviors.
+
+We have designed Newman using a similar
 strategy, and the general idea can be understood by tracing the execution of
 the `Newman::Server#tick` method:
 
@@ -235,13 +237,13 @@ module Newman
 end
 ```
 
-Did you figure out how it works? Let's walk through the process step by step now to
+Did you figure out how it works? Let's walk through the process step by step to
 confirm:
 
-1. The `tick` method walks over each incoming message currently queued up by the
-`mailer` object (i.e. the `request`)
+1. The `tick` method walks over each incoming message currently queued by the
+`mailer` object (i.e., the `request`).
 
-2. A `response` message is constructed, addressed to the sender of
+2. A `response` message is constructed and addressed to the sender of
 the `request`.
 
 3. The `process_request` method is called, which iterates over a
@@ -264,7 +266,7 @@ server.tick
 ```
 
 If we wanted to make things a bit more interesting, we could add request
-and response logging into the mix, using Newman's built in features:
+and response logging into the mix, using Newman's built-in features:
 
 ```ruby
 Greeter = ->(params) { |params| params[:response].subject = "Hello World!" }
@@ -313,14 +315,13 @@ information.
 
 5. The server sends the response email.
 
-The remarkable thing is not this semi-mundane process, but that the
-objects involved knows virtually nothing about their collaborators, nor
-are they aware of their position in the sequence of events. Context-independence
-(*GOOS pg. 54*) is a powerful thing, because it allows each object to be reasoned
+The remarkable thing is not this semimundane process, but that the
+objects involved know virtually nothing about their collaborators and are unaware of their position in the sequence of events. Context-independence
+(*GOOS, pg. 54*) is a powerful thing, because it allows each object to be reasoned
 about, tested, and developed in isolation.
 
 The implications of notification-based modeling extend far beyond
-context-independence, but it wouldn't be easy to summarize them in 
+context independence, but it wouldn't be easy to summarize them in 
 a few short sentences. Fortunately, this topic has been covered 
 extensively in other Practicing Ruby articles, particularly in 
 [Issue 4.11][pr-4.11] and [Issue 5.2][pr-5.2]. Be sure to
@@ -330,8 +331,8 @@ collection.
 ## Adjustments
 
 > Peers that adjust the object’s behavior to the wider needs of the system. This
-includes policy objects that make decisions on the object’s behalf...and
-component parts of the object if it’s a composite -- GOOS (pg. 52)
+includes policy objects that make decisions on the object’s behalf . . . and
+component parts of the object if it’s a composite. (GOOS, pg. 52)
 
 Adjustment relationships are hard to summarize, because they can exist in so 
 many forms. But regardless of the form they take on, adjustments tend to be
@@ -374,24 +375,24 @@ module Newman
 end
 ```
 
-While this is a subtle change, it lifts up and centralizes the concept of
+Though this is a subtle change, it lifts up and centralizes the concept of
 "email logging" into a single object, rather than mixing helper methods into
-various objects that need that functionality. This helps define the borders
-between distinct concepts within the code, and establishes `EmailLogger` as an
+various objects that need that functionality. This adjustment helps define the borders
+between distinct concepts within the code and establishes `EmailLogger` as an
 adjustment to the much more general `Logger` object it depends upon.
 
 The philosophical distinction between these two objects is what matters here. 
-A `Logger` has very abstract responsibilities; it must record arbitrary strings 
-at various levels of severity, and then format and output them to various 
-streams. `EmailLogger` on the other hand, is extremely concrete in its
-responsibilities; it uses a `Logger` to report debugging information about
+A `Logger` has very abstract responsibilities: it must record arbitrary strings 
+at various levels of severity and then format and output them to various 
+streams. `EmailLogger`, on the other hand, is extremely concrete in its
+responsibilities: it uses a `Logger` to report debugging information about
 an email message. The details of how the actual logging happens are hidden from
 `EmailLogger`'s clients, making it easier to treat as a black box.
 
-Simple designs can also emerge from climbing the latter of abstraction, 
-i.e. moving from a very specific context to a much more general one. For
+Simple designs can also emerge from climbing the ladder of abstraction, 
+that is, moving from a very specific context to a much more general one. For
 example, it might not be a bad idea to introduce an object into Newman 
-which encapsulates the concept of an email message, but leaves the exact
+that encapsulates the concept of an email message but leaves the exact
 delivery mechanism up to the individual adapters:
 
 ```ruby
@@ -407,7 +408,7 @@ message.body    = "Please send us a hair sample to confirm your ID"
 message.deliver
 ```
 
-This kind of object is trivial to implement, because it is nothing more
+This kind of object is trivial to implement because it is nothing more
 than a value object with a simple callback mechanism bolted on top of it:
 
 ```ruby
@@ -439,15 +440,15 @@ mail adapters for Newman were expected to return only `Newman::Message` objects,
 then any message-processing code within Newman (either in the server or in
 application code) would have a well-defined interface to work against. Although
 this requirement would make adapters slightly more cumbersome to write, it would
-completely eliminate the hidden dependency issue that we talked about earlier.
+completely eliminate the hidden dependency issue discussed earlier.
 
 Regardless of which direction they are pointed in, adjustment relationships are
 very closely related to the concept of object composition in general. With that
-in mind, the authors of GOOS have a useful rule to consider when desiging 
+in mind, the authors of GOOS have a useful rule to consider when designing 
 composite objects:
 
 > The API of a composite object should not be more complicated than that of any
-> of its components -- GOOS (pg. 54)
+> of its components. (GOOS, pg. 54)
 
 Notice that in both the `Newman::EmailLogger` example and the `Newman::Message`
 object, the result of composition is that a more complex system is being wrapped
@@ -463,14 +464,14 @@ it forces me to think about my code in a more fine-grained way. Each
 kind of object relationship comes with benefits and costs that are easier to
 reason about when you recognize them for what they are.
 
-Like most ideas from [Growing Object Oriented Software, Guided by Tests][GOOS],
+As with most ideas from [Growing Object-Oriented Software, Guided by Tests][GOOS],
 I have not yet had a chance to apply this particular set of heuristics
 frequently enough to know the full extent of their usefulness. However, it never
 hurts to have specific words to describe ideas that previously were hard for me
 to express without relying heavily on intuition.
 
 I would love to hear from you if you can think of ways to connect these ideas
-back to your own projects, or to the open source projects you've worked with. If
+back to your own projects or to the open source projects you've worked with. If
 you have an interesting story to share, please leave a comment!
 
 [GOOS]: http://www.growing-object-oriented-software.com/

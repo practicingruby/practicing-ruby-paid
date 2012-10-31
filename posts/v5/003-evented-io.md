@@ -454,7 +454,7 @@ class Stream
   end
   
   def handle_write
-    return if @writerbuffer.empty?
+    return if @writebuffer.empty?
     length = @io.write_nonblock(@writebuffer)
     # Remove the data that was successfully written.
     @writebuffer.slice!(0, length)
@@ -470,7 +470,7 @@ end
 `Stream` is nothing more than a wrapper around a Ruby `IO` object that
 abstracts away all the low-level details of reading and writing that were
 discussed throughout this article. The `Server` object we make use of 
-in `IOLoop#accept` is implemented in a similar fashion but is focused
+in `IOLoop#listen` is implemented in a similar fashion but is focused
 on accepting incoming connections instead:
 
 ```ruby
