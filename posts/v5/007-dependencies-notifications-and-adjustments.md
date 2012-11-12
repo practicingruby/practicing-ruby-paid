@@ -1,5 +1,5 @@
 > **CREDIT:** Although this article is my own work, it is based on ideas I got from
-> a very different but interesting early draft from Practicing Ruby reader
+> a very different but interesting [early draft][dna-draft] from Practicing Ruby reader
 > [Mike Subelsky][subelsky]. I owe him a huge hat tip for suggesting that we cover
 > this topic and for helping me get started with it.
 
@@ -484,3 +484,4 @@ you have an interesting story to share, please leave a comment!
 [duck typing]: http://en.wikipedia.org/wiki/Duck_typing
 [newman]: https://github.com/elm-city-craftworks/newman
 [subelsky]: http://www.subelsky.com/
+[dna-draft]: http://www.subelsky.com/2012/11/ruby-dependencies-notifications-and.html
