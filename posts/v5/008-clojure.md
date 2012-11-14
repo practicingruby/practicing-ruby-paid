@@ -13,9 +13,10 @@ tremendous disadvantage, because it causes us to artifically limit our access to
 valuable learning resources.
 
 In this article, I will walk you through an example of how I was plagued by this
-very problem, how I overcame it, and how I learned a lot about Clojure in the 
-process of doing so. My hope is that by following in my footsteps, you'll be
-able to apply this technique in your own studies.
+very fear, how I overcame it, and how that lead me to learn a lot 
+about [Clojure][clojure] in a very short period of time. My hope is that by following 
+in my footsteps, you'll be able to learn the technique I used and possibly apply
+it to your own studies.
 
 ## How I finally learned about Ant Colony Optimization
 
@@ -44,9 +45,10 @@ Unfortunately, it is hard to find resources that precisely describe the rules
 that govern each of these behaviors, and those that do exist are highly abstract
 and mathematical. While I'm not one to shy away from theoretical papers, I
 usually like to approach them once I understand a concept fairly well in
-practice, and it was hard to find the materials to get me to that point. 
+practice. For this particular problem, I was unable to find the materials 
+that would get to that point, and it felt like I was hitting a brick wall.
 
-While I found tons of examples of applying a generalized form of ant colony 
+Although I found tons of examples of applying a generalized form of ant colony 
 optimization to the traveling salesman problem, I wanted to start with a more 
 direct simulation of the natural behavior. After digging around for a bit, I
 found [Rich Hickey's ant simulator][sim], which is implemented 
@@ -108,7 +110,7 @@ that I had always wanted to study anyway.
 I think you can guess what happened next: within a couple of hours, I not only
 fully understood Rich Hickey's implementation, but I had also learned dozens
 upon dozens of Clojure features, including a few that have no direct analogue in
-Ruby. While it may have a result of motivation due to frustration 
+Ruby. While it may have been a result of frustration 
 driven development, I was genuinely surprised at what a great way this was to
 learn a new language while also studying a programming problem that I was
 interested in.
@@ -117,7 +119,7 @@ Throughout the rest of this article, I will attempt to demonstrate that given
 the right example, even a few dozen lines of code can teach you a tremendous
 amount of useful things about a language that you've never worked with before.
 If you are new to Clojure programming, you'll be able to follow along
-and experience the same benefits that I did, but if you already know the
+and experience the same benefits that I did; if you already know the
 language, you can use this as an exercise in developing a beginner's mindset. In
 either case, I think you'll be surprised at how much we can extract
 from such a small chunk of code.
@@ -126,7 +128,7 @@ To keep things simple, we won't bother to read the complex bits of code that
 implements ant behavior. Instead, we'll start from the bottom up and
 take a look at how this simulation models its world and the ants within it.
 Although this won't help us understand how things get set into action, it will
-give us more than enough opportunities to learn some interesting Clojure
+give us plenty of opportunities to learn some interesting Clojure
 features.
 
 ## Modeling the world
@@ -197,7 +199,7 @@ thread safety.
 1. Among other things, the `range` function provides behavior similar to the enumerator 
 form of Ruby's `Integer#times` method. 
 1. The `apply` function provides functionality similar to Ruby's splat operator
-(`*`), passing the elements of a `Vector` as arguments to a function.
+(`*`), passing the elements of a sequence as arguments to a function.
 1. The [-> macro][->] provides syntactic sugar for function composition, which
 can make chaining function calls easier.
 
@@ -255,9 +257,9 @@ pretend that we do for the purposes of this example.
 some required keys and some optional ones. But such behavior could be
 emulated by building a custom `Cell` object. 
 
-4. We don't have arbitrary destructuring in the parameter lists for our
+4. We don't have destructuring in the parameter lists for our
 functions, so we need to handle destructuring manually within the bodies
-of our methods rather than their signatures:
+of our methods rather than their signatures.
 
 Keeping these points in mind, here's a semi-literal translation of Clojure code
 to Ruby:
@@ -276,7 +278,7 @@ end
 
 While the two languages cannot be categorically compared by such a coarse
 exercise in syntactic gymnastics, it does help the similarities and 
-differences between the languages stand out a bit more. This helps us reuse
+differences between the languages stand out a bit more. This allows us to reuse
 the knowledge we already have, and also exposes the gaps in our 
 understanding that need to be filled in.
 
@@ -310,7 +312,7 @@ given location within the world:
 ```
 
 Because we already have a rudimentary understanding of how `StructMap` works,
-and how to define named functions, we can skip over some of the boilerplate
+and how to define functions, we can skip over some of the boilerplate
 and get right to the good stuff:
 
 ```clojure
@@ -441,7 +443,7 @@ The following code populates the initial state of the world with ants and food:
          (create-ant [x y] (rand-int 8)))))))
 ```
 
-As in the ant initialization code sample, this snippet includes a mixture of new
+As in the ant initialization code, this snippet includes a mixture of new
 concepts and old ones. If we focus on the body of the `setup` definition, there
 are five new things for us to learn:
 
@@ -541,10 +543,10 @@ def setup
 end
 ```
 
-And with that, you should now completely understand the structure of the initial
+At this point, you should now completely understand the structure of the initial
 state of the world in [Rich Hickey's ant simulator][sim], and if you're new to
 Clojure, you probably know a lot more about the language than you did when you
-started reading! If you have enjoyed the journey so far, definitely consider
+started reading. If you have enjoyed the journey so far, definitely consider
 reading the entire program; this article only covers tip of the iceberg! 
 
 ## Reflections
@@ -554,7 +556,7 @@ reading the entire program; this article only covers tip of the iceberg!
 [![](http://imgs.xkcd.com/comics/lisp_cycles.png)](http://xkcd.com/297/)
 
 That said, I'm sure that more than a few people would be happy to tell you that 
-many of the pragmatic compromises that Clojure have made are blasphemic in some
+many of the pragmatic compromises that Clojure has made are blasphemic in some
 way. Truth be told, I don't know nearly enough about functional languages to
 weigh in on any of those claims.
 
