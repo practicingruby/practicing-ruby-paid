@@ -570,6 +570,10 @@ problems, and I look forward to hearing what you think of it.
 Learning to read code in a language you are not familiar with takes practice,
 but it is easier than it seems. If you step outside the
 bubble from time to time, only good things will come of it.
+
+> **NOTE**: You may want to try out [4Clojure][4Clojure] if you want to hone
+> your Clojure skills at a more gradual pace than what we attempted in this
+> article. It's a quiz site similar to [RubyKoans].
  
 [swarm]:       http://en.wikipedia.org/wiki/Swarm_intelligence
 [boids]:       http://en.wikipedia.org/wiki/Boids
@@ -579,6 +583,8 @@ bubble from time to time, only good things will come of it.
 [clojure-doc]: http://clojure.org/documentation
 [hickey]:      http://blip.tv/clojure/clojure-concurrency-819147
 [xkcd]:        http://xkcd.com
+[4Clojure]:    http://www.4clojure.com
+[RubyKoans]:   http://rubykoans.com
 
 [def]:     http://clojure.org/special_forms#Special%20Forms--%28def%20symbol%20init?%29
 [Map]: http://clojure.org/data_structures#Data%20Structures-Maps%20%28IPersistentMap%29
