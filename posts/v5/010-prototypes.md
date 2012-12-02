@@ -1,31 +1,27 @@
-Introduction
-------------
-
-When you think of the term "object-oriented programming", one of the
-first associated words that springs to mind is probably "classes". For
+When you think of the term *object-oriented programming*, one of the
+first associated words that springs to mind is probably *classes*. For
 most of its history, the OOP paradigm has been almost inextricably
-linked with the idea of classes. Classes serve as "object factories":
+linked with the idea of classes. Classes serve as *object factories*:
 they hold the blueprint for new objects, and can be called upon to
 manufacture as many as needed. Each object, or *instance*, has its
 state, but each derives its behavior from the class. Classes, in turn,
 share behavior through inheritance. In most OO programs, the class
 structure is the primary organizing principle.
 
-For all that classes have gone hand-in-hand with OOP for decades, they
+Even though classes have gone hand-in-hand with OOP for decades, they
 aren't the only way to build families of objects with shared behavior.
 The most common alternative to *class-based* programming is
 *prototype-based* programming. Languages that use prototypes rather than
-classes include
-[Self](http://en.wikipedia.org/wiki/Self_(programming_language)),
-[Io](http://en.wikipedia.org/wiki/Io_(programming_language)), and (most
-well known of all) JavaScript.
+classes include [Self][self], [Io][io], and (most well known of all) JavaScript.
 
 Ruby comes from the class-based school of OO language design. But it's
 flexible enough that with a little cleverness, we can experiment with
 prototype-style coding. In this article that's just what we'll do.
 
-An adventure in prototypes
---------------------------
+[self]: http://en.wikipedia.org/wiki/Self_(programming_language
+[io]: http://en.wikipedia.org/wiki/Io_(programming_language)
+
+## An adventure in prototypes
 
 So how do we write OO programs without classes? Let's explore this
 question in Ruby. We'll use the example of a text-adventure game in the
@@ -38,36 +34,30 @@ including characters, items, and interconnected rooms.
 We open up an interactive Ruby session, and start typing. We start with
 an `adventurer` object. This object will serve as our avatar in the
 game's world, translating our commands into interactions between
-objects.
+objects:
 
-~~~~ {.src .src-ruby}
+```ruby
 adventurer = Object.new
-~~~~
+```
 
 The first ability we give to our adventurer is the ability to look at
 its surroundings. The `look` command will cause the adventurer to output
-a description of its current location.
+a description of its current location:
 
-~~~~ {.src .src-ruby}
-def adventurer.look
-  puts location.description
-end
-~~~~
-
-Of course, this means it needs to have a current location to look at, so
-we add an attribute called `location`. We do this by opening up the
-`adventurer` object's singleton class and adding an `attr_accessor`.
-
-~~~~ {.src .src-ruby}
+```ruby
 class << adventurer
   attr_accessor :location
+
+  def look
+    puts location.description
+  end
 end
-~~~~
+```
 
 Then we add a starting location, called `end_of_road`, and put the
-adventurer in that location.
+adventurer in that location:
 
-~~~~ {.src .src-ruby}
+```ruby
 end_of_road = Object.new
 def end_of_road.description
   <<END
@@ -78,15 +68,21 @@ END
 end
 
 adventurer.location = end_of_road
-~~~~
+```
 
-Now we can tell our adventurer to take a look around.
+Now we can tell our adventurer to take a look around:
 
-~~~~ {.src .src-ruby}
+```ruby
 adventurer.look
-~~~~
+```
 
-### Adding some conveniences
+```console
+You are standing at the end of a road before a small brick building.
+Around you is a forest.  A small stream flows out of the building and
+down a gully.
+```
+
+**Adding some conveniences**
 
 So far we've created an adventurer and a starting room without any kind
 of `Adventurer` or `Room` classes. This adventure is getting off to a
@@ -99,9 +95,9 @@ we are supposed to be using only prototypes. However, Ruby doesn't offer
 a lot of support for prototype-based programming out of the box, so we
 have to build our tools with the class-oriented materials at hand. This
 is intended to be behind-the-scenes support code. In other words, pay no
-attention to the man behind the green curtain.
+attention to the man behind the green curtain:
 
-~~~~ {.src .src-ruby}
+```ruby
 class ObjectBuilder
   def initialize(object)
     @object = object
@@ -140,7 +136,7 @@ class ObjectBuilder
     end
   end
 end
-~~~~
+```
 
 There's a lot going on in this class. Going over it line-by-line might
 be interesting in its own right, but it wouldn't advance our
@@ -150,89 +146,96 @@ to a singleton object using a concise assignment-style syntax. This will
 make more sense when we start to use it.
 
 We add another bit of syntax sugar: a global method named `Object` (not
-to be confused with the class of the same name).
+to be confused with the class of the same name):
 
-~~~~ {.src .src-ruby}
+```ruby
 def Object(&definition)
   obj = Object.new
   obj.singleton_class.instance_exec(ObjectBuilder.new(obj), &definition)
   obj
 end
-~~~~
+```
 
 This method takes a block, instantiates a new object, and evaluates the
 block in the context of the object's singleton class, passing an
 `ObjectBuilder` as a block argument. Then it returns the new object.
 
-Now we recreate our adventurer using this new helper.
+Now we recreate our adventurer using this new helper:
 
-~~~~ {.src .src-ruby}
+```ruby
 adventurer = Object { |o|
   o.location = end_of_road
+
   attr_writer :location
 
   o.look = ->(*args) {
     puts location.description
   }
 }
-~~~~
+```
 
 The combination of the `Object` factory method and the `ObjectBuilder`
 gives us a convenient, powerful notation for creating new ad-hoc
 objects. We can create attribute reader methods and assign the value of
 the attribute all at once:
 
-~~~~ {.src .src-ruby}
+```ruby
 o.location = end_of_road
-~~~~
+```
 
 We can use standard Ruby class-level code:
 
-~~~~ {.src .src-ruby}
+```ruby
 attr_writer :location
-~~~~
+```
 
 And finally we can create new methods by assigning a lambda to a new
 attribute on the object builder:
 
-~~~~ {.src .src-ruby}
-o.look = ->(*args) {
-  puts location.description
-}
-~~~~
+```ruby
+o.look = ->(*args) { puts location.description }
+```
 
 We've deliberately avoided defining methods using `def` or
 `define_method`. We'll get into the reasons for that later on.
 
-We take a moment to make sure our shiny new adventurer still works the
-same as before.
+Before we move on, let's take a moment to make sure our shiny new adventurer still works the
+same as before:
 
-~~~~ {.src .src-ruby}
+```ruby
 adventurer.look
-~~~~
+```
 
-### Moving around
+```console
+You are standing at the end of a road before a small brick building.
+Around you is a forest.  A small stream flows out of the building and
+down a gully.
+```
 
-We decide it's time to let our adventurer object stretch its legs a bit.
+Success!
+
+**Moving around**
+
+It's time to let our adventurer object stretch its legs a bit.
 We want to give it the ability to move from location to location. First,
-we make a small modification to our `Object()` method.
+we make a small modification to our `Object()` method:
 
-~~~~ {.src .src-ruby}
+```ruby
 def Object(object=nil, &definition)
   obj = object || Object.new
   obj.singleton_class.instance_exec(ObjectBuilder.new(obj), &definition)
   obj
 end
-~~~~
+```
 
 Now along with creating new objects, `Object()` can also augment an
 existing object which is passed in as an argument.
 
 We pass the `adventurer` to `Object()`, and add a new `#go` method. This
 method will take a direction (like `:east`), and attempt to move to the
-new location using the `exits` association on its current location.
+new location using the `exits` association on its current location:
 
-~~~~ {.src .src-ruby}
+```ruby
 Object(adventurer) { |o|
   o.go = ->(direction){
     if(destination = location.exits[direction])
@@ -243,51 +246,53 @@ Object(adventurer) { |o|
     end
   }
 }
-~~~~
+```
 
 We add a destination room to the system:
 
-~~~~ {.src .src-ruby}
+```ruby
 wellhouse = Object { |o|
   o.description = <<END
 You are inside a small building, a wellhouse for a large spring.
 END
 }
-~~~~
+```
 
 Then we add an `exits` Hash to `end_of_road`, with an entry saying that
-the `wellhouse` is to the `:north`.
+the `wellhouse` is to the `:north`:
 
-~~~~ {.src .src-ruby}
-Object(end_of_road) { |o|
-  o.exits = {north: wellhouse}
-}
-~~~~
+```ruby
+Object(end_of_road) { |o| o.exits = {north: wellhouse} }
+```
 
 With that done, we are now ready to set off on our journey!
 
-~~~~ {.src .src-ruby}
+```ruby
 adventurer.go(:north)
-~~~~
+```
 
-### Cloning prototypes
+```console
+You are inside a small building, a wellhouse for a large spring.
+```
+
+**Cloning prototypes**
 
 We try to go north again, expecting to see the admonition "You can't go
-that way" as we bump into the wall.
+that way" as we bump into the wall:
 
-~~~~ {.src .src-ruby}
+```ruby
 adventurer.go(:north)
-~~~~
+```
 
 Instead, we get an exception:
 
-~~~~ {.example}
+```console
 -:82:in `block (2 levels) in <main>': undefined method `exits' for 
 #<Object:0x0000000434d768> (NoMethodError)
         from -:56:in `instance_exec'
         from -:56:in `block (2 levels) in define_code_method'
         from -:100:in `<main>'
-~~~~
+```
 
 This is because we never got around to adding an `exits` Hash to
 `wellhouse`. We could go ahead and do that now. But as we think about
@@ -295,39 +300,37 @@ it, we realize that now that our adventurer is capable of travel, it
 would make sense if all rooms started out with an empty `exits` Hash,
 instead of us having to add it manually every time.
 
-Toward that end, we create a *prototypical room*.
+Toward that end, we create a *prototypical room*:
 
-~~~~ {.src .src-ruby}
-room = Object { |o|
-  o.exits = {}
-}
-~~~~
+```ruby
+room = Object { |o| o.exits = {} }
+```
 
 We then experiment with creating a new `wellhouse`, this one based on
 the `room` prototype. We do this by simply cloning the `room` object. We
 use `#clone` rather than `#dup` because `#clone` copies singleton class
-methods.
+methods:
 
-~~~~ {.src .src-ruby}
+```ruby
 new_wellhouse = room.clone
 
 new_wellhouse.exits[:south] = end_of_road
-~~~~
+```
 
 We quickly uncover a problem with this naive cloning technique. Because
 Ruby's `#clone` (as well as `#dup`) are *shallow copies*, `room` and
-`new_wellhouse` now share the same `exits` Hash.
+`new_wellhouse` now share the same `exits` Hash:
 
-~~~~ {.src .src-ruby}
+```ruby
 require 'pp'
 
 puts "new_wellhouse exits:"
 pp new_wellhouse.exits
 puts "room exits:"
 pp room.exits
-~~~~
+```
 
-~~~~ {.example}
+```console
 new_wellhouse exits:
 {:south=>
   #<Object:0x0000000482c8d8
@@ -344,13 +347,13 @@ room exits:
       #<Object:0x0000000482bcd0
        @description=
         "You are inside a small building, a wellhouse for a large spring.\n">}>}
-~~~~
+```
 
 To fix this, we customize how Ruby performs cloning by redefining
-[`Object#initializeclone`](http://jonathanleighton.com/articles/2011/initialize_clone-initialize_dup-and-initialize_copy-in-ruby/).
-Our version does a one-layer-deep copy of instance variables.
+[`Object#initialize_clone`](http://jonathanleighton.com/articles/2011/initialize_clone-initialize_dup-and-initialize_copy-in-ruby/).
+Our version does a one-layer-deep copy of instance variables:
 
-~~~~ {.src .src-ruby}
+```ruby
 class Object
   def initialize_clone(other)
     instance_variables.each do |ivar_name|
@@ -360,15 +363,13 @@ class Object
     end
   end
 end
-~~~~
+```
 
 Then we recreate `room` and `new_wellhouse`, and confirm that they no
-longer share exits.
+longer share exits:
 
-~~~~ {.src .src-ruby}
-room = Object { |o|
-  o.exits = {}
-}
+```ruby
+room = Object { |o| o.exits = {} }
 
 new_wellhouse = room.clone
 
@@ -378,9 +379,9 @@ puts "new_wellhouse exits:"
 pp new_wellhouse.exits
 puts "room exits:"
 pp room.exits
-~~~~
+```
 
-~~~~ {.example}
+```console
 new_wellhouse exits:
 {:south=>
   #<Object:0x00000002ea85d8
@@ -391,15 +392,15 @@ new_wellhouse exits:
         "You are inside a small building, a wellhouse for a large spring.\n">}>}
 room exits:
 {}
-~~~~
+```
 
-This technique—cloning a prototypical object in order to create new
-objects—is the most basic form of prototype-based programming. In fact,
+Cloning a prototypical object in order to create new
+objects is the most basic form of prototype-based programming. In fact,
 the "Kevo" research language (I'd link to it, but all the information
 about it seems to have fallen off the Internet) used copying as the sole
 way to share behavior between objects.
 
-### Dynamic prototypes
+**Dynamic prototypes**
 
 There are drawbacks to copying, however. It's a very static way to share
 behavior between objects. Clones of `room` only share the behavior which
@@ -426,9 +427,9 @@ Object. Given a method name that the object supports, it will return a
 `Proc` object containing the code of that method. We make it aware of
 the style of method definition used in `ObjectBuilder`, where the
 implementation `Procs` of new methods were stored in instance variables
-named for the methods.
+named for the methods:
 
-~~~~ {.src .src-ruby}
+```ruby
 class Object
   def implementation_of(method_name)
     if respond_to?(method_name)
@@ -444,11 +445,11 @@ class Object
     end
   end
 end
-~~~~
+```
 
-We then define a new kind of `Module`, called `Prototype`.
+We then define a new kind of `Module`, called `Prototype`:
 
-~~~~ {.src .src-ruby}
+```ruby
 class Prototype < Module
   def initialize(target)
     @target = target
@@ -468,7 +469,7 @@ class Prototype < Module
     end
   end
 end
-~~~~
+```
 
 A `Prototype` is instantiated with a prototypical object. When a
 `Prototype` instance is added to an object using `#extend`, it makes the
@@ -485,9 +486,9 @@ Note that this is different from delegation. In delegation, one object
 hands off a message to be handled by another object. If object `a`
 delegates a `#foo` message to object `b`, using, for instance, Ruby's
 `forwardable` library, `self` in that method will be object `b`. This is
-easily demonstrated.
+easily demonstrated:
 
-~~~~ {.src .src-ruby}
+```ruby
 require 'forwardable'
 
 class A
@@ -506,7 +507,7 @@ a = A.new
 a.b = B.new
 a.foo
 # >> executing #foo in #<B:0x00000003295e20>
-~~~~
+```
 
 But delegation is not what we want. We want to execute the methods from
 prototypes as if they had been defined on the inheriting object. We want
@@ -525,23 +526,23 @@ all of their methods, Ruby considers all of our objects as belonging to
 different classes for the purposes of method binding. We can see this if
 we try to rebind a method from `room` onto `wellhouse` and then call it:
 
-~~~~ {.src .src-ruby}
+```ruby
 room.method(:exits).unbind.bind(wellhouse)
-~~~~
+```
 
-~~~~ {.example}
+```console
 -:115:in `bind': singleton method called for a different object (TypeError)
         from -:115:in `<main>'
-~~~~
+```
 
 By storing the implementation of methods as raw `Procs`, without any
 association to a specific class, we are able to take the implementations
 and `instance_exec` them in other contexts.
 
 The last change we make to support dynamic prototype inheritance is to
-add a new `#prototype` method to our `ObjectBuilder`.
+add a new `#prototype` method to our `ObjectBuilder`:
 
-~~~~ {.src .src-ruby}
+```ruby
 class ObjectBuilder
   def prototype(proto)
     # Leave method implementations on the proto object
@@ -559,7 +560,7 @@ class ObjectBuilder
     @object.extend(Prototype.new(proto))
   end
 end
-~~~~
+```
 
 This method does two things:
 
@@ -571,49 +572,57 @@ This method does two things:
 We can now use all of this new machinery to dynamically add `room` as a
 prototype of `wellhouse`. We are then able to set the south exit to
 point back to `end_of_road`, using the `exits` association that
-`wellhouse` now inherits from `room`.
+`wellhouse` now inherits from `room`:
 
-~~~~ {.src .src-ruby}
-Object(wellhouse) { |o|
-  o.prototype room
-}
+```ruby
+Object(wellhouse) { |o| o.prototype room }
+
 wellhouse.exits[:south] = end_of_road
-~~~~
+```
 
-~~~~ {.src .src-ruby}
+```ruby
 adventurer.location = wellhouse
-~~~~
+```
 
-~~~~ {.src .src-ruby}
+```ruby
 puts "* trying to go north from wellhouse"
 adventurer.go(:north)
 
 puts "* going back south"
 adventurer.go(:south)
-~~~~
+```
 
-### Carrying items around
+```console
+* trying to go north from wellhouse
+You can't go that way
+* going back south
+You are standing at the end of a road before a small brick building.
+Around you is a forest.  A small stream flows out of the building and
+down a gully.
+```
+
+**Carrying items around**
 
 We now have some powerful tools at our disposal for composing objects
 from prototypes. We quickly proceed to implement the ability to pick up
 and drop items to our game. We start by creating a prototypical
 "container" object, which has an array of items and the ability to
-transfer an item from itself to another container.
+transfer an item from itself to another container:
 
-~~~~ {.src .src-ruby}
+```ruby
 container = Object { |o|
   o.items = []
   o.transfer_item = ->(item, recipient) {
     recipient.items << items.delete(item)
   }
 }  
-~~~~
+```
 
 We then make the `adventurer` a container, and add some commands for
 taking items, dropping items, and listing the adventurer's current
-inventory.
+inventory:
 
-~~~~ {.src .src-ruby}
+```ruby
 Object(adventurer) {|o|
   o.prototype container
 
@@ -650,15 +659,15 @@ Object(adventurer) {|o|
     end
   }
 }
-~~~~
+```
 
 For convenience, we've implemented `#take` and `#drop` so that they can
 accept any substring of the intended object's name.
 
 Next we make `wellhouse` a container, and add a list of starting items
-to it.
+to it:
 
-~~~~ {.src .src-ruby}
+```ruby
 Object(wellhouse) { |o|
   o.prototype container
   o.items = [
@@ -668,7 +677,7 @@ Object(wellhouse) { |o|
   ]
   o.exits = {south: end_of_road}
 }
-~~~~
+```
 
 As you may recall, `wellhouse` already has a prototype: `room`. But this
 is not a problem. One of the advantages of our dynamic prototyping
@@ -679,18 +688,16 @@ object's ancestor chain, from one `Prototype` to the next, looking for a
 matching method. (This also puts us one up on JavaScript's
 single-inheritance prototype system!)
 
-Finally, we make `end_of_road` a container.
+Finally, we make `end_of_road` a container:
 
-~~~~ {.src .src-ruby}
-Object(end_of_road) { |o|
-  o.prototype container
-}
-~~~~
+```ruby
+Object(end_of_road) { |o| o.prototype(container) }
+```
 
 We then proceed to tell our adventurer to pick up a bottle of water from
-the wellhouse, and put it down at the end of the road.
+the wellhouse, and put it down at the end of the road:
 
-~~~~ {.example}
+```console
 > adventurer.go(:north)
 You are inside a small building, a wellhouse for a large spring.
 > adventurer.take("water")
@@ -712,9 +719,9 @@ You are standing at the end of a road before a small brick building.
 Around you is a forest.  A small stream flows out of the building and
 down a gully.
 There is a bottle of water here.
-~~~~
+```
 
-### Observations
+**Observations**
 
 We've written the beginnings of a text adventure game in a
 prototype-based style. Now, let's take a step back and talk about what
@@ -729,7 +736,7 @@ Observations](http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.56.4713)":
 > A typical argument in favor of prototypes is that people seem to be a
 > lot better at dealing with specific examples first, then generalizing
 > from them, than they are at absorbing general abstract principles
-> first and later applying them in particular cases…the ability to
+> first and later applying them in particular cases, ... the ability to
 > modify and evolve objects at the level of individual objects reduces
 > the need for a priori classification and encourages a more iterative
 > programming and design style.
@@ -744,8 +751,8 @@ needed them, but no sooner. This kind of emergent, organic design
 process is one of the ideals of agile software development, and
 prototype-based systems seem to encourage it.
 
-Obviously, the way we jammed prototypes into a class-based language here
-is a horrendous hack. Please don't ever use this in a production system.
+That said, the way we jammed prototypes into a class-based language here
+is obviously a horrendous hack. Please don't ever use this in a production system.
 But the experience of writing code in a prototyped style can be
 educational. We can use what we've learned to influence our daily
 coding. We might prototype (heh) a system's design by writing one-off
@@ -755,8 +762,7 @@ classes. Prototypes can also teach us to do more with delegation and
 composition, building families of collaborating objects rather than
 hierarchies of related behavior.
 
-The Prototype Pattern
----------------------
+## The Prototype Pattern
 
 But there's another, more concrete way that the prototype paradigm can
 inform our work. If you each over to the shelf where you keep your
@@ -765,7 +771,7 @@ find the *Prototype Pattern* documented in the section on creational
 patterns. The Prototype Pattern is a way to apply prototype-style
 thinking in a class-based language.
 
-### A monster menagerie
+**A monster menagerie**
 
 Let's say that after working on our adventure game for a while, we
 decide to move it in the direction of a dungeon-crawl-style game. So
@@ -777,7 +783,7 @@ and strength. They each have their own types of attack as well.
 We'd also like to be able to load up the list of monster types at
 run-time, from a user-editable file like this:
 
-~~~~ {.src .src-yaml}
+```yaml
 gnome:
   attack_text: hits you with a club!
   max_hit_points: 8
@@ -793,11 +799,11 @@ rabbit:
   max_hit_points: 50
   strength: 50
   speed: 50
-~~~~
+```
 
 One way to model different monster types would be like this:
 
-~~~~ {.src .src-ruby}
+```ruby
 class Monster
   attr_reader :health
   def initialize
@@ -829,22 +835,22 @@ end
 
 g = Gnome.new
 # => #<Gnome:0x00000004020130 @health=8>
-~~~~
+```
 
 Here there is a `Monster` base class, and a subclass for each type of
 monster. But this doesn't really lend itself to dynamically loading
 arbitrary monster types from a file, so we look for other approaches.
 
-### Definitions and instances
+**Definitions and instances**
 
 We experiment with one design that uses `MonsterDefinition` classes to
 hold the static attributes of different monsters. A `MonsterDefinition`
 can be told to `#spawn` a `Monster` instance. The `Monster` instance has
 a reference back to its definition, as well as an instance-specific
 health meter (initialized based on the `max_hit_points` of the
-`MonsterDefinition`).
+`MonsterDefinition`):
 
-~~~~ {.src .src-ruby}
+```ruby
 class MonsterDefinition
   attr_accessor :name,
                 :attack_text,
@@ -890,20 +896,20 @@ g = gnome_def.spawn
 #       @speed=9,
 #       @strength=5>,
 #     @health=8>
-~~~~
+```
 
 This approach seems promising. But as we reflect on it, we realize that
 we're probably going to keep adding more of these definition/instance
 pairs of classes. `RoomDefinition=/=Room`, `ItemDefinition=/=Item`. This
 feels like an awful lot of ceremony.
 
-### Cloning creatures
+**Cloning creatures**
 
 Finally, we hit upon using the Prototype Pattern. In this version, there
 is only one class: `Monster`. It has slots for both static attributes
-(like `name`, and `strength`), and dynamic attributes like `health`.
+(like `name`, and `strength`), and dynamic attributes like `health`:
 
-~~~~ {.src .src-ruby}
+```ruby
 class Monster
   attr_accessor :name,
                 :attack_text,
@@ -922,27 +928,27 @@ class Monster
     other.health = max_hit_points
   end
 end
-~~~~
+```
 
 To initialize our game's bestiary of possible monster types, we load up
 the YAML-formatted monster file and initialize a `Monster` for each
 entry. Dynamic attributes are simply left blank for now. These are our
-prototypes.
+prototypes:
 
-~~~~ {.src .src-ruby}
+```ruby
 require 'yaml'
 bestiary = YAML.load_file('monsters.yml').each_with_object({}) do
   |(name, attributes), collection|
   collection[name] = Monster.new(attributes.merge(name: name))
 end
-~~~~
+```
 
 When we want to set up a player encounter with a monster, we simply find
 the appropriate prototype monster, and duplicate it. The customized
 `#initialize_dup` method in `Monster` takes care of setting up an
-initial health meter for the cloned monster.
+initial health meter for the cloned monster:
 
-~~~~ {.src .src-ruby}
+```ruby
 rabbit = bestiary['rabbit'].dup
 # => #<Monster:0x00000000fbd948
 #     @attack_text="bites you with sharp, pointy teeth!",
@@ -950,11 +956,11 @@ rabbit = bestiary['rabbit'].dup
 #     @name="rabbit",
 #     @speed=50,
 #     @strength=50>
-~~~~
+```
 
 we can easily generate random monsters:
 
-~~~~ {.src .src-ruby}
+```ruby
 random_foe = bestiary.values.sample.dup
 # => #<Monster:0x00000000fc21f0
 #     @attack_text="attacks you with a pickaxe!",
@@ -962,12 +968,12 @@ random_foe = bestiary.values.sample.dup
 #     @name="troll",
 #     @speed=5,
 #     @strength=10>
-~~~~
+```
 
 This solution is both shorter and simpler than any of the others we
 looked at.
 
-### Observations
+**Observations**
 
 The Prototype Pattern is, in my experience, one of the more overlooked
 of the Gang of Four patterns. It is useful in many situations. As
@@ -1008,8 +1014,7 @@ Design Patterns says that the Prototype Pattern is appropriate:
 >     instantiating the class manually, each time with the appropriate
 >     state.
 
-Conclusion
-----------
+## Conclusion
 
 For veterans of class-based languages, using prototype-based OO can seem
 like entering a foreign land. But once you get over the initial
@@ -1029,7 +1034,7 @@ provide a simple, flexible, and dynamic alternative.
 
 I hope you've found this trip through prototype-land illuminating and
 thought-provoking. I'm still a relative newb to this way of thinking, so
-if you have anything to add—other benefits of using prototypes; subtle
+if you have anything to add‚Äîother benefits of using prototypes; subtle
 gotchas; experiences from prototype-based languages, or alternative
 implementations of any of the code above, please don't hesitate to pipe
 up in the comments. Also, if you want clarifications about any of the
@@ -1039,9 +1044,3 @@ that the answers will make any more sense than the code :-)
 
 Happy hacking!
 
-Date: 2012-11-30T15:42-0500
-
-[Org](http://orgmode.org) version 7.8.11 with
-[Emacs](http://www.gnu.org/software/emacs/) version 24
-
-[Validate XHTML 1.0](http://validator.w3.org/check?uri=referer)
