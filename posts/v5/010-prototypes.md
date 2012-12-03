@@ -402,7 +402,7 @@ the "Kevo" research language (I'd link to it, but all the information
 about it seems to have fallen off the Internet) used copying as the sole
 way to share behavior between objects.
 
-## Dynamic prototypes
+## Building dynamic prototypes
 
 There are drawbacks to copying, however. It's a very static way to share
 behavior between objects. Clones of `room` only share the behavior which
