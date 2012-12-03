@@ -1,3 +1,5 @@
+*This article was contributed by Avdi Grimm. ONE OR TWO MORE SENTENCES HERE*
+
 When you think of the term *object-oriented programming*, one of the
 first associated words that springs to mind is probably *classes*. For
 most of its history, the OOP paradigm has been almost inextricably
@@ -21,7 +23,7 @@ prototype-style coding. In this article that's just what we'll do.
 [self]: http://en.wikipedia.org/wiki/Self_(programming_language
 [io]: http://en.wikipedia.org/wiki/Io_(programming_language)
 
-## An adventure in prototypes
+## Getting started
 
 So how do we write OO programs without classes? Let's explore this
 question in Ruby. We'll use the example of a text-adventure game in the
@@ -72,17 +74,15 @@ adventurer.location = end_of_road
 
 Now we can tell our adventurer to take a look around:
 
-```ruby
-adventurer.look
-```
-
 ```console
+> adventurer.look
+
 You are standing at the end of a road before a small brick building.
 Around you is a forest.  A small stream flows out of the building and
 down a gully.
 ```
 
-**Adding some conveniences**
+## Adding some conveniences
 
 So far we've created an adventurer and a starting room without any kind
 of `Adventurer` or `Room` classes. This adventure is getting off to a
@@ -143,7 +143,7 @@ be interesting in its own right, but it wouldn't advance our
 understanding of prototype-based programming all that much. Suffice to
 say for now that this class can help us add new attributes and methods
 to a singleton object using a concise assignment-style syntax. This will
-make more sense when we start to use it.
+make more sense when we start to make use of it.
 
 We add another bit of syntax sugar: a global method named `Object` (not
 to be confused with the class of the same name):
@@ -189,8 +189,8 @@ We can use standard Ruby class-level code:
 attr_writer :location
 ```
 
-And finally we can create new methods by assigning a lambda to a new
-attribute on the object builder:
+And finally we can define new methods by assigning a lambda to an 
+attribute:
 
 ```ruby
 o.look = ->(*args) { puts location.description }
@@ -202,11 +202,9 @@ We've deliberately avoided defining methods using `def` or
 Before we move on, let's take a moment to make sure our shiny new adventurer still works the
 same as before:
 
-```ruby
-adventurer.look
-```
-
 ```console
+> adventurer.look
+
 You are standing at the end of a road before a small brick building.
 Around you is a forest.  A small stream flows out of the building and
 down a gully.
@@ -214,7 +212,7 @@ down a gully.
 
 Success!
 
-**Moving around**
+## Moving around
 
 It's time to let our adventurer object stretch its legs a bit.
 We want to give it the ability to move from location to location. First,
@@ -259,7 +257,7 @@ END
 ```
 
 Then we add an `exits` Hash to `end_of_road`, with an entry saying that
-the `wellhouse` is to the `:north`:
+the `wellhouse` is to the `:north` of it:
 
 ```ruby
 Object(end_of_road) { |o| o.exits = {north: wellhouse} }
@@ -267,21 +265,19 @@ Object(end_of_road) { |o| o.exits = {north: wellhouse} }
 
 With that done, we are now ready to set off on our journey!
 
-```ruby
-adventurer.go(:north)
-```
-
 ```console
+> adventurer.go(:north)
+
 You are inside a small building, a wellhouse for a large spring.
 ```
 
-**Cloning prototypes**
+## Cloning prototypes
 
 We try to go north again, expecting to see the admonition "You can't go
 that way" as we bump into the wall:
 
-```ruby
-adventurer.go(:north)
+```console
+> adventurer.go(:north)
 ```
 
 Instead, we get an exception:
@@ -319,7 +315,7 @@ new_wellhouse.exits[:south] = end_of_road
 
 We quickly uncover a problem with this naive cloning technique. Because
 Ruby's `#clone` (as well as `#dup`) are *shallow copies*, `room` and
-`new_wellhouse` now share the same `exits` Hash:
+`new_wellhouse` now share the same `exits`:
 
 ```ruby
 require 'pp'
@@ -349,18 +345,25 @@ room exits:
         "You are inside a small building, a wellhouse for a large spring.\n">}>}
 ```
 
-To fix this, we customize how Ruby performs cloning by redefining
-[`Object#initialize_clone`](http://jonathanleighton.com/articles/2011/initialize_clone-initialize_dup-and-initialize_copy-in-ruby/).
-Our version does a one-layer-deep copy of instance variables:
+To fix this, we could possibly customize the way Ruby does cloning by overriding
+the [Object#initialize_clone](http://jonathanleighton.com/articles/2011/initialize_clone-initialize_dup-and-initialize_copy-in-ruby/)
+method, but that would be an invasive change with broad reaching effects.
+Because extending core objects is a bit safer than modifying them, we opt to
+define our own `Object#copy` method which does a one-level-deep copying of
+instance variables:
 
 ```ruby
 class Object
-  def initialize_clone(other)
+  def copy
+    prototype = clone
+
     instance_variables.each do |ivar_name|
-      other.instance_variable_set(
+      prototype.instance_variable_set(
         ivar_name,
-        instance_variable_get(ivar_name).dup)
+        instance_variable_get(ivar_name).clone)
     end
+
+    prototype
   end
 end
 ```
@@ -371,7 +374,8 @@ longer share exits:
 ```ruby
 room = Object { |o| o.exits = {} }
 
-new_wellhouse = room.clone
+# Use the newly defined Object#copy here instead of Object#clone
+new_wellhouse = room.copy
 
 new_wellhouse.exits[:south] = end_of_road
 
@@ -400,7 +404,7 @@ the "Kevo" research language (I'd link to it, but all the information
 about it seems to have fallen off the Internet) used copying as the sole
 way to share behavior between objects.
 
-**Dynamic prototypes**
+## Dynamic prototypes
 
 There are drawbacks to copying, however. It's a very static way to share
 behavior between objects. Clones of `room` only share the behavior which
@@ -578,11 +582,11 @@ point back to `end_of_road`, using the `exits` association that
 Object(wellhouse) { |o| o.prototype room }
 
 wellhouse.exits[:south] = end_of_road
-```
 
-```ruby
 adventurer.location = wellhouse
 ```
+
+Then we can move around again to make sure things are working as expected:
 
 ```ruby
 puts "* trying to go north from wellhouse"
@@ -601,7 +605,7 @@ Around you is a forest.  A small stream flows out of the building and
 down a gully.
 ```
 
-**Carrying items around**
+## Carrying items around
 
 We now have some powerful tools at our disposal for composing objects
 from prototypes. We quickly proceed to implement the ability to pick up
@@ -721,7 +725,10 @@ down a gully.
 There is a bottle of water here.
 ```
 
-**Observations**
+And with that, we now have a small but functional system which allows us to move
+around the game world and interact with it.
+
+## Reflections
 
 We've written the beginnings of a text adventure game in a
 prototype-based style. Now, let's take a step back and talk about what
@@ -751,10 +758,10 @@ needed them, but no sooner. This kind of emergent, organic design
 process is one of the ideals of agile software development, and
 prototype-based systems seem to encourage it.
 
-That said, the way we jammed prototypes into a class-based language here
-is obviously a horrendous hack. Please don't ever use this in a production system.
-But the experience of writing code in a prototyped style can be
-educational. We can use what we've learned to influence our daily
+Of course, the way we jammed prototypes into a class-based language here
+is a horrendous hack: please don't use it in a production system!
+But the experience of writing code in a prototyped style can teach
+us a lot. We can use what we've learned to influence our daily
 coding. We might prototype (heh) a system's design by writing one-off
 objects at first, adding methods to their singleton classes. Then, as
 patterns of interaction emerge, we might capture the design using
@@ -762,285 +769,19 @@ classes. Prototypes can also teach us to do more with delegation and
 composition, building families of collaborating objects rather than
 hierarchies of related behavior.
 
-## The Prototype Pattern
+Now that we've reached the end of our journey, I hope you've found 
+this trip through prototype-land illuminating and thought-provoking. 
+I'm still a relative newb to this way of thinking, so if you
+have anything to add‚ i.e. other benefits of using prototypes; subtle gotchas;
+experiences from prototype-based languages, or alternative implementations of
+any of the code above, please don't hesitate to pipe up in the comments. Also,
+if you want clarifications about any of the gnarly metaprogramming I used to
+bash Ruby into a semblance of a prototype-based language, feel free to ask --
+but I can't guarantee that the answers will make any more sense than the
+code :-)
 
-But there's another, more concrete way that the prototype paradigm can
-inform our work. If you each over to the shelf where you keep your
-legally mandated copy of Design Patterns, and flip to page 117, you will
-find the *Prototype Pattern* documented in the section on creational
-patterns. The Prototype Pattern is a way to apply prototype-style
-thinking in a class-based language.
-
-**A monster menagerie**
-
-Let's say that after working on our adventure game for a while, we
-decide to move it in the direction of a dungeon-crawl-style game. So
-along with rooms and items, there are also various
-semi-randomly-generated monsters who periodically confront the hero.
-Different types of monster have different stats, such as health, speed,
-and strength. They each have their own types of attack as well.
-
-We'd also like to be able to load up the list of monster types at
-run-time, from a user-editable file like this:
-
-```yaml
-gnome:
-  attack_text: hits you with a club!
-  max_hit_points: 8
-  strength: 5
-  speed: 9
-troll:
-  attack_text: attacks you with a pickaxe!
-  max_hit_points: 12
-  strength: 10
-  speed: 5
-rabbit:
-  attack_text: bites you with sharp, pointy teeth!
-  max_hit_points: 50
-  strength: 50
-  speed: 50
-```
-
-One way to model different monster types would be like this:
-
-```ruby
-class Monster
-  attr_reader :health
-  def initialize
-    @health = max_hit_points
-  end
-end
-
-class Gnome < Monster
-  def name
-    "gnome"
-  end
-
-  def attack_text
-    "attacks you with a pickaxe"
-  end
-
-  def max_hit_points
-    8
-  end
-
-  def strength
-    5
-  end
-
-  def speed
-    9
-  end
-end
-
-g = Gnome.new
-# => #<Gnome:0x00000004020130 @health=8>
-```
-
-Here there is a `Monster` base class, and a subclass for each type of
-monster. But this doesn't really lend itself to dynamically loading
-arbitrary monster types from a file, so we look for other approaches.
-
-**Definitions and instances**
-
-We experiment with one design that uses `MonsterDefinition` classes to
-hold the static attributes of different monsters. A `MonsterDefinition`
-can be told to `#spawn` a `Monster` instance. The `Monster` instance has
-a reference back to its definition, as well as an instance-specific
-health meter (initialized based on the `max_hit_points` of the
-`MonsterDefinition`):
-
-```ruby
-class MonsterDefinition
-  attr_accessor :name,
-                :attack_text,
-                :max_hit_points,
-                :strength,
-                :speed
-
-  def initialize(attributes={})
-    attributes.each do |name, value|
-      public_send("#{name}=", value)
-    end
-  end
-
-  def spawn
-    Monster.new(self)
-  end
-end
-
-class Monster
-  attr_reader :definition
-  attr_accessor :health
-
-  def initialize(definition)
-    @definition = definition
-    @health = definition.max_hit_points
-  end
-end
-
-gnome_def = MonsterDefinition.new(
-  name: "gnome",
-  attack_text: "attacks you with a pickaxe!",
-  max_hit_points: 8,
-  strength: 5,
-  speed: 9)
-
-g = gnome_def.spawn
-# => #<Monster:0x0000000401e268
-#     @definition=
-#      #<MonsterDefinition:0x0000000401e9e8
-#       @attack_text="attacks you with a pickaxe!",
-#       @max_hit_points=8,
-#       @name="gnome",
-#       @speed=9,
-#       @strength=5>,
-#     @health=8>
-```
-
-This approach seems promising. But as we reflect on it, we realize that
-we're probably going to keep adding more of these definition/instance
-pairs of classes. `RoomDefinition=/=Room`, `ItemDefinition=/=Item`. This
-feels like an awful lot of ceremony.
-
-**Cloning creatures**
-
-Finally, we hit upon using the Prototype Pattern. In this version, there
-is only one class: `Monster`. It has slots for both static attributes
-(like `name`, and `strength`), and dynamic attributes like `health`:
-
-```ruby
-class Monster
-  attr_accessor :name,
-                :attack_text,
-                :max_hit_points,
-                :strength,
-                :speed,
-                :health
-
-  def initialize(attributes={})
-    attributes.each do |name, value|
-      public_send("#{name}=", value)
-    end
-  end
-
-  def initialize_dup(other)
-    other.health = max_hit_points
-  end
-end
-```
-
-To initialize our game's bestiary of possible monster types, we load up
-the YAML-formatted monster file and initialize a `Monster` for each
-entry. Dynamic attributes are simply left blank for now. These are our
-prototypes:
-
-```ruby
-require 'yaml'
-bestiary = YAML.load_file('monsters.yml').each_with_object({}) do
-  |(name, attributes), collection|
-  collection[name] = Monster.new(attributes.merge(name: name))
-end
-```
-
-When we want to set up a player encounter with a monster, we simply find
-the appropriate prototype monster, and duplicate it. The customized
-`#initialize_dup` method in `Monster` takes care of setting up an
-initial health meter for the cloned monster:
-
-```ruby
-rabbit = bestiary['rabbit'].dup
-# => #<Monster:0x00000000fbd948
-#     @attack_text="bites you with sharp, pointy teeth!",
-#     @max_hit_points=50,
-#     @name="rabbit",
-#     @speed=50,
-#     @strength=50>
-```
-
-we can easily generate random monsters:
-
-```ruby
-random_foe = bestiary.values.sample.dup
-# => #<Monster:0x00000000fc21f0
-#     @attack_text="attacks you with a pickaxe!",
-#     @max_hit_points=12,
-#     @name="troll",
-#     @speed=5,
-#     @strength=10>
-```
-
-This solution is both shorter and simpler than any of the others we
-looked at.
-
-**Observations**
-
-The Prototype Pattern is, in my experience, one of the more overlooked
-of the Gang of Four patterns. It is useful in many situations. As
-another example, consider a web application where administrators build
-form templates and then users fill out the forms. One way to model this
-is to populate the form builder interface `FormDefinition` objects,
-containing instances of `TextFieldDefinition`,
-`CheckboxFieldDefinition`, `DateFieldDefinition`, and so on. Then, when
-the form definition is complete and ready for user input, a new `Form`
-object is created, using the `FormDefinition` as a guide, with
-`TextField`, `CheckboxField`, `DateField`, etc. objects "inside" of it.
-
-![image](./form-classes-800.png)
-
-If we apply the Prototype Pattern to this problem, we once again do away
-with the definition/instance dichotomy. Instead, building a new form
-simply means assembling a `Form` object, where all of the form fields
-have empty or placeholder values. (This makes it exceptionally easy to
-show a live preview of the form as it is being built). The form is
-published by turning on a flag marking it as a "master" form. Whenever a
-user fills out the form, they are really filling out a duplicate of the
-master.
-
-![image](./form-prototypes-800.png)
-
-Design Patterns says that the Prototype Pattern is appropriate:
-
-> when a system should be should be independent of how its products are
-> created, composed, and represented, *and*
->
-> -   when the classes to instantiate are specified at run-time, for
->     example, by dynamic loading; *or*
-> -   to avoid building a class hierarchy of factories that parallels
->     the class hierarchy of products; *or*
-> -   when instances of a class can have only one of a few different
->     combinations of state. It may be more convenient to install a
->     corresponding number of prototypes and clone them rather than
->     instantiating the class manually, each time with the appropriate
->     state.
-
-## Conclusion
-
-For veterans of class-based languages, using prototype-based OO can seem
-like entering a foreign land. But once you get over the initial
-strangeness, you come to realize that prototype thinking is not only
-fully compatible with OO ideals, it is also, in some ways, a simpler and
-more approachable way of thinking about problems. Using prototypes, you
-start out by focusing on concrete examples, gradually extracting out
-abstractions as needed. You spend less time thinking about where to draw
-the lines between different kinds of object, and more time building
-related families of objects.
-
-The lessons of the prototype-oriented mindset are not simply
-philosophical for users of class-based languages, either. The Prototype
-Pattern is a way to apply prototypes in a class-based system, one that
-can slash through complicated parallel inheritance hierarchies and
-provide a simple, flexible, and dynamic alternative.
-
-I hope you've found this trip through prototype-land illuminating and
-thought-provoking. I'm still a relative newb to this way of thinking, so
-if you have anything to add‚Äîother benefits of using prototypes; subtle
-gotchas; experiences from prototype-based languages, or alternative
-implementations of any of the code above, please don't hesitate to pipe
-up in the comments. Also, if you want clarifications about any of the
-gnarly metaprogramming I used to bash Ruby into a semblance of a
-prototype-based language, feel free to ask. Although I can't guarantee
-that the answers will make any more sense than the code :-)
-
-Happy hacking!
-
+> **NOTE:** If you had fun reading this article, you may also enjoy reading Advi's 
+> blog post on the [Prototype Pattern](/placeholder), a design pattern that takes 
+> ideas from prototype-based programming and applies them to class-based
+> modeling. That post started as a section of this article that gained a life
+> of its own.
