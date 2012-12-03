@@ -210,8 +210,6 @@ Around you is a forest.  A small stream flows out of the building and
 down a gully.
 ```
 
-Success!
-
 ## Moving around
 
 It's time to let our adventurer object stretch its legs a bit.
