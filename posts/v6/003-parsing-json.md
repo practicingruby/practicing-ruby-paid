@@ -1,4 +1,4 @@
-# Parsing JSON the Hard Way
+*This article was contributed by Aaron Patterson. TWO SENTENCES MORE HERE*
 
 Hey everybody!  I hope you're having a great day today!  The sun has peaked out
 of the clouds for a bit today, so I'm doing great!
