@@ -33,7 +33,7 @@ is one of my favorite programming examples for object-oriented systems,
 since it involves modeling a virtual world of interacting objects,
 including characters, items, and interconnected rooms.
 
-We open up an interactive Ruby session, and start typing. We start with
+We open up an interactive Ruby session, and start typing. We begin with
 an `adventurer` object. This object will serve as our avatar in the
 game's world, translating our commands into interactions between
 objects:
@@ -90,12 +90,12 @@ good start! Although, if we're going to be creating a lot of these
 objects we'd like for the process to be a little less verbose. We decide
 to take a step back and build some syntax sugar before moving onward.
 
-We start with an `ObjectBuilder` helper class. Yes, this is a class when
+We start with an `ObjectBuilder` helper class. Yes, this is a class, when
 we are supposed to be using only prototypes. However, Ruby doesn't offer
-a lot of support for prototype-based programming out of the box, so we
+a lot of support for prototype-based programming out of the box. So we
 have to build our tools with the class-oriented materials at hand. This
 is intended to be behind-the-scenes support code. In other words, pay no
-attention to the man behind the green curtain:
+attention to the man behind the green curtain!
 
 ```ruby
 class ObjectBuilder
@@ -685,9 +685,9 @@ As you may recall, `wellhouse` already has a prototype: `room`. But this
 is not a problem. One of the advantages of our dynamic prototyping
 system is that objects may have any number of prototypes. Since
 prototyping is implemented using specialized modules, when an object is
-sent a message it can't handle iself, Ruby will keep searching up an
+sent a message that it can't handle itself, Ruby will keep searching up an
 object's ancestor chain, from one `Prototype` to the next, looking for a
-matching method. (This also puts us one up on JavaScript's
+matching method. (This also puts us one-up on JavaScript's
 single-inheritance prototype system!)
 
 Finally, we make `end_of_road` a container:
