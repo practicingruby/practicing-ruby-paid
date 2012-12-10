@@ -1,4 +1,6 @@
-*This article was contributed by Avdi Grimm. ONE OR TWO MORE SENTENCES HERE*
+*This article was written by Avdi Grimm. Avdi is a [Ruby Rogue][rogue], a
+consulting pair programmer, and the head chef at [RubyTapas][tapas]. He writes
+about software development at [Virtuous Code.][virtuous]*
 
 When you think of the term *object-oriented programming*, one of the
 first associated words that springs to mind is probably *classes*. For
@@ -22,6 +24,9 @@ prototype-style coding. In this article that's just what we'll do.
 
 [self]: http://en.wikipedia.org/wiki/Self_(programming_language
 [io]: http://en.wikipedia.org/wiki/Io_(programming_language)
+[rogue]: http://rubyrogues.com/
+[tapas]: http://devblog.avdi.org/rubytapas/
+[virtuous]: http://devblog.avdi.org/
 
 ## Getting started
 
@@ -779,7 +784,7 @@ but I can't guarantee that the answers will make any more sense than the
 code :-)
 
 > **NOTE:** If you had fun reading this article, you may also enjoy reading Advi's 
-> blog post on the [Prototype Pattern](/placeholder), a design pattern that takes 
+> blog post on the [Prototype Pattern](http://devblog.avdi.org/?p=5560), a design pattern that takes 
 > ideas from prototype-based programming and applies them to class-based
 > modeling. That post started as a section of this article that gained a life
 > of its own.
