@@ -25,6 +25,19 @@ Probably need to dump more notes!
 
 ### My Rails experience:
 
+The kinds of things I used to do as a consultant:
+
+* Build a sinatra wrapper around a Windows-based DLL for a truck routing program
+* Embed a Lua interpreter into a Rails application to support custom reporting formulas.
+* Import data from a motley combination of CSV, Excel, XML, and scraped HTML
+  files and then generate a report based on that information
+* Implement Chess-like ratings for a trivia website
+* Validate various forms of barcodes from retail items
+
+In other words, most of this work has to do with building infrastructure,
+computational models, and reports that end up being used within Rails
+applications, but it is not really web-development work.
+
 I actually have worked *within* Rails apps throughout most of my career, but
 nearly always with the help of a designer and frontend developer, or in cases
 where I had to do the work myself, someone who I could help-vampire to death.
