@@ -165,8 +165,10 @@ Prawn::Document.generate("span.pdf") do
 
   bounding_box([50,300], :width => 400) do 
     text "Here's some default bounding box text. " * 10 
-    span(bounds.width, :position => bounds.absolute_left - margin_box.absolute_left) do
-      text "The rain in Spain falls mainly on the plains. " * 300 end
+
+    pos = bounds.absolute_left - margin_box.absolute_left
+    span(bounds.width, :position => pos) do
+      text "The rain in Spain falls mainly on the plains. " * 300 
     end
   end
 

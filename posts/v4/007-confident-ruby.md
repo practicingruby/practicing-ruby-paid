@@ -369,7 +369,7 @@ class Account
     end
   end
 
-  # Yields a hash of cleaned-up transaction attributes for each fetched transaction
+  # Yields a hash of cleaned-up transaction attributes for each transaction
   def fetch_transactions
     transactions = bank.read_transactions(account_number)
     transactions.is_a?(Array) or raise TypeError, "transactions is not an Array"

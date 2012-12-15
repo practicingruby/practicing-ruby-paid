@@ -130,7 +130,8 @@ system works. In a nutshell, the `Game#on_event` method sets up callbacks that g
 
     game.move(mine.x - Blind::Game::MINE_DETONATION_RANGE, mine.y)
 
-    refute detonated, "should not be detonated before player is in the mine's range"
+    refute detonated, "should not be detonated before " +
+                      "player is in the mine's range"
 
     game.move(1, 0)
 
@@ -432,7 +433,7 @@ module Blind
         end
       end
 
-      # this triggers a "SURPRISE MATH ATTACK!" similar to the one in Blind::World
+      # this triggers a "SURPRISE MATH ATTACK!" as in Blind::World
       def detect_danger_zone
         if in_danger_zone
           min = Blind::World::DANGER_ZONE_RANGE.min

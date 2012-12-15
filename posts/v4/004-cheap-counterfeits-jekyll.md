@@ -100,7 +100,7 @@ end
 This mode makes it so that patterns ignore whitespace characters, making the previous pattern functionally equivalent to the following pattern:
 
 ```ruby
-PATTERN = /\A(?<year>\d{4})-(?<month>\d{2})-(?<day>\d{2})-(?<basename>.*).markdown\z/x
+/\A(?<year>\d{4})-(?<month>\d{2})-(?<day>\d{2})-(?<basename>.*).markdown\z/x
 ```
 
 However, this mode does not exist primarily to serve the needs of those with obsessive code formatting habits, but instead exists to make it possible to break up and document long regular expressions, such as in the following example:

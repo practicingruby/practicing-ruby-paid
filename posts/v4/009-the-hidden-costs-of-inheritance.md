@@ -102,7 +102,8 @@ and leave it up to you to figure out *why* this can be a source of
 maintenance headaches, but please share your thoughts in the comments:
 
 ```ruby
->> (ActiveRecord::Base.instance_methods | ActiveRecord::Base.private_instance_methods)
+>> (ActiveRecord::Base.instance_methods | 
+    ActiveRecord::Base.private_instance_methods)
 => [:logger, :configurations, :default_timezone, :schema_format,
 :timestamped_migrations, :init_with, :initialize_dup, :encode_with, :==, :eql?,
 :hash, :freeze, :frozen?, :<=>, :readonly?, :readonly!, :inspect, :to_yaml,
@@ -251,7 +252,8 @@ end
 person = Person.new("Gregory Brown", "gregory@practicingruby.com")
 
 p person    #=~
-#<Person:0x0000010108bbf8 @name="Gregory Brown", @email="gregory@practicingruby.com">
+#<Person:0x0000010108bbf8 @name="Gregory Brown", 
+#                         @email="gregory@practicingruby.com">
 
 puts person #=~
 #<Person:0x0000010108bbf8>     

@@ -393,9 +393,9 @@ and is available in Ruby as `IO.select`:
 IO.select(read_array [, write_array [, error_array [, timeout]]])
 
 Calls select(2) system call. It monitors supplied arrays of IO objects and waits
-until one or more IO objects are ready for reading, ready for writing, or have errors.
-It returns an array of those IO objects that need attention. It returns nil
-if the optional timeout (in seconds) was supplied and has elapsed.
+until one or more IO objects are ready for reading, ready for writing, or have
+errors. It returns an array of those IO objects that need attention. It returns 
+nil if the optional timeout (in seconds) was supplied and has elapsed.
 ```
 
 With this knowledge, we can write a much better `#tick` method:
