@@ -1,4 +1,4 @@
-*This article was contributed by Aaron Patterson. TWO SENTENCES MORE HERE*
+*This article was contributed by Aaron Patterson. Aaron Patterson is a Ruby developer living in Seattle, WA.  He's been having fun writing Ruby for the past 7 years, and hopes to share his love of Ruby with you!*
 
 Hey everybody!  I hope you're having a great day today!  The sun has peaked out
 of the clouds for a bit today, so I'm doing great!
