@@ -147,7 +147,7 @@ rule
     | a_or_c
     ;
   a_or_c : 'a' | 'c' ;
-  abb    : 'a' | 'b' | 'b';
+  abb    : 'a' 'b' 'b';
 end
 ```
 
@@ -167,7 +167,7 @@ rule
     | a_or_c
     ;
   a_or_c : 'a' | 'c' ;
-  abb    : 'a' | 'b' | 'b';
+  abb    : 'a' 'b' 'b';
 end
 ```
 
@@ -194,7 +194,7 @@ rule
     | a_or_c
     ;
   a_or_c : 'a' | 'c' ;
-  abb    : 'a' | 'b' | 'b';
+  abb    : 'a' 'b' 'b';
 end
 ```
 
