@@ -531,6 +531,13 @@ module RJSON
     def scalar(s)
       @stack.last << [:scalar, s]
     end
+
+    private
+
+    def push o
+      @stack.last << o
+      @stack << o
+    end
   end
 end
 ```
