@@ -12,7 +12,7 @@ parser in one sitting, and because the grammar is complex enough that we can
 exercise some compiler tools in Ruby.
 
 Remember, this isn't an article about parsing JSON, this is an article about
-using parser and compiler tools.
+using parser and compiler tools in Ruby.
 
 ## The Tools We'll Be Using
 
@@ -24,11 +24,11 @@ and a tool called "StringScanner".
 
 We'll be using Racc to generate our parser.  Racc is an LALR parser generator
 similar to YACC.  YACC stands for "Yet Another Compiler Compiler", but this is
-the Ruby version, hence "Racc".  Racc converts a grammar file (the ".y" file) in
+the Ruby version, hence "Racc".  Racc converts a grammar file (the ".y" file)
 to a Ruby file that contains state transitions.  These state transitions are
-interpreted by the Racc runtime.  The Racc runtime ships with Ruby, but the tool
-that converts the ".y" files to state tables does not.  In order to install the
-converter, do `gem install racc`.
+interpreted by the Racc state machine (or runtime).  The Racc runtime ships
+with Ruby, but the tool that converts the ".y" files to state tables does not.
+In order to install the converter, do `gem install racc`.
 
 We will write ".y" files, but users cannot run the ".y" files.  First we convert
 them to runnable Ruby code, and ship the runnable Ruby code in our Gem.  In
@@ -86,6 +86,9 @@ irb(main):009:0>
 
 The `getch` method returns the next character, and advances the pointer in the
 StringScanner by one.
+
+Now that we've covered some of the basics for scanning strings in Ruby, let's
+take a look at using Racc.
 
 ## Racc Basics
 
@@ -210,7 +213,7 @@ Our JSON parser is going to consist of three different objects:
 * Tokenizer
 * Document Handler
 
-The parser will be written with a Racc grammar, and it will ask the tokenizer
+The parser will be written with a Racc grammar, and will ask the tokenizer
 for input from the input stream.  Whenever the parser can identify a part of the
 JSON stream, it will send an event to the document handler.  The document
 handler is responsible for collecting the JSON information and translating it to
@@ -229,9 +232,9 @@ finally implement the document handler.
 
 ## Building the Tokenizer
 
-Our tokenizer is going to be constructed with an IO object.  We'll read the JSON
-data from the IO object, and provide tokens back to the caller every time
-`next_token` is called.
+Our tokenizer is going to be constructed with an IO object.  We'll read the
+JSON data from the IO object.  Every time `next_token` is called, the tokenizer
+will pull a token from the input, and return it.
 
 Our tokenizer will return the following tokens, which we derived from the [JSON
 spec](http://www.json.org/):
@@ -324,8 +327,10 @@ irb(main):009:0> tok.next_token
 In this example, we wrap the JSON string with a `StringIO` object in order to
 make the string quack like an IO.  Next, we try reading tokens from the
 tokenizer.  Each token the Tokenizer "knows" has the name as the first value of
-the array, where the unknown tokens have the single character value.  Finally,
-`nil` is returned when the input has been exhausted.
+the array, where the unknown tokens have the single character value.  For
+example, string tokens look like this: `[:STRING, "foo"]`, and unknown tokens
+look like this: `['(', '(']`.   Finally, `nil` is returned when the input has
+been exhausted.
 
 This is it for our tokenizer.  The tokenizer is constructed with an IO, and has
 only one method: `next_token`.  Now we can focus on the parser side.
@@ -403,7 +408,7 @@ separated by a comma:
 ```
 
 The JSON spec defines a `value` as a string, number, object, array, true, false,
-or null.  We'll define it the same way, but for the immidiate values such as
+or null.  We'll define it the same way, but for the immediate values such as
 NUMBER, TRUE, and FALSE, we'll use the token names we defined in the tokenizer:
 
 ```
@@ -504,9 +509,8 @@ object we are parsing.
 
 ### Keeping Track of Events
 
-The handler we will build will simply keep track of events sent to us by the
-parser.  This creates tree-like data structure that we'll use to convert JSON to
-Ruby.
+The handler we build will simply keep track of events sent to us by the parser.
+This creates tree-like data structure that we'll use to convert JSON to Ruby.
 
 ```ruby
 module RJSON
@@ -534,7 +538,7 @@ module RJSON
 
     private
 
-    def push o
+    def push(o)
       @stack.last << o
       @stack << o
     end
@@ -542,7 +546,7 @@ module RJSON
 end
 ```
 
-When the parser encounters the start of an ovject, the handler pushes a list on
+When the parser encounters the start of an object, the handler pushes a list on
 the stack with the "hash" symbol to indicate the start of a hash.  Events that
 are children will be added to the parent, then when the object end is
 encountered the parent is popped off the stack.
@@ -600,8 +604,10 @@ end
 
 The `result` method removes the `root` node and sends the rest to the `process`
 method.  When the `process` method encounters a `hash` symbol it builds a hash
-using the children by recursively calling `process`.  Now if we call `result` on
-our handler, we can get the Ruby object back.
+using the children by recursively calling `process`.  Similarly, when an
+`array` symbol is found, an array is constructed recursively with the children.
+Scalar values are simply returned (which prevents an infinite loop).  Now if we
+call `result` on our handler, we can get the Ruby object back.
 
 Let's see it in action:
 
@@ -664,9 +670,9 @@ RJSON.load_io open('http://example.org/some_endpoint.json')
 
 So we've finished our JSON parser.  Along the way we've studied compiler
 technology including the basics of parsers, tokenizers, and even interpreters
-(yes, we actually interpreted out JSON!).  You should be proud of yourself!
+(yes, we actually interpreted our JSON!).  You should be proud of yourself!
 
-The JSON parser we've built is versatile, we can:
+The JSON parser we've built is versatile. We can:
 
 * Use it in an event driven manner by implementing a Handler object
 * Use a simpler API and just feed strings
