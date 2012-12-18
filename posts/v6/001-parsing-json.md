@@ -1,26 +1,28 @@
-*This article was contributed by Aaron Patterson. Aaron Patterson is a Ruby developer living in Seattle, WA.  He's been having fun writing Ruby for the past 7 years, and hopes to share his love of Ruby with you!*
+*This article was written by Aaron Patterson, a Ruby
+developer living in Seattle, WA.  He's been having fun writing Ruby for the past
+7 years, and hopes to share his love of Ruby with you.*
 
-Hey everybody!  I hope you're having a great day today!  The sun has peaked out
+Hey everybody!  I hope you're having a great day today!  The sun has peeked out
 of the clouds for a bit today, so I'm doing great!
 
-Today, we're going to be looking at a some compiler tools for use with Ruby.  In
+In this article, we're going to be looking at a some compiler tools for use with Ruby.  In
 order to explore these tools, we'll write a JSON parser.  I know you're saying,
 "but Aaron, *why* write a JSON parser?  Don't we have like 1,234,567 of them?".
 Yes!  We do have precisely 1,234,567 JSON parsers available in Ruby!  We're
 going to parse JSON because the grammar is simple enough that we can finish the
 parser in one sitting, and because the grammar is complex enough that we can
-exercise some compiler tools in Ruby.
+exercise some of Ruby's compiler tools.
 
-Remember, this isn't an article about parsing JSON, this is an article about
-using parser and compiler tools in Ruby.
+As you read on, keep in mind that this isn't an article about parsing JSON, 
+its an article about using parser and compiler tools in Ruby.
 
 ## The Tools We'll Be Using
 
 I'm going to be testing this with Ruby 1.9.3, but it should work under any
-flavor of Ruby you wish to try.  Mainly, we will be using a tool called "Racc",
-and a tool called "StringScanner".
+flavor of Ruby you wish to try.  Mainly, we will be using a tool called `Racc`,
+and a tool called `StringScanner`.
 
-### Racc
+**Racc:**
 
 We'll be using Racc to generate our parser.  Racc is an LALR parser generator
 similar to YACC.  YACC stands for "Yet Another Compiler Compiler", but this is
@@ -31,18 +33,18 @@ with Ruby, but the tool that converts the ".y" files to state tables does not.
 In order to install the converter, do `gem install racc`.
 
 We will write ".y" files, but users cannot run the ".y" files.  First we convert
-them to runnable Ruby code, and ship the runnable Ruby code in our Gem.  In
-practical terms, this means that **only we install the Racc gem**, other users
+them to runnable Ruby code, and ship the runnable Ruby code in our gem.  In
+practical terms, this means that *only we install the Racc gem*, other users
 do not need it.
 
 Don't worry if this doesn't make sense right now.  It will become more clear
 when we get our hands dirty and start playing with code.
 
-### StringScanner
+**StringScanner:**
 
-[`StringScanner` is a
+[StringScanner is a
 class](http://ruby-doc.org/stdlib-1.9.3/libdoc/strscan/rdoc/StringScanner.html)
-that (just like the name) helps us scan strings.  It keeps track of where we are
+that (just like the name implies) helps us scan strings.  It keeps track of where we are
 in the string, and lets us advance forward via regular expressions, or just one
 character at a time.
 
@@ -66,13 +68,13 @@ irb(main):007:0>
 ```
 
 Notice that the third call to
-[`StringScanner#scan`](http://ruby-doc.org/stdlib-1.9.3/libdoc/strscan/rdoc/StringScanner.html#method-i-scan)
+[StringScanner#scan](http://ruby-doc.org/stdlib-1.9.3/libdoc/strscan/rdoc/StringScanner.html#method-i-scan)
 resulted in a `nil`, since the regular expression did not match from the current
-position.  Also note that when you inspect the StringScanner instance, you can
+position.  Also note that when you inspect the `StringScanner` instance, you can
 see the position of the scanner (in this case `2/7`).
 
 We can also move through the scanner character by character using
-[`StringScanner#getch`](http://ruby-doc.org/stdlib-1.9.3/libdoc/strscan/rdoc/StringScanner.html#method-i-getch):
+[StringScanner#getch](http://ruby-doc.org/stdlib-1.9.3/libdoc/strscan/rdoc/StringScanner.html#method-i-getch):
 
 ```ruby
 irb(main):006:0> ss
@@ -84,17 +86,16 @@ irb(main):008:0> ss
 irb(main):009:0>
 ```
 
-The `getch` method returns the next character, and advances the pointer in the
-StringScanner by one.
+The `getch` method returns the next character, and advances the pointer by one.
 
-Now that we've covered some of the basics for scanning strings in Ruby, let's
-take a look at using Racc.
+Now that we've covered some of the basics for scanning strings, let's take a 
+look at using Racc.
 
 ## Racc Basics
 
-As we said earlier, Racc is an LALR parser generator.  We can think of it as a
-system that lets us write limited regular expressions, and execute arbitrary
-code at different points inside that regular expression.
+As I said earlier, Racc is an LALR parser generator.  You can think of it as a
+system that lets you write limited regular expressions that can execute
+arbitrary code at different points as they're being evaluated.
 
 Let's look at an example.  Suppose we have a pattern we want to match:
 `(a|c)*abb`.  That is, we want to match any number of 'a' or 'c' followed by
@@ -154,8 +155,7 @@ rule
 end
 ```
 
-The `abb` production is just hanging there, so we'll add the final production to
-tie everything together:
+Finally, the `string` production ties everything together:
 
 
 ```
@@ -174,11 +174,11 @@ rule
 end
 ```
 
-The final production named `string` matches a one or more 'a' or 'c' followed by
-'abb' or just the string 'abb' itself.  This is equivalent to our original
+This final production matches one or more 'a' or 'c' characters followed by
+'abb', or just the string 'abb' on its own.  This is equivalent to our original
 regular expression of `(a|c)*abb`.
 
-### But Aaron, this is so long!
+**But Aaron, this is so long!**
 
 I know, it's much longer than the regular expression version.  However, we can
 add arbitrary Ruby code to be executed at any point in the matching process.
@@ -203,41 +203,30 @@ end
 
 The Ruby code we want to execute should be wrapped in curly braces and placed
 after the rule where we want the trigger to fire.  Let's use the knowledge we
-have so far to build an event based JSON parser!
+have so far to build an event based JSON parser.
 
-# Building our JSON Parser
+## Building our JSON Parser
 
-Our JSON parser is going to consist of three different objects:
-
-* Parser
-* Tokenizer
-* Document Handler
-
-The parser will be written with a Racc grammar, and will ask the tokenizer
-for input from the input stream.  Whenever the parser can identify a part of the
-JSON stream, it will send an event to the document handler.  The document
-handler is responsible for collecting the JSON information and translating it to
-a Ruby data structure.
-
-Here is a diagram of the object references:
-
-![object references](http://i.imgur.com/blKPq.png)
-
-When we read in a JSON document, here is a diagram of the method calls made:
+Our JSON parser is going to consist of three different objects, a parser, a
+tokenizer, and document handler.The parser will be written with a Racc grammar, 
+and will ask the tokenizer for input from the input stream.  Whenever the parser 
+can identify a part of the JSON stream, it will send an event to the document 
+handler.  The document handler is responsible for collecting the JSON 
+information and translating it to a Ruby data structure. When we read in 
+a JSON document, the following method calls are made:
 
 ![method calls](http://i.imgur.com/HZ0Sa.png)
 
-We'll focus on building the tokenizer first, then work on the grammar, and
-finally implement the document handler.
+It's time to get started building this system. We'll focus on building the 
+tokenizer first, then work on the grammar for the parser, and finally implement 
+the document handler.
 
-## Building the Tokenizer
+## Building the tokenizer
 
 Our tokenizer is going to be constructed with an IO object.  We'll read the
 JSON data from the IO object.  Every time `next_token` is called, the tokenizer
-will pull a token from the input, and return it.
-
-Our tokenizer will return the following tokens, which we derived from the [JSON
-spec](http://www.json.org/):
+will read a token from the input and return it. Our tokenizer will return the 
+following tokens, which we derived from the [JSON spec](http://www.json.org/):
 
 * Strings
 * Numbers
@@ -247,7 +236,7 @@ spec](http://www.json.org/):
 
 Complex types like arrays and objects will be determined by the parser.
 
-### `next_token` return values
+**`next_token` return values:**
 
 When the parser calls `next_token` on the tokenizer, it expects a two element
 array or a `nil` to be returned.  The first element of the array must contain
@@ -255,7 +244,7 @@ the name of the token, and the second element can be anything (but most people
 just add the matched text).  When a `nil` is returned, that indicates there are
 no more tokens left in the tokenizer.
 
-### Tokenizer Source
+**`Tokenizer` class definition:**
 
 Let's look at the source for the Tokenizer class and walk through it:
 
@@ -326,26 +315,26 @@ irb(main):009:0> tok.next_token
 
 In this example, we wrap the JSON string with a `StringIO` object in order to
 make the string quack like an IO.  Next, we try reading tokens from the
-tokenizer.  Each token the Tokenizer "knows" has the name as the first value of
+tokenizer.  Each token the Tokenizer understands has the name as the first value of
 the array, where the unknown tokens have the single character value.  For
 example, string tokens look like this: `[:STRING, "foo"]`, and unknown tokens
 look like this: `['(', '(']`.   Finally, `nil` is returned when the input has
 been exhausted.
 
-This is it for our tokenizer.  The tokenizer is constructed with an IO, and has
-only one method: `next_token`.  Now we can focus on the parser side.
+This is it for our tokenizer.  The tokenizer is initialized with an `IO` object, 
+and has only one method: `next_token`.  Now we can focus on the parser side.
 
-## Building the Parser
+## Building the parser
 
 We have our tokenizer in place, so now it's time to assemble the parser.  First
 we need to do a little house keeping.  We're going to generate a Ruby file from
 our `.y` file.  The Ruby file needs to be regenerated every time the `.y` file
 changes.  A Rake task sounds like the perfect solution.
 
-### A Compile Task
+**Defining a compile task:**
 
-First thing we'll add to the Rakefile is a rule that says "translate .y files to
-.rb files using this command":
+The first thing we'll add to the Rakefile is a rule that says *"translate .y files to
+.rb files using the following command"*:
 
 ```ruby
 rule '.rb' => '.y' do |t|
@@ -372,7 +361,7 @@ task :test => :compile
 
 Now we can compile and test the `.y` file.
 
-### Translating the JSON.org spec
+**Translating the JSON.org spec:**
 
 We're going to translate the diagrams from [json.org](http://www.json.org/) to a
 Racc grammar.  A JSON document should be an object or an array at the root, so
@@ -423,7 +412,7 @@ NUMBER, TRUE, and FALSE, we'll use the token names we defined in the tokenizer:
     ;
 ```
 
-Now we need to define the missing `object` production.  Objects can be empty, or
+Now we need to define the `object` production.  Objects can be empty, or
 have many pairs:
 
 ```
@@ -492,7 +481,7 @@ rule
 end
 ```
 
-## Building the Handler
+## Building the handler
 
 Our parser will send events to a document handler.  The document handler will
 assemble the beautiful JSON bits in to lovely Ruby object!  Granularity of the
@@ -507,7 +496,7 @@ events is really up to you, but I'm going to go with 5 events:
 With these 5 events, we can assemble a Ruby object that represents the JSON
 object we are parsing.
 
-### Keeping Track of Events
+**Keeping track of events**
 
 The handler we build will simply keep track of events sent to us by the parser.
 This creates tree-like data structure that we'll use to convert JSON to Ruby.
@@ -575,7 +564,7 @@ variable will look like this:
     [:scalar, true]]]]
 ```
 
-### Converting to Ruby
+**Converting to Ruby:**
 
 Now that we have an intermediate representation of the JSON, let's convert it to
 a Ruby data structure.  To convert to a Ruby data structure, we can just write a
@@ -621,7 +610,7 @@ handler = parser.parse
 handler.result # => {"foo"=>"bar"}
 ```
 
-### Cleaning up the Ruby API
+**Cleaning up the RJSON API:**
 
 We have a fully function JSON parser.  Unfortunately, the API is not very
 friendly.  Let's take the previous example, and package it up in a method:
@@ -666,7 +655,7 @@ RJSON.load '{"foo":"bar"}' # => {"foo"=>"bar"}
 RJSON.load_io open('http://example.org/some_endpoint.json')
 ```
 
-## Wrap Up
+## Reflections 
 
 So we've finished our JSON parser.  Along the way we've studied compiler
 technology including the basics of parsers, tokenizers, and even interpreters
@@ -679,20 +668,21 @@ The JSON parser we've built is versatile. We can:
 * Stream in JSON via IO objects
 
 I hope this article has given you the confidence to start playing with parser
-and compiler technology in Ruby!
+and compiler technology in Ruby. Please leave a comment if you have any
+questions for me.
 
 ## Post Script
 
 I want to follow up with a few bits of minutiae that I omitted to maintain
-clarity in the article.
+clarity in the article:
 
-[Here](https://github.com/tenderlove/rjson/blob/master/lib/rjson/parser.y) is
+* [Here](https://github.com/tenderlove/rjson/blob/master/lib/rjson/parser.y) is
 the final grammar file for our JSON parser.  Notice 
-the [`---- inner` section in the .y file](https://github.com/tenderlove/rjson/blob/master/lib/rjson/parser.y#L53).
+the [---- inner section in the .y file](https://github.com/tenderlove/rjson/blob/master/lib/rjson/parser.y#L53).
 Anything in that section is included *inside* the generated parser class.  This
 is how we get the handler object to be passed to the parser.
 
-Our parser actually [does the
+* Our parser actually [does the
 translation](https://github.com/tenderlove/rjson/blob/master/lib/rjson/parser.y#L42-50)
 of JSON terminal nodes to Ruby.  So we're actually doing the translation of JSON
 to Ruby in two places: the parser *and* the document handler.  The document
@@ -700,10 +690,10 @@ handler deals with structure where the parser deals with immediate values (like
 true, false, etc).  An argument could be made that none or all of this
 translation *should* be done in the parser.
 
-Finally, I mentioned that [the
+* Finally, I mentioned that [the
 tokenizer](https://github.com/tenderlove/rjson/blob/master/lib/rjson/tokenizer.rb)
 buffers.  I implemented a simple non-buffering tokenizer that you can read
 [here](https://github.com/tenderlove/rjson/blob/master/lib/rjson/stream_tokenizer.rb).
 It's pretty messy, but I think could be cleaned up by using a state machine.
 
-Thanks for reading!  <3<3<3
+That's all. Thanks for reading! <3 <3 <3

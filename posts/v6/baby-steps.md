@@ -1,3 +1,36 @@
+No matter what path you took in order to become a programmer, your first 
+useful software project was probably the end result of many hard nights 
+and weekends of dedicated practice. Like any other complicated set of skills,
+learning how to master the art of programming can be very rewarding, but 
+it can also be downright exhausting at times.
+
+To get to where you are now, the raw enthusiasm and dedication that carried
+you through the beginners phase could not possibly have faded away. But to 
+become an experienced programmer is to realize that there simply are not enough
+nights and weekends in a lifetime to learn all the things we wish we could.
+Because some degree of specialization is necessary in order to be productive, it
+is impossible for your skillset to grow in a perfectly balanced way.
+
+Every programmer needs to accept this unpleasant tradeoff between learning
+everything they possibly can and getting stuff done, and so we tend to accumulate 
+many technical blindspots throughout our careers. The more free time we have,
+the less likely we are to notice this hard limitation, but we all end up hitting
+the same brick wall in the end. As I've learned through personal experience,
+nothing accelerates this process faster than trying to start a family: once
+you do that, your whole approach towards learning needs to change. But as I
+said, everyone will feel this tension sooner or later, so it makes sense to
+learn how to deal with it regardless of what your ambitions in life are. 
+
+We all have different gaps in our knowledge, but one of the big ones for me has
+been web development skills, particularly full-stack Rails programming. In this
+article, I will use this weakness of mine to demonstrate to you how I tend to
+work when I am outside of my comfort zone, especially now that I have very
+little free time in my life for nonessential exploratory coding. My hope is that
+you'll be able to try out these ideas in your own studies so that you can
+overcome your own fears of the things that lie beyond your own comfort zone.
+
+### Body
+
 Probably need to dump more notes!
 
 - this is an article about how to build a side project in lots of small time
