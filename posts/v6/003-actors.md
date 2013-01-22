@@ -38,8 +38,8 @@ In this problem, five philosophers meet to have dinner. They seat at a round
 table and each one have a bowl of rice in front of him. There are also five
 chopstick, one between each philosopher. The philosophers spent their time
 thinking about _The Meaning of Life_. After some time of thinking they get
-hungry and try to eat. But for a philosopher to eat, he must first pick the two
-chopstick, to his left and right, so he can grab the rice. If any other
+hungry and try to eat. But the philosopher needs a chopstick in both
+hands in order to grab the rice. If any other
 philosopher has already taken one of those chopstick chopstick, the hungry
 philosopher will wait until chopstick is available.
 
@@ -48,10 +48,9 @@ lead to deadlock issues. To illustrate those issues lets first model the problem
 in Ruby.
 
 ```ruby
-
 class Chopstick
   def initialize
-    @mutex    = Mutex.new
+    @mutex = Mutex.new
   end
 
   def pick
@@ -63,61 +62,58 @@ class Chopstick
   end
 end
 
+class Table
+  attr_reader :chopsticks, :philosophers
+
+  def initialize(philosophers)
+    @philosophers = philosophers
+    @chopsticks   = philosophers.size.times.map { Chopstick.new }
+  end
+
+  def left_chopstick_at(position)
+    index = position % chopsticks.size
+    chopsticks[index]
+  end
+
+  def right_chopstick_at(position)
+    index = (position + 1) % chopsticks.size
+    chopsticks[index]
+  end
+end
+
+
 class Philosopher
-  attr_reader :name
+  attr_reader :name, :thought, :left_chopstick, :right_chopstick
 
   def initialize(name)
     @name = name
   end
 
   def seat(table, position)
-    @left_chopsitck  = table.left_chopsitck_at(position)
-    @right_chopsitck = table.right_chopsitck_at(position)
-
-    think
+    @left_chopstick  = table.left_chopstick_at(position)
+    @right_chopstick = table.right_chopstick_at(position)
   end
 
   def think
     puts "#{name} is thinking"
-    sleep(rand)
-    eat
   end
 
   def eat
-    pick_chopsitcks
+    pick_chopsticks
+
     puts "#{name} is eating."
-    sleep(rand)
-    drop_chopsitcks
-    think
+
+    drop_chopsticks
   end
 
-  def pick_chopsitcks
-    left_chopsitck.pick
-    right_chopsitck.pick
+  def pick_chopsticks
+    left_chopstick.pick
+    right_chopstick.pick
   end
 
-  def drop_chopsitcks
-    left_chopsitck.drop
-    right_chopsitck.drop
-  end
-end
-
-class Table
-  attr_reader :chopsitcks, :philosophers
-
-  def initialize(philosophers)
-    @philosophers = philosophers
-    @chopsitcks   = philosophers.size.times.collect { Chopstick.new }
-  end
-
-  def left_chopsitck_at(position)
-    index = (position - 1) % chopsitcks.size
-    chopsitcks[index]
-  end
-
-  def right_chopsitck_at(position)
-    index = (position + 1) % chopsitcks.size
-    chopsitcks[index]
+  def drop_chopsticks
+    left_chopstick.drop
+    right_chopstick.drop
   end
 end
 ```
@@ -126,7 +122,7 @@ The code is fairly self-explanatory. The chopstick class is just a thin wrapper
 around a regular Ruby mutex that will ensure that two philosophers can not grab
 the same chopstick at the same time. The Table class deals with the geometry of
 the problem; it knows where each philosopher is seated and which chopstick is to
-his left or to his right.
+the left or to the right of that position.
 
 The philosophers themselves are also pretty simple. They can only seat a table,
 pick and drop chopsticks, think and eat.
@@ -172,15 +168,15 @@ dining_philosophers_uncoordinated.rb:79:in `join': deadlock detected (fatal)
 ```
 
 We have reach a situation in which each philosopher is hungry and trying to eat.
-Each one of them has already picked the chopstick to his left and is waiting for
-the chopstick to his right. Since all of them are hungry and waiting to eat, no
-one of them will drop his left chopstick and we have reached a deadlock.
+Each one of them has already picked the left chopstick and is waiting for
+the right chopstick. Since all of them are hungry and waiting to eat, no
+one of them will drop the left chopstick and we have reached a deadlock.
 
 
 ## A solution using mutexes
 
-One easy solution to this issue is introduce a waiter in the table. Anytime a
-philosopher is hungry he must ask the waiter first. If the number of chopsticks
+One easy solution to this issue is introduce a waiter in the table. In this
+model, the philosopher must ask the waiter before eating. If the number of chopsticks
 in use is four or more, the waiter will make wait the philosopher, so at least
 one philosopher will be able to eat at any time and the deadlock will be
 avoided.
@@ -190,7 +186,7 @@ in use until the next philosopher start to eat we have a critical region. That
 is: if we let two concurrent threads to execute that code at the same time there
 is still a chance of a deadlock. Let's say the waiter checks the number of
 chopsticks used and see it is 3. At that moment, the scheduler yields control to
-another philosopher who is just picking his chopstick. When the execution flow
+another philosopher who is just picking the chopstick. When the execution flow
 comes back to the original thread, it will allow the original philosopher to
 eat, even if there are maybe more than four chopsticks already in use.
 
