@@ -42,11 +42,10 @@ when we get our hands dirty and start playing with code.
 
 **StringScanner:**
 
-[StringScanner is a
-class](http://ruby-doc.org/stdlib-1.9.3/libdoc/strscan/rdoc/StringScanner.html)
-that (just like the name implies) helps us scan strings.  It keeps track of where we are
-in the string, and lets us advance forward via regular expressions, or just one
-character at a time.
+[StringScanner](http://ruby-doc.org/stdlib-1.9.3/libdoc/strscan/rdoc/StringScanner.html)
+is a class that (just like the name implies) helps us scan strings.  It keeps track of where we are
+in the string, and lets us advance forward via regular expressions or by
+character.
 
 Let's try it out!  First we'll create a `StringScanner` object, then we'll scan
 some letters from it:
