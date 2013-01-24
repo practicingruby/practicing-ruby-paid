@@ -47,21 +47,36 @@ This problem is interesting because if it is not properly solved it can easly
 lead to deadlock issues. To illustrate those issues lets first model the problem
 in Ruby.
 
+### A couple supporting objects
+
+The Chopstick!
+
 ```ruby
 class Chopstick
   def initialize
     @mutex = Mutex.new
   end
 
-  def pick
+  def take
     @mutex.lock
   end
 
   def drop
     @mutex.unlock
+
+  rescue ThreadError
+    puts "Trying to drop a chopstick not acquired"
+  end
+
+  def in_use?
+    @mutex.locked?
   end
 end
+```
 
+The Table!
+
+```ruby
 class Table
   attr_reader :chopsticks, :philosophers
 
@@ -70,8 +85,12 @@ class Table
     @chopsticks   = philosophers.size.times.map { Chopstick.new }
   end
 
+  def max_chopsticks
+    chopsticks.size - 1
+  end
+
   def left_chopstick_at(position)
-    index = position % chopsticks.size
+    index = (position - 1) % chopsticks.size
     chopsticks[index]
   end
 
@@ -79,41 +98,9 @@ class Table
     index = (position + 1) % chopsticks.size
     chopsticks[index]
   end
-end
 
-
-class Philosopher
-  attr_reader :name, :thought, :left_chopstick, :right_chopstick
-
-  def initialize(name)
-    @name = name
-  end
-
-  def seat(table, position)
-    @left_chopstick  = table.left_chopstick_at(position)
-    @right_chopstick = table.right_chopstick_at(position)
-  end
-
-  def think
-    puts "#{name} is thinking"
-  end
-
-  def eat
-    pick_chopsticks
-
-    puts "#{name} is eating."
-
-    drop_chopsticks
-  end
-
-  def pick_chopsticks
-    left_chopstick.pick
-    right_chopstick.pick
-  end
-
-  def drop_chopsticks
-    left_chopstick.drop
-    right_chopstick.drop
+  def chopsticks_in_use
+    @chopsticks.select { |f| f.in_use? }.size
   end
 end
 ```
@@ -124,6 +111,315 @@ the same chopstick at the same time. The Table class deals with the geometry of
 the problem; it knows where each philosopher is seated and which chopstick is to
 the left or to the right of that position.
 
+
+## A naive (and incorrect!) solution
+
+
+```ruby
+class Philosopher
+  attr_reader :name, :thought, :left_chopstick, :right_chopstick
+
+  def initialize(name)
+    @name = name
+  end
+
+  def dine(table, position)
+    @left_chopstick  = table.left_chopstick_at(position)
+    @right_chopstick = table.right_chopstick_at(position)
+
+    loop do
+      think
+      eat
+    end
+  end
+
+  def think
+    puts "#{name} is thinking"
+  end
+
+  def eat
+    take_chopsticks
+
+    puts "#{name} is eating."
+
+    drop_chopsticks
+  end
+
+  def take_chopsticks
+    left_chopstick.take
+    right_chopstick.take
+  end
+
+  def drop_chopsticks
+    left_chopstick.drop
+    right_chopstick.drop
+  end
+end
+
+
+names = %w{Heraclitus Aristotle Epictetus Schopenhauer Popper}
+
+philosophers = names.map { |name| Philosopher.new(name) }
+
+table = Table.new(philosophers)
+
+threads = philosophers.map.with_index do |philosopher, i|
+  Thread.new { philosopher.dine(table, i) }
+end
+
+threads.each(&:join)
+sleep
+```
+
+### A coordinated semaphore-based solution
+
+Introduce a waiter!
+
+```ruby
+class Philosopher
+  attr_reader :name, :left_chopstick, :right_chopstick
+
+  def initialize(name)
+    @name   = name
+  end
+
+  def dine(table, position, waiter)
+    @left_chopstick  = table.left_chopstick_at(position)
+    @right_chopstick = table.right_chopstick_at(position)
+
+    loop do
+      think
+      waiter.serve(table, self)
+    end
+  end
+
+  def think
+    puts "#{name} is thinking."
+  end
+
+  def take_chopsticks
+    left_chopstick.take
+    right_chopstick.take
+  end
+
+  def drop_chopsticks
+    left_chopstick.drop
+    right_chopstick.drop
+  end
+
+  def eat
+    puts "#{name} is eating."
+
+    drop_chopsticks
+  end
+end
+
+class Waiter
+  def initialize
+    @mutex = Mutex.new
+  end
+
+  def serve(table, philosopher)
+    @mutex.synchronize do
+      sleep(rand) while table.chopsticks_in_use >= table.max_chopsticks
+      philosopher.take_chopsticks
+    end
+
+    philosopher.eat
+  end
+end
+
+
+names = %w{Heraclitus Aristotle Epictetus Schopenhauer Popper}
+
+philosophers = names.map { |name| Philosopher.new(name) }
+waiter       = Waiter.new
+
+table = Table.new(philosophers)
+
+threads = philosophers.map.with_index do |philosopher, i|
+  Thread.new { philosopher.dine(table, i, waiter) }
+end
+
+threads.each(&:join)
+sleep
+```
+
+## An Actor-based solution using Celluloid
+
+```ruby
+require 'celluloid'
+
+class Philosopher
+  include Celluloid
+
+  attr_reader :name, :thought, :left_chopstick, :right_chopstick
+
+  def initialize(name)
+    @name = name
+  end
+
+  def dine(table, position, waiter)
+    @waiter = waiter
+
+    @left_chopstick  = table.left_chopstick_at(position)
+    @right_chopstick = table.right_chopstick_at(position)
+
+    think
+  end
+
+  def think
+    puts "#{@name} is thinking."
+    sleep(rand)
+    @waiter.async.request_to_eat(Actor.current)
+  end
+
+  def eat
+    take_chopsticks
+    puts "#{@name} is eating."
+    sleep(rand)
+    drop_chopsticks
+    @waiter.async.done_eating(Actor.current)
+    think
+  end
+
+  def take_chopsticks
+    left_chopstick.take
+    right_chopstick.take
+  end
+
+  def drop_chopsticks
+    left_chopstick.drop
+    right_chopstick.drop
+  end
+
+  def finalize
+    drop_chopsticks
+  end
+end
+
+class Waiter
+  include Celluloid
+
+  def initialize(philosophers)
+    @eating = []
+    @max_eating = philosophers.size - 1
+  end
+
+  def request_to_eat(philosopher)
+    if @eating.size < @max_eating
+      @eating << philosopher
+      philosopher.async.eat
+    else
+      Actor.current.async.request_to_eat(philosopher)
+    end
+  end
+
+  def done_eating(philosopher)
+    @eating.delete(philosopher)
+  end
+end
+
+names = %w{Heraclitus Aristotle Epictetus Schopenhauer Popper}
+
+philosophers = names.map { |name| Philosopher.new(name) }
+
+waiter = Waiter.new(philosophers)
+table = Table.new(philosophers)
+
+philosophers.each_with_index do |philosopher, i| 
+  philosopher.async.dine(table, i, waiter) 
+end
+
+sleep
+```
+
+## An Actor-based homegrown solution
+
+```ruby
+class Philosopher
+  include Actor
+
+  attr_reader :name, :thought, :left_chopstick, :right_chopstick
+
+  def initialize(name)
+    @name = name
+  end
+
+  def dine(table, position, waiter)
+    @waiter = waiter
+
+    @left_chopstick  = table.left_chopstick_at(position)
+    @right_chopstick = table.right_chopstick_at(position)
+
+    think
+  end
+
+  def think
+    puts "#{name} is thinking."
+    sleep(rand)
+    @waiter.async.request_to_eat(Actor.current)
+  end
+
+  def eat
+    take_chopsticks
+    puts "#{name} is eating."
+    sleep(rand)
+    drop_chopsticks
+    @waiter.async.done_eating(Actor.current)
+
+    think
+  end
+
+  def take_chopsticks
+    left_chopstick.take
+    right_chopstick.take
+  end
+
+  def drop_chopsticks
+    left_chopstick.drop
+    right_chopstick.drop
+  end
+end
+
+class Waiter
+  include Actor
+
+  def initialize(philosophers)
+    @eating = []
+    @max_eating = philosophers.size - 1
+  end
+
+  def request_to_eat(philosopher)
+    if @eating.size < @max_eating
+      @eating << philosopher
+      philosopher.async.eat
+    else
+      Actor.current.async.request_to_eat(philosopher)
+      Thread.pass
+    end
+  end
+
+  def done_eating(philosopher)
+    @eating.delete(philosopher)
+  end
+end
+
+names = %w{Heraclitus Aristotle Epictetus Schopenhauer Popper}
+
+philosophers = names.map { |name| Philosopher.new(name) }
+
+waiter = Waiter.new(philosophers)
+
+table = Table.new(philosophers)
+
+philosophers.each_with_index { |philosopher, i| philosopher.async.dine(table, i, waiter) }
+
+sleep
+```
+
+## TODO: Incorporate the rest of this prose up top...
+
 The philosophers themselves are also pretty simple. They can only seat a table,
 pick and drop chopsticks, think and eat.
 
@@ -132,19 +428,25 @@ concurrently. To illustrate the problem let's run this code creating one thread
 per philosopher.
 
 ```ruby
-
 names = %w{Heraclitus Aristotle Epictetus Schopenhauer Popper}
 
-philosophers = names.collect { |name| Philosopher.new(name) }
+philosophers = names.map { |name| Philosopher.new(name) }
 
 table = Table.new(philosophers)
 
-threads = philosophers.each_with_index.collect do |philosopher, i|
-  Thread.new { philosopher.seat(table, i) }
+threads = philosophers.map.with_index do |philosopher, i|
+  Thread.new do 
+    philosopher.seat(table, i) 
+    
+    loop do
+      philosopher.think
+      philosopher.eat
+    end
+  end
 end
 
 threads.each(&:join)
-
+sleep
 ```
 
 After some time this code will crash. The Ruby interpreter itself will detect
@@ -191,54 +493,75 @@ comes back to the original thread, it will allow the original philosopher to
 eat, even if there are maybe more than four chopsticks already in use.
 
 To avoid this situation we need to protect the critical region with a mutex.
+(FIXME: Give more specific explanations of the changes made)
 
 ```ruby
-
-class CoordinatedPhilosopher < Philosopher
-
-  def think
-    puts "#{name} is thinking."
-
-    # sleep(rand)
-
-    @table.request_to_eat(self)
-  end
-
-  def eat
-    puts "#{name} is eating."
-
-    # sleep(rand)
-
-    drop_chopsitcks
-
-    think
+class Chopstick
+  # ...
+ 
+  def in_use?
+    @mutex.locked?
   end
 end
 
-class TableWithMutex < Table
-  def initialize(philosophers)
-    super
-    @mutex = Waiter.new(philosophers)
+class Philisopher
+  # ...
+
+  def eat
+    # don't call pick_chopsticks, expect waiter to do that
+
+    puts "#{name} is eating."
+
+    drop_chopsticks
   end
+end
+
+## FIXME: Consider adding a proper Waiter class
+
+class Table
+  attr_reader :chopsticks, :philosophers
+
+  def initialize(philosophers)
+    # ...
+
+    @mutex = Mutex.new
+  end
+
+  # ... 
 
   def request_to_eat(philosopher)
     @mutex.synchronize do
-      sleep(rand) while chopsitcks_in_use >= max_chopsitcks
-      philosopher.pick_chopsitcks
+      sleep(rand) while chopsticks_in_use >= max_chopsticks
+      philosopher.pick_chopsticks
     end
 
     philosopher.eat
   end
 
-  def max_chopsitcks
-    chopsitcks.size - 1
+  def max_chopsticks
+    chopsticks.size - 1
   end
 
-  def chopsitcks_in_use
-    @chopsitcks.select { |f| f.in_use? }.size
+  def chopsticks_in_use
+    @chopsticks.select { |f| f.in_use? }.size
   end
 end
+```
 
+We also need to make a small change to the runner code so that rather than
+eating on their own, the philisopher makes a request to the waiter:
+
+```ruby
+  # FIXME: CLEANUP
+
+  Thread.new do 
+    philosopher.seat(table, i) 
+    
+    loop do
+      philosopher.think
+      table.request_to_eat(philosopher)
+    end
+  end
 ```
 
 This code fine and solves the issue, but using mutexes to synchronize code seems
