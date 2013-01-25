@@ -103,6 +103,10 @@ We'll start with what *doesn't* work.
 
 ## A solution that leads to deadlocks
 
+The `Philosopher` class shown below would seem to be the most straightforward
+solution to this problem, but has a fatal flaw that prevents it from being
+thread safe. Can you spot it?
+
 ```ruby
 class Philosopher
   def initialize(name)
@@ -143,6 +147,17 @@ class Philosopher
 end
 ```
 
+If you're still scratching your head, consider what happens when each
+philosopher object is given its own thread, and all the philosophers attempt to
+eat at the same time. 
+
+In this naive implementation, it is
+possible to reach a state in which every philosopher picks up their left-hand
+chopstick, leaving no chopsticks on the table. In that scenario, every
+philosopher would simply wait forever for their right-hand chopstick to 
+become available -- resulting in a deadlock. You can reproduce the problem
+by running the following code:
+
 ```ruby
 names = %w{Heraclitus Aristotle Epictetus Schopenhauer Popper}
 
@@ -157,9 +172,50 @@ threads.each(&:join)
 sleep
 ```
 
+Ruby is smart enough to inform you of what went wrong, so you should end up
+seeing a backtrace that looks something like this:
+
+```console
+Aristotle is thinking
+Popper is eating.
+Popper is thinking
+Epictetus is eating.
+Epictetus is thinking
+Heraclitus is eating.
+Heraclitus is thinking
+Schopenhauer is eating.
+Schopenhauer is thinking
+
+dining_philosophers_uncoordinated.rb:79:in `join': deadlock detected (fatal)
+  from dining_philosophers_uncoordinated.rb:79:in `each'
+  from dining_philosophers_uncoordinated.rb:79:in `<main>
+```
+
+In many situations, the most simple solution tends to be the best one, but this
+is obviously not one of those cases. Since we've learned the hard way that the
+philosophers cannot be safely left to their own devices, we'll need to do more
+to make sure their behaviors remain coordinated.
+
 ### A coordinated mutex-based solution
 
-Introduce a waiter!
+One easy solution to this issue is introduce a `Waiter` object into the mix. In this
+model, the philosopher must ask the waiter before eating. If the number of chopsticks
+in use is four or more, the waiter will make the philosopher wait. This will ensure
+that at least one philosopher will be able to eat at any time, avoiding the deadlock
+condition.
+
+There's still a catch, though. From the moment the waiter checks the number of chopstick
+in use until the next philosopher start to eat we have a critical region in our
+program: If we let two concurrent threads execute that code at the same time there
+is still a chance of a deadlock. For example, suppose the waiter checks the number of
+chopsticks used and see it is 3. At that moment, the scheduler yields control to
+another philosopher who is just picking the chopstick. When the execution flow
+comes back to the original thread, it will allow the original philosopher to
+eat, even if there are maybe more than four chopsticks already in use.
+
+To avoid this situation we need to protect the critical region with a mutex, as
+shown below:
+
 
 ```ruby
 class Waiter
@@ -178,6 +234,9 @@ class Waiter
   end
 end
 ```
+
+Introducing the `Waiter` object requires us to make some minor changes to our
+`Philosopher` object, but they are fairly straightforward: 
 
 ```ruby
 class Philosopher
@@ -206,6 +265,9 @@ class Philosopher
 end
 ```
 
+The runner code also needs minor tweaks, but is mostly similar to what
+you saw earlier:
+
 ```ruby
 names = %w{Heraclitus Aristotle Epictetus Schopenhauer Popper}
 
@@ -222,7 +284,27 @@ threads.each(&:join)
 sleep
 ```
 
+This approach is reasonable and solves the deadlock issue, but using mutexes 
+to synchronize code requires some low level thinking. Even in this simple 
+problem, there were several gotchas to consider. As programs get more
+complicated, it becomes really difficult to keep track of critical regions 
+while ensuring that the code behaves properly when accessing them.
+
+The actor model is meant to provide a more systematic and natural way of 
+sharing data between threads. We'll now take a look at an actor-based 
+solution to this problem so that we can see how it compares to this 
+mutex-based approach.
+
 ## An actor-based solution using Celluloid
+
+We'll now rework our `Philosopher` and `Waiter` classes to make use of 
+Celluloid. Much of the code will remain the same, but some important
+details will change. The full class definitions are shown below to preserve
+context, but the changed portions are marked with comments.
+
+We'll spend the rest of the article explaining the inner workings 
+of this code, so don't worry about understanding every last detail. Instead,
+just try to get a basic idea of what's going on here:
 
 ```ruby
 class Philosopher
@@ -231,6 +313,12 @@ class Philosopher
   def initialize(name)
     @name = name
   end
+
+  # Switching to the actor model requires us get rid of our
+  # more procedural event loop in favor of a message-oriented
+  # approach using recursion. The call to think() eventually
+  # leads to a call to eat(), which in turn calls back to think(),
+  # completing the loop.
 
   def dine(table, position, waiter)
     @waiter = waiter
@@ -245,6 +333,9 @@ class Philosopher
     puts "#{@name} is thinking."
     sleep(rand)
 
+    # Asynchronously notifies the waiter object that
+    # the philosophor is ready to eat
+
     @waiter.async.request_to_eat(Actor.current)
   end
 
@@ -255,6 +346,9 @@ class Philosopher
     sleep(rand)
 
     drop_chopsticks
+
+    # Asynchronously notifies the waiter
+    # that the philosopher has finished eating
 
     @waiter.async.done_eating(Actor.current)
 
@@ -271,26 +365,32 @@ class Philosopher
     @right_chopstick.drop
   end
 
+  # This code is necessary in order for Celluloid to shut down cleanly
   def finalize
     drop_chopsticks
   end
 end
 
+
 class Waiter
   include Celluloid
 
-  def initialize(philosophers)
+  def initialize
     @eating   = []
-    @capacity = philosophers.size - 1
   end
 
+  # because synchronized data access is ensured
+  # by the actor model, this code is much more
+  # simple than its mutex-based counterpart. However,
+  # this approach requires two methods
+  # (one to start and one to stop the eating process),
+  # where the previous approach used a single serve() method.
+
   def request_to_eat(philosopher)
-    if @eating.size < @capacity
-      @eating << philosopher
-      philosopher.async.eat
-    else
-      Actor.current.async.request_to_eat(philosopher)
-    end
+    return if @eating.include?(philosopher)
+
+    @eating << philosopher
+    philosopher.async.eat
   end
 
   def done_eating(philosopher)
@@ -299,22 +399,134 @@ class Waiter
 end
 ```
 
+The runner code is similar to before, with only some very minor changes:
+
 ```ruby
 names = %w{Heraclitus Aristotle Epictetus Schopenhauer Popper}
 
 philosophers = names.map { |name| Philosopher.new(name) }
 
-waiter = Waiter.new(philosophers.size - 1)
+waiter = Waiter.new # no longer needs a "capacity" argument
 table = Table.new(philosophers.size)
 
 philosophers.each_with_index do |philosopher, i| 
+  # No longer manually create a thread, rely on async() to do that for us.
   philosopher.async.dine(table, i, waiter) 
 end
 
 sleep
 ```
 
+The runtime behavior of this solution is similar to that of our mutex-based
+solution. However, the following differences in implementation are worth noting:
+
+* Each class that mixes in `Celluloid` becomes an actor with its own thread of execution.
+
+* The Celluloid library intercepts any method call run through the `async` proxy
+object and stores it in the actor's mailbox. The actor's thread will sequentially 
+execute those stored methods, one after another.
+
+* This behavior makes it so that we don't need to manage threads and mutex
+synchronization explicitly. The Celluloid library handles that under 
+the hood in an object-oriented manner.
+
+* If we encapsulate all data inside actor objects, only the actor's
+thread will be able to access and modify its own data. That prevents the
+possibility of two threads writing to a critical region at the same time,
+which eliminates the risk of deadlocks and data corruption.
+
+These features are very useful for simplifying the way we think about
+concurrent programming, but you're probably wondering how much magic is involved
+in implementing them. Let's build our own minimal drop-in replacement for
+Celluloid to find out!
+
 ## Rolling our own actor model
+
+Celluloid provides a lot more than what we'd have room to discuss in this
+article, but 
+
+```ruby
+require 'thread'
+
+module Actor
+
+  module ClassMethods
+    def new(*args, &block)
+      Proxy.new(super)
+    end
+  end
+
+  class << self
+    def included(klass)
+      klass.extend(ClassMethods)
+    end
+
+    def current
+      Thread.current[:actor]
+    end
+  end
+
+  class Proxy
+    def initialize(target)
+      @target  = target
+      @mailbox = Queue.new
+      @mutex   = Mutex.new
+      @running = true
+
+      @async_proxy = AsyncProxy.new(self)
+
+      @thread = Thread.new do
+        Thread.current[:actor] = self
+        process_messages 
+      end
+    end
+
+    def async(meth = nil, *args)
+      if meth
+        @mailbox << [meth, args]
+      else
+        @async_proxy
+      end
+    end
+
+    def terminate
+      @running = false
+    end
+
+    def method_missing(meth, *args)
+      process_message(meth, *args)
+    end
+
+    private
+
+    def process_messages
+      while @running
+        meth, args = @mailbox.pop
+        process_message(meth, *args)
+      end
+
+      rescue Exception => ex
+        puts "Error while running actor: #{ex}"
+    end
+
+    def process_message(meth, *args)
+      @mutex.synchronize do
+        @target.public_send(meth, *args)
+      end
+    end
+  end
+
+  class AsyncProxy
+    def initialize(actor)
+      @actor = actor
+    end
+
+    def method_missing(meth, *args)
+      @actor.async(meth, *args)
+    end
+  end
+end
+```
 
 PUT ACTOR CODEZ HERE!
 
@@ -402,160 +614,26 @@ philosophers.each_with_index { |philosopher, i| philosopher.async.dine(table, i,
 sleep
 ```
 
+## Source code from this article
+
+All of the code from this article is in 
+Practicing Ruby's [example repository][examples],
+but the links below highlight the main points of interest:
+
+* [A solution that leads to deadlocks](https://github.com/elm-city-craftworks/practicing-ruby-examples/blob/master/v6/003/mutex_uncoordinated/dining_philosophers.rb)
+* [A coordinated mutex-based solution](https://github.com/elm-city-craftworks/practicing-ruby-examples/blob/master/v6/003/mutex_coordinated/dining_philosophers.rb)
+* [An actor-based solution using Celluloid](https://github.com/elm-city-craftworks/practicing-ruby-examples/blob/master/v6/003/celluloid/dining_philosophers.rb)
+* [An actor-based solution using a hand-rolled actor library](https://github.com/elm-city-craftworks/practicing-ruby-examples/blob/master/v6/003/actors_from_scratch/dining_philosophers.rb)
+* [Minimal implementation of the actor model](https://github.com/elm-city-craftworks/practicing-ruby-examples/blob/master/v6/003/lib/actors.rb)
+* [Chopsticks class definition](https://github.com/elm-city-craftworks/practicing-ruby-examples/blob/master/v6/003/lib/chopstick.rb)
+* [Table class definition](https://github.com/elm-city-craftworks/practicing-ruby-examples/blob/master/v6/003/lib/table.rb)
+
+If you see anything in the code that you have questions about, please
+share a comment!
+
+[examples]: https://github.com/elm-city-craftworks/practicing-ruby-examples/tree/master/v6/003
+
 ## TODO: Incorporate the rest of this prose up top...
-
-The philosophers themselves are also pretty simple. They can only seat a table,
-pick and drop chopsticks, think and eat.
-
-Although this code is quite simple it will fail miserably if we run it
-concurrently. To illustrate the problem let's run this code creating one thread
-per philosopher.
-
-```ruby
-names = %w{Heraclitus Aristotle Epictetus Schopenhauer Popper}
-
-philosophers = names.map { |name| Philosopher.new(name) }
-
-table = Table.new(philosophers)
-
-threads = philosophers.map.with_index do |philosopher, i|
-  Thread.new do 
-    philosopher.seat(table, i) 
-    
-    loop do
-      philosopher.think
-      philosopher.eat
-    end
-  end
-end
-
-threads.each(&:join)
-sleep
-```
-
-After some time this code will crash. The Ruby interpreter itself will detect
-the issue and give us a useful hint with this message:
-
-
-```shell
-Aristotle is thinking
-Popper is eating.
-Popper is thinking
-Epictetus is eating.
-Epictetus is thinking
-Heraclitus is eating.
-Heraclitus is thinking
-Schopenhauer is eating.
-Schopenhauer is thinking
-
-dining_philosophers_uncoordinated.rb:79:in `join': deadlock detected (fatal)
-  from dining_philosophers_uncoordinated.rb:79:in `each'
-  from dining_philosophers_uncoordinated.rb:79:in `<main>
-```
-
-We have reach a situation in which each philosopher is hungry and trying to eat.
-Each one of them has already picked the left chopstick and is waiting for
-the right chopstick. Since all of them are hungry and waiting to eat, no
-one of them will drop the left chopstick and we have reached a deadlock.
-
-
-## A solution using mutexes
-
-One easy solution to this issue is introduce a waiter in the table. In this
-model, the philosopher must ask the waiter before eating. If the number of chopsticks
-in use is four or more, the waiter will make wait the philosopher, so at least
-one philosopher will be able to eat at any time and the deadlock will be
-avoided.
-
-There's still a catch. From the moment the waiter checks the number of chopstick
-in use until the next philosopher start to eat we have a critical region. That
-is: if we let two concurrent threads to execute that code at the same time there
-is still a chance of a deadlock. Let's say the waiter checks the number of
-chopsticks used and see it is 3. At that moment, the scheduler yields control to
-another philosopher who is just picking the chopstick. When the execution flow
-comes back to the original thread, it will allow the original philosopher to
-eat, even if there are maybe more than four chopsticks already in use.
-
-To avoid this situation we need to protect the critical region with a mutex.
-(FIXME: Give more specific explanations of the changes made)
-
-```ruby
-class Chopstick
-  # ...
- 
-  def in_use?
-    @mutex.locked?
-  end
-end
-
-class Philisopher
-  # ...
-
-  def eat
-    # don't call pick_chopsticks, expect waiter to do that
-
-    puts "#{name} is eating."
-
-    drop_chopsticks
-  end
-end
-
-## FIXME: Consider adding a proper Waiter class
-
-class Table
-  attr_reader :chopsticks, :philosophers
-
-  def initialize(philosophers)
-    # ...
-
-    @mutex = Mutex.new
-  end
-
-  # ... 
-
-  def request_to_eat(philosopher)
-    @mutex.synchronize do
-      sleep(rand) while chopsticks_in_use >= max_chopsticks
-      philosopher.pick_chopsticks
-    end
-
-    philosopher.eat
-  end
-
-  def max_chopsticks
-    chopsticks.size - 1
-  end
-
-  def chopsticks_in_use
-    @chopsticks.select { |f| f.in_use? }.size
-  end
-end
-```
-
-We also need to make a small change to the runner code so that rather than
-eating on their own, the philisopher makes a request to the waiter:
-
-```ruby
-  # FIXME: CLEANUP
-
-  Thread.new do 
-    philosopher.seat(table, i) 
-    
-    loop do
-      philosopher.think
-      table.request_to_eat(philosopher)
-    end
-  end
-```
-
-This code fine and solves the issue, but using mutexes to synchronize code seems
-a little low level thinking. Even though this is a simple problem it still has
-some gotchas. In one more complicated it is really difficult to keep track of
-all the critical regions and be sure that the code behaves properly when
-accessing them.
-
-The actor model tries to be a more systematic and object oriented way to deal
-with the shared data between threads.
 
 
 ## A solution using Celluloid
@@ -606,26 +684,22 @@ end
 class Waiter
   include Celluloid
 
-  def initialize(philosophers)
-    @eating = []
-    @max_eating = philosophers.size - 1
+  def initialize(capacity)
+    @eating   = []
+    @capacity = capacity 
   end
 
   def request_to_eat(philosopher)
-    if @eating.size < @max_eating
-      @eating << philosopher
-      philosopher.eat!
-    else
-      Actor.current.request_to_eat!(philosopher)
-      Thread.pass
-    end
+    return if @eating.include?(philosopher)
+
+    @eating << philosopher
+    philosopher.async.eat
   end
 
   def done_eating(philosopher)
     @eating.delete(philosopher)
   end
 end
-
 ```
 
 In this solution we have introduced a waiter that keeps the count of the
