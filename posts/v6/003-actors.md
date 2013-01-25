@@ -4,8 +4,8 @@ in languages like Erlang and Scala -- their baked in support for
 the [actor model][actors] is meant to make concurrent systems 
 much easier for everyday programmers to implement and understand.
 
-But do we really need to look outside of Ruby to find concurrency primitives
-that can make our lives easier? The answer to that question probably 
+But do you really need to look outside of Ruby to find concurrency primitives
+that can make your work easier? The answer to that question probably 
 depends on the levels of concurrency and availability that you require, but
 things have definitely been shaping up in recent years. In particular, 
 the [Celluloid][celluloid] framework has brought us a convenient and clean way to implement
@@ -19,8 +19,8 @@ solving a classic concurrency puzzle in three ways: Using Ruby's built-in
 primitives (threads and mutex locks), using the Celluloid framework, and using a
 minimal implementation of the actor model that we'll build from scratch.
 
-By the end of this article, you certainly won't be an expert on concurrent
-programming if you aren't already, but you'll have a nice head start on some
+By the end of this article, you certainly won't be a concurrency expert
+if you aren't already, but you'll have a nice head start on some
 basic concepts that will help you decide how to tackle concurrent programming
 within your own projects. Let's begin!
 
@@ -45,7 +45,8 @@ convert this problem domain into a few basic Ruby objects.
 
 ### Modeling the table and its chopsticks
 
-The Chopstick!
+All three of the solutions we'll discuss in this article rely on a `Chopstick`
+class and a `Table` class. The definitions of both classes are shown below:
 
 ```ruby
 class Chopstick
@@ -68,31 +69,20 @@ class Chopstick
     @mutex.locked?
   end
 end
-```
 
-The Table!
-
-```ruby
 class Table
-  attr_reader :chopsticks, :philosophers
-
-  def initialize(philosophers)
-    @philosophers = philosophers
-    @chopsticks   = philosophers.size.times.map { Chopstick.new }
-  end
-
-  def max_chopsticks
-    chopsticks.size - 1
+  def initialize(num_seats)
+    @chopsticks  = num_seats.times.map { Chopstick.new }
   end
 
   def left_chopstick_at(position)
-    index = (position - 1) % chopsticks.size
-    chopsticks[index]
+    index = (position - 1) % @chopsticks.size
+    @chopsticks[index]
   end
 
   def right_chopstick_at(position)
-    index = (position + 1) % chopsticks.size
-    chopsticks[index]
+    index = (position + 1) % @chopsticks.size
+    @chopsticks[index]
   end
 
   def chopsticks_in_use
@@ -101,20 +91,20 @@ class Table
 end
 ```
 
-The code is fairly self-explanatory. The chopstick class is just a thin wrapper
-around a regular Ruby mutex that will ensure that two philosophers can not grab
-the same chopstick at the same time. The Table class deals with the geometry of
-the problem; it knows where each philosopher is seated and which chopstick is to
-the left or to the right of that position.
+The `Chopstick` class is just a thin wrapper around a regular Ruby mutex 
+that will ensure that two philosophers can not grab the same chopstick 
+at the same time. The `Table` class deals with the geometry of the problem; 
+it knows where each seat is at the table, which chopstick is to the left 
+or to the right of that seat, and how many chopsticks are currently in use.
 
+Now that you've seen the basic domain objects that model this problem, we'll
+look at different ways of implementing the behavior of the philosophers. 
+We'll start with what *doesn't* work.
 
-## A naive (and incorrect!) solution
-
+## A solution that leads to deadlocks
 
 ```ruby
 class Philosopher
-  attr_reader :name, :thought, :left_chopstick, :right_chopstick
-
   def initialize(name)
     @name = name
   end
@@ -130,34 +120,34 @@ class Philosopher
   end
 
   def think
-    puts "#{name} is thinking"
+    puts "#{@name} is thinking"
   end
 
   def eat
     take_chopsticks
 
-    puts "#{name} is eating."
+    puts "#{@name} is eating."
 
     drop_chopsticks
   end
 
   def take_chopsticks
-    left_chopstick.take
-    right_chopstick.take
+    @left_chopstick.take
+    @right_chopstick.take
   end
 
   def drop_chopsticks
-    left_chopstick.drop
-    right_chopstick.drop
+    @left_chopstick.drop
+    @right_chopstick.drop
   end
 end
+```
 
-
+```ruby
 names = %w{Heraclitus Aristotle Epictetus Schopenhauer Popper}
 
 philosophers = names.map { |name| Philosopher.new(name) }
-
-table = Table.new(philosophers)
+table        = Table.new(philosophers.size)
 
 threads = philosophers.map.with_index do |philosopher, i|
   Thread.new { philosopher.dine(table, i) }
@@ -167,17 +157,32 @@ threads.each(&:join)
 sleep
 ```
 
-### A coordinated semaphore-based solution
+### A coordinated mutex-based solution
 
 Introduce a waiter!
 
 ```ruby
-class Philosopher
-  attr_reader :name, :left_chopstick, :right_chopstick
-
-  def initialize(name)
-    @name   = name
+class Waiter
+  def initialize(capacity)
+    @capacity = capacity
+    @mutex    = Mutex.new
   end
+
+  def serve(table, philosopher)
+    @mutex.synchronize do
+      sleep(rand) while table.chopsticks_in_use >= @capacity 
+      philosopher.take_chopsticks
+    end
+
+    philosopher.eat
+  end
+end
+```
+
+```ruby
+class Philosopher
+
+  # ... all omitted code same as before
 
   def dine(table, position, waiter)
     @left_chopstick  = table.left_chopstick_at(position)
@@ -185,53 +190,29 @@ class Philosopher
 
     loop do
       think
+
+      # instead of calling eat() directly, make a request to the waiter 
       waiter.serve(table, self)
     end
   end
 
-  def think
-    puts "#{name} is thinking."
-  end
-
-  def take_chopsticks
-    left_chopstick.take
-    right_chopstick.take
-  end
-
-  def drop_chopsticks
-    left_chopstick.drop
-    right_chopstick.drop
-  end
-
   def eat
-    puts "#{name} is eating."
+    # removed take_chopsticks call, as that's now handled by the waiter
+
+    puts "#{@name} is eating."
 
     drop_chopsticks
   end
 end
+```
 
-class Waiter
-  def initialize
-    @mutex = Mutex.new
-  end
-
-  def serve(table, philosopher)
-    @mutex.synchronize do
-      sleep(rand) while table.chopsticks_in_use >= table.max_chopsticks
-      philosopher.take_chopsticks
-    end
-
-    philosopher.eat
-  end
-end
-
-
+```ruby
 names = %w{Heraclitus Aristotle Epictetus Schopenhauer Popper}
 
 philosophers = names.map { |name| Philosopher.new(name) }
-waiter       = Waiter.new
 
-table = Table.new(philosophers)
+table  = Table.new(philosophers.size)
+waiter = Waiter.new(philosophers.size - 1)
 
 threads = philosophers.map.with_index do |philosopher, i|
   Thread.new { philosopher.dine(table, i, waiter) }
@@ -241,15 +222,11 @@ threads.each(&:join)
 sleep
 ```
 
-## An Actor-based solution using Celluloid
+## An actor-based solution using Celluloid
 
 ```ruby
-require 'celluloid'
-
 class Philosopher
   include Celluloid
-
-  attr_reader :name, :thought, :left_chopstick, :right_chopstick
 
   def initialize(name)
     @name = name
@@ -267,26 +244,31 @@ class Philosopher
   def think
     puts "#{@name} is thinking."
     sleep(rand)
+
     @waiter.async.request_to_eat(Actor.current)
   end
 
   def eat
     take_chopsticks
+
     puts "#{@name} is eating."
     sleep(rand)
+
     drop_chopsticks
+
     @waiter.async.done_eating(Actor.current)
+
     think
   end
 
   def take_chopsticks
-    left_chopstick.take
-    right_chopstick.take
+    @left_chopstick.take
+    @right_chopstick.take
   end
 
   def drop_chopsticks
-    left_chopstick.drop
-    right_chopstick.drop
+    @left_chopstick.drop
+    @right_chopstick.drop
   end
 
   def finalize
@@ -298,12 +280,12 @@ class Waiter
   include Celluloid
 
   def initialize(philosophers)
-    @eating = []
-    @max_eating = philosophers.size - 1
+    @eating   = []
+    @capacity = philosophers.size - 1
   end
 
   def request_to_eat(philosopher)
-    if @eating.size < @max_eating
+    if @eating.size < @capacity
       @eating << philosopher
       philosopher.async.eat
     else
@@ -315,13 +297,15 @@ class Waiter
     @eating.delete(philosopher)
   end
 end
+```
 
+```ruby
 names = %w{Heraclitus Aristotle Epictetus Schopenhauer Popper}
 
 philosophers = names.map { |name| Philosopher.new(name) }
 
-waiter = Waiter.new(philosophers)
-table = Table.new(philosophers)
+waiter = Waiter.new(philosophers.size - 1)
+table = Table.new(philosophers.size)
 
 philosophers.each_with_index do |philosopher, i| 
   philosopher.async.dine(table, i, waiter) 
@@ -330,13 +314,13 @@ end
 sleep
 ```
 
-## An Actor-based homegrown solution
+## Rolling our own actor model
+
+PUT ACTOR CODEZ HERE!
 
 ```ruby
 class Philosopher
   include Actor
-
-  attr_reader :name, :thought, :left_chopstick, :right_chopstick
 
   def initialize(name)
     @name = name
@@ -352,47 +336,50 @@ class Philosopher
   end
 
   def think
-    puts "#{name} is thinking."
+    puts "#{@name} is thinking."
     sleep(rand)
+
     @waiter.async.request_to_eat(Actor.current)
   end
 
   def eat
     take_chopsticks
-    puts "#{name} is eating."
+
+    puts "#{@name} is eating."
     sleep(rand)
+
     drop_chopsticks
+
     @waiter.async.done_eating(Actor.current)
 
     think
   end
 
   def take_chopsticks
-    left_chopstick.take
-    right_chopstick.take
+    @left_chopstick.take
+    @right_chopstick.take
   end
 
   def drop_chopsticks
-    left_chopstick.drop
-    right_chopstick.drop
+    @left_chopstick.drop
+    @right_chopstick.drop
   end
 end
 
 class Waiter
   include Actor
 
-  def initialize(philosophers)
+  def initialize(capacity)
     @eating = []
-    @max_eating = philosophers.size - 1
+    @capacity = capacity
   end
 
   def request_to_eat(philosopher)
-    if @eating.size < @max_eating
+    if @eating.size < @capacity
       @eating << philosopher
       philosopher.async.eat
     else
       Actor.current.async.request_to_eat(philosopher)
-      Thread.pass
     end
   end
 
@@ -400,14 +387,15 @@ class Waiter
     @eating.delete(philosopher)
   end
 end
+```
 
+```ruby
 names = %w{Heraclitus Aristotle Epictetus Schopenhauer Popper}
 
 philosophers = names.map { |name| Philosopher.new(name) }
 
-waiter = Waiter.new(philosophers)
-
-table = Table.new(philosophers)
+table  = Table.new(philosophers.size)
+waiter = Waiter.new(philosophers.size - 1)
 
 philosophers.each_with_index { |philosopher, i| philosopher.async.dine(table, i, waiter) }
 
