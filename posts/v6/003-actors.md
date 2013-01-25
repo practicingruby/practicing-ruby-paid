@@ -1,53 +1,49 @@
-The popular knowledge says programming concurrency is hard, and traditonally
-concurrency has been one of the weakest features in the Ruby language. If you
-wanted to do some serious concurrency, you'd better employ a more suitable
-languages, like Erland or Scala. Those languages provide powerful concurrency
-features somehow inspired by the Actor Model.
+Conventional wisdom says that concurrent programming is hard, especially in 
+Ruby. This basic assumption is what lead many Rubyists to take an interest
+in languages like Erlang and Scala -- their baked in support for 
+the [actor model][actors] is meant to make concurrent systems 
+much easier for everyday programmers to implement and understand.
 
-If it's still the case that you should use one of those languages to do
-concurrency it a debatable question and probably depends on the levels of
-concurrency and availability that you need to achieve. The good news is that now
-Ruby has also it own popular gem, Celluloid, for concurrent programming using
-the principles of the Actor Model.
+But do we really need to look outside of Ruby to find concurrency primitives
+that can make our lives easier? The answer to that question probably 
+depends on the levels of concurrency and availability that you require, but
+things have definitely been shaping up in recent years. In particular, 
+the [Celluloid][celluloid] framework has brought us a convenient and clean way to implement
+actor-based concurrent systems in Ruby.
 
-But what it is exactly the Actor Model? What kind of problems does it solves?
-How it is better than the traditional approach of using threads and locks?
+In order to appreciate what Celluloid can do for you, you first need to
+understand what the actor model is, and what benefits it offers over the
+traditional approach of directly using threads and locks for concurrent 
+programming. In this article, we'll try to shed some light on those points by
+solving a classic concurrency puzzle in three ways: Using Ruby's built-in
+primitives (threads and mutex locks), using the Celluloid framework, and using a
+minimal implementation of the actor model that we'll build from scratch.
 
-This article tries to answer these questions. First we will look at some of the
-typical issues we can find in a concurrent applications such as deadlocks. We
-will use the classic problem of the Dining Philosophers, proposed by Edgar
-Djisktra to illustrate this issue.
-
-Then we will look how to solve this problem using threads and mutexes and also
-using the Celluloid gem to get a grasp of how an actor based solutions differ
-from a traditional one.
-
-Finally, we will roll out our own minimal actor library to also solve the
-problem and get a deeper understanding of the core principles in the Celluloid
-library.
-
-Let's begin!
+By the end of this article, you certainly won't be an expert on concurrent
+programming if you aren't already, but you'll have a nice head start on some
+basic concepts that will help you decide how to tackle concurrent programming
+within your own projects. Let's begin!
 
 ## The Dining Philosophers Problem
 
-The Dinning Philosophers is a problem proposed by Edgar Djisktra in 1965 to
+The [Dining Philosophers][philosophers] problem was formulated by Edgar Djisktra in 1965 to
 illustrate the kind of issues we can find when multiple processes compete to
 gain access to exclusive resources.
 
-In this problem, five philosophers meet to have dinner. They seat at a round
-table and each one have a bowl of rice in front of him. There are also five
-chopstick, one between each philosopher. The philosophers spent their time
-thinking about _The Meaning of Life_. After some time of thinking they get
-hungry and try to eat. But the philosopher needs a chopstick in both
-hands in order to grab the rice. If any other
-philosopher has already taken one of those chopstick chopstick, the hungry
+In this problem, five philosophers meet to have dinner. They sit at a round
+table and each one has a bowl of rice in front of them. There are also five
+chopsticks, one between each philosopher. The philosophers spent their time
+thinking about _The Meaning of Life_. Whenever they get
+hungry, they try to eat. But a philosopher needs a chopstick in each
+hand in order to grab the rice. If any other
+philosopher has already taken one of those chopsticks, the hungry
 philosopher will wait until chopstick is available.
 
 This problem is interesting because if it is not properly solved it can easly
-lead to deadlock issues. To illustrate those issues lets first model the problem
-in Ruby.
+lead to deadlock issues. We'll take a look at those issues soon, but first let's
+convert this problem domain into a few basic Ruby objects.
 
-### A couple supporting objects
+### Modeling the table and its chopsticks
 
 The Chopstick!
 
@@ -761,3 +757,7 @@ Celluloid, instead, tries to mimic regular Ruby method calls, and don't impose
 any restriction on the objects that can be passed around actors. It is up to the
 developer itself to ensure that the data passed to an actor is no further
 modified elsewhere.
+
+[actors]: http://en.wikipedia.org/wiki/Actor_model
+[celluloid]: http://celluloid.io/
+[philosophers]: http://en.wikipedia.org/wiki/Dining_philosophers
