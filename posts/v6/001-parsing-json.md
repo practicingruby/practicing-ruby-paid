@@ -5,7 +5,7 @@ developer living in Seattle, WA.  He's been having fun writing Ruby for the past
 Hey everybody!  I hope you're having a great day today!  The sun has peeked out
 of the clouds for a bit today, so I'm doing great!
 
-In this article, we're going to be looking at a some compiler tools for use with Ruby.  In
+In this article, we're going to be looking at some compiler tools for use with Ruby.  In
 order to explore these tools, we'll write a JSON parser.  I know you're saying,
 "but Aaron, *why* write a JSON parser?  Don't we have like 1,234,567 of them?".
 Yes!  We do have precisely 1,234,567 JSON parsers available in Ruby!  We're
