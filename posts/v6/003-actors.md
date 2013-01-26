@@ -1,3 +1,8 @@
+> This issue was a collaboration with [Alberto Fernández Capel][afcapel], a Ruby developer
+from Spain. Although it has been through many revisions since
+we started, Alberto's ideas, code, and explanations provided
+an excellent starting point that lead us to publish this article.
+
 Conventional wisdom says that concurrent programming is hard, especially in 
 Ruby. This basic assumption is what lead many Rubyists to take an interest
 in languages like Erlang and Scala -- their baked in support for 
@@ -37,9 +42,9 @@ thinking about _The Meaning of Life_. Whenever they get
 hungry, they try to eat. But a philosopher needs a chopstick in each
 hand in order to grab the rice. If any other
 philosopher has already taken one of those chopsticks, the hungry
-philosopher will wait until chopstick is available.
+philosopher will wait until that chopstick is available.
 
-This problem is interesting because if it is not properly solved it can easly
+This problem is interesting because if it is not properly solved it can easily
 lead to deadlock issues. We'll take a look at those issues soon, but first let's
 convert this problem domain into a few basic Ruby objects.
 
@@ -200,18 +205,18 @@ to make sure their behaviors remain coordinated.
 
 One easy solution to this issue is introduce a `Waiter` object into the mix. In this
 model, the philosopher must ask the waiter before eating. If the number of chopsticks
-in use is four or more, the waiter will make the philosopher wait. This will ensure
-that at least one philosopher will be able to eat at any time, avoiding the deadlock
-condition.
+in use is four or more, the waiter will make the philosopher wait until someone
+finishes eating. This will ensure that at least one philosopher will be able to eat 
+at any time, avoiding the deadlock condition.
 
 There's still a catch, though. From the moment the waiter checks the number of chopstick
-in use until the next philosopher start to eat we have a critical region in our
+in use until the next philosopher starts to eat we have a critical region in our
 program: If we let two concurrent threads execute that code at the same time there
 is still a chance of a deadlock. For example, suppose the waiter checks the number of
 chopsticks used and see it is 3. At that moment, the scheduler yields control to
 another philosopher who is just picking the chopstick. When the execution flow
 comes back to the original thread, it will allow the original philosopher to
-eat, even if there are maybe more than four chopsticks already in use.
+eat, even if there may be more than four chopsticks already in use.
 
 To avoid this situation we need to protect the critical region with a mutex, as
 shown below:
@@ -442,14 +447,16 @@ Celluloid to find out!
 
 ## Rolling our own actor model
 
-Celluloid provides a lot more than what we'd have room to discuss in this
-article, but 
+Celluloid provides much more functionality than what we can discuss
+in this article, but building a barebones implementation of the actor
+model is within our reach. In fact, the following 80 lines of code are
+enough to serve as a replacement for our use of Celluloid in the 
+previous example:
 
 ```ruby
 require 'thread'
 
-module Actor
-
+module Actor  # To use this, you'd include Actor instead of Celluloid
   module ClassMethods
     def new(*args, &block)
       Proxy.new(super)
@@ -477,16 +484,16 @@ module Actor
 
       @thread = Thread.new do
         Thread.current[:actor] = self
-        process_messages 
+        process_inbox
       end
     end
 
-    def async(meth = nil, *args)
-      if meth
-        @mailbox << [meth, args]
-      else
-        @async_proxy
-      end
+    def async
+      @async_proxy
+    end
+      
+    def send_later(meth, *args)
+      @mailbox << [meth, args]
     end
 
     def terminate
@@ -499,14 +506,14 @@ module Actor
 
     private
 
-    def process_messages
+    def process_inbox
       while @running
         meth, args = @mailbox.pop
         process_message(meth, *args)
       end
 
-      rescue Exception => ex
-        puts "Error while running actor: #{ex}"
+    rescue Exception => ex
+      puts "Error while running actor: #{ex}"
     end
 
     def process_message(meth, *args)
@@ -522,99 +529,72 @@ module Actor
     end
 
     def method_missing(meth, *args)
-      @actor.async(meth, *args)
+      @actor.send_later(meth, *args)
     end
   end
 end
 ```
 
-PUT ACTOR CODEZ HERE!
+This code mostly builds upon concepts that have already been covered in this 
+article, so it shouldn't be too hard to follow with a bit of effort. That
+said, combining meta-programming techniques and concurrency can
+lead to code that makes your eyes glaze over, so we should also make
+an attempt to discuss how this module works at the high level. Let's do that
+now!
 
-```ruby
-class Philosopher
-  include Actor
+Any class that includes the `Actor` module will be converted into an actor and will be 
+able to receive asynchronous calls. We accomplish this by overriding the constructor
+of the target class so that we can return a proxy object every time an object of 
+that class is instantiated. We also store the proxy object in a
+thread level variable. This is necessary because when sending messages between actors, 
+if we refer to self in method calls we will exposed the inner target object, 
+instead of the proxy. This same [gotcha is also present in Celluloid](https://github.com/celluloid/celluloid/wiki/Gotchas).
 
-  def initialize(name)
-    @name = name
-  end
+Using this mixin, whenever we attempt to create an instance of a `Philosopher`
+object, we will actually receive an instance of `Actor::Proxy`. The `Philosopher` 
+class is left mostly untouched, and so the actor-like behavior is handled
+entirely by the proxy object. Upon instantiation, that proxy creates
+a mailbox to store the incoming asynchronous messages and a thread to process those 
+messages. The inbox is a thread-safe queue that ensures that incoming message
+are processed sequentially even if they arrive at the same time. Whenever the inbox
+is empty, the actor's thread will be blocked until a new message needs to
+be processed.
 
-  def dine(table, position, waiter)
-    @waiter = waiter
+This is roughly how things work in Celluloid as well, although its
+implementation is much more complex due to the many additional features it
+offers. Still, if you understand this code, you're well on your way to having a
+working knowledge of what the actor model is all about.
 
-    @left_chopstick  = table.left_chopstick_at(position)
-    @right_chopstick = table.right_chopstick_at(position)
+### Actors are helpful, but are not a golden hammer
 
-    think
-  end
+Even this minimal implementation of the actor model gets the low-level
+concurrency primitives out of our ordinary class definitions, and into a
+centralized place where it can be handled in a consistent and reliable way.
+Celluloid goes a lot farther than we did here by providing excellent fault
+tolerance mechanisms, the ability to recover from failures, and lots of other
+interesting stuff. However, these benefits do come with their own share of
+costs and potential pitfalls.
 
-  def think
-    puts "#{@name} is thinking."
-    sleep(rand)
+So what can go wrong when using actors in Ruby? We've already hinted at the potential 
+issues that can arise due to the issue of [self schizophrenia][self] in 
+proxy objects. Perhaps more complicated is the issue of mutable state: while
+using actors guarantees that the state *within* an object will be accessed
+sequentially, it does not provide the same guarantee for the messages that are
+being passed around between objects. In languages like Erlang, messages consist of immutable parameters, so consistency 
+is enforced at the language level. In
+Ruby, we don't have that constraint, so we either need to solve this problem by
+convention, or by freezing the objects we pass around as arguments -- which is quite
+restrictive!
 
-    @waiter.async.request_to_eat(Actor.current)
-  end
+Without attempting to enumerate all the other things that could
+go wrong, the point here is simply that there is no such thing as a golden hammer 
+when it comes to concurrent programming. Hopefully this article has
+given you a basic sense of both the benefits and drawbacks of applying the
+actor model in Ruby, along with enough background knowledge to apply some
+of these ideas in your own projects. If it has done so, please do share your
+story.
 
-  def eat
-    take_chopsticks
-
-    puts "#{@name} is eating."
-    sleep(rand)
-
-    drop_chopsticks
-
-    @waiter.async.done_eating(Actor.current)
-
-    think
-  end
-
-  def take_chopsticks
-    @left_chopstick.take
-    @right_chopstick.take
-  end
-
-  def drop_chopsticks
-    @left_chopstick.drop
-    @right_chopstick.drop
-  end
-end
-
-class Waiter
-  include Actor
-
-  def initialize(capacity)
-    @eating = []
-    @capacity = capacity
-  end
-
-  def request_to_eat(philosopher)
-    if @eating.size < @capacity
-      @eating << philosopher
-      philosopher.async.eat
-    else
-      Actor.current.async.request_to_eat(philosopher)
-    end
-  end
-
-  def done_eating(philosopher)
-    @eating.delete(philosopher)
-  end
-end
-```
-
-```ruby
-names = %w{Heraclitus Aristotle Epictetus Schopenhauer Popper}
-
-philosophers = names.map { |name| Philosopher.new(name) }
-
-table  = Table.new(philosophers.size)
-waiter = Waiter.new(philosophers.size - 1)
-
-philosophers.each_with_index { |philosopher, i| philosopher.async.dine(table, i, waiter) }
-
-sleep
-```
-
-## Source code from this article
+### Source code from this article
 
 All of the code from this article is in 
 Practicing Ruby's [example repository][examples],
@@ -628,198 +608,12 @@ but the links below highlight the main points of interest:
 * [Chopsticks class definition](https://github.com/elm-city-craftworks/practicing-ruby-examples/blob/master/v6/003/lib/chopstick.rb)
 * [Table class definition](https://github.com/elm-city-craftworks/practicing-ruby-examples/blob/master/v6/003/lib/table.rb)
 
-If you see anything in the code that you have questions about, please
-share a comment!
+If you see anything in the code that you have questions about, don't hesitate to
+ask.
 
 [examples]: https://github.com/elm-city-craftworks/practicing-ruby-examples/tree/master/v6/003
-
-## TODO: Incorporate the rest of this prose up top...
-
-
-## A solution using Celluloid
-
-Now let me show you a similar solution using Celluloid. Don't worry if you don't
-understand how everything is working. We'll spend the rest of the article trying
-to explain the inner workings of this code.
-
-```ruby
-
-class ActorPhilosopher < Philosopher
-  include Celluloid
-
-  def seat(table, position)
-    @waiter = table.waiter
-
-    @left_chopsitck  = table.left_chopsitck_for(position)
-    @right_chopsitck = table.right_chopsitck_for(position)
-
-    think
-  end
-
-  def think
-    puts "#{name} is thinking."
-    sleep(rand)
-    @waiter.request_to_eat!(Actor.current)
-  end
-
-  def eat
-    pick_chopsitcks
-    puts "#{name} is eating."
-    sleep(rand)
-    drop_chopsitcks
-    @waiter.done_eating!(Actor.current)
-    think
-  end
-end
-
-class TableWithWaiter < Table
-  attr_reader :waiter
-
-  def initialize(philosophers, waiter)
-    super(philosophers)
-    @waiter = waiter
-  end
-end
-
-class Waiter
-  include Celluloid
-
-  def initialize(capacity)
-    @eating   = []
-    @capacity = capacity 
-  end
-
-  def request_to_eat(philosopher)
-    return if @eating.include?(philosopher)
-
-    @eating << philosopher
-    philosopher.async.eat
-  end
-
-  def done_eating(philosopher)
-    @eating.delete(philosopher)
-  end
-end
-```
-
-In this solution we have introduced a waiter that keeps the count of the
-philosophers that are trying to eat. There are some points worth noticing in
-this code.
-
-* We don't manage threads and mutexes explicitly. The Celluloid library takes
-care of that in a OO way.
-
-* Each class which include the Celluloid module will act as an actor.
-
-* Celluloid will create thread for each of these actor objects.
-
-* The Celluloid library will intercept any unknown method that ends with a ! and
-store the method call in the actor's mailbox. The actor's thread will execute
-sequentially those stored methods, one after another.
-
-* If we encapsulate the data properly inside the actor classes, only the actor's
-thread will be able to access and modify the actor's data. That prevents that
-two threads could modify the data leading to deadlocks or data corruption.
-
-## Rolling out our own minimal Actor Library
-
-To illustrate how Celluloid works I'll try to roll out a minimal actors library.
-Of course it will not be a full fledged library like Celluloid, but it will
-hopefully capture the same functionality in less than sixty lines of Ruby code.
-
-```ruby
-require 'thread'
-
-module Actor
-  module ClassMethods
-    def new(*args, &block)
-      Thread.current[:actor] = Proxy.new(super)
-    end
-  end
-
-  class << self
-    def included(klass)
-      klass.extend(ClassMethods)
-    end
-
-    def current
-      Thread.current[:actor]
-    end
-  end
-end
-
-class Proxy
-  def initialize(target)
-    @target  = target
-    @mailbox = Queue.new
-    @running = true
-
-    run
-  end
-
-  def run
-     Thread.new do
-      Thread.current[:actor] = self
-
-      begin
-        while @running
-          method, args = @mailbox.pop
-          @target.send(method, *args)
-        end
-      rescue Exception => ex
-        puts "Error while running actor: #{ex}"
-        puts ex.backtrace.join("\n")
-      end
-    end
-  end
-
-  def terminate
-    @running = false
-  end
-
-  def method_missing(method, *args)
-    if match = method.to_s.match(/(.*)!$/)
-      unbanged_method = match[1]
-      @mailbox << [unbanged_method, args]
-    else
-      @target.send(method, *args)
-    end
-  end
-end
-
-```
-
-The Actor module will be the equivalent of Celluloid. Any class including this
-module will be converted into an actor and will be able to receive asynchronous
-calls. The module itself overrides the new method of the target class so we can
-return a proxy object every time an an object of the target class is
-instantiated. We also store the proxy object in a thread level variable. This is
-because when sending messages between actors, if we refer to self in methods
-calls we will exposed the inner target object, instead of the proxy. This same
-[gotcha is also present in Celluloid](https://github.com/celluloid/celluloid/wiki/Gotchas).
-
-Now if we have a Philosopher class including the Actor module any time we
-instantiate a philosopher we will actually receive an instance of Actor::Proxy.
-
-The Proxy class will itself execute the actor behavior. Upon instantiation it
-will create a mailbox to store the incoming async messages and a thread to
-process those messages. The inbox is just a queue so that the incoming message a
-processes sequentially even if they arrive at the same time. The actor's thread
-will be blocked, trying to pop an object from the queue, until an async message
-comes.
-
-One point worth noticing is that there a no restrictions on the kind of messages
-that we pass between actors. In other actor model implementation, like Erlang,
-the messages between actor must be immutable. That is, once an actor pass a
-message to another actor, the original actor is unable to modify this message.
-This restriction ensures that the two actor can't concurrently modify the same
-data.
-
-Celluloid, instead, tries to mimic regular Ruby method calls, and don't impose
-any restriction on the objects that can be passed around actors. It is up to the
-developer itself to ensure that the data passed to an actor is no further
-modified elsewhere.
-
 [actors]: http://en.wikipedia.org/wiki/Actor_model
 [celluloid]: http://celluloid.io/
 [philosophers]: http://en.wikipedia.org/wiki/Dining_philosophers
+[self]: http://en.wikipedia.org/wiki/Schizophrenia_%28object-oriented_programming%29
+[afcapel]: https://github.com/afcapel
