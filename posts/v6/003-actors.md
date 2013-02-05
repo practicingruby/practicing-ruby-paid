@@ -31,7 +31,7 @@ within your own projects. Let's begin!
 
 ## The Dining Philosophers Problem
 
-The [Dining Philosophers][philosophers] problem was formulated by Edgar Djisktra in 1965 to
+The [Dining Philosophers][philosophers] problem was formulated by Edsger Djisktra in 1965 to
 illustrate the kind of issues we can find when multiple processes compete to
 gain access to exclusive resources.
 
