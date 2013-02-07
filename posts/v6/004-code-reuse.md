@@ -14,7 +14,7 @@ components in Ruby.
 
 Subclassing allows you to use the features of a base class within your own
 class definition. Because Ruby is a single-inhertance language, each class has
-exactly one porent, so you need to choose wisely.
+exactly one parent, so you need to choose wisely.
 
 A typical example of class inheritance in Ruby is found in ActiveRecord:
 
@@ -83,7 +83,7 @@ current_user.extend(Shopper)
 current_user.add_to_cart(product)
 ```
 
-### 1.4 Decoration
+### 1.4 Decorators
 
 Many different techniques exist for implementing the decorator 
 pattern in Ruby. This method essentially involves adding new
@@ -219,9 +219,16 @@ p 10.in_currency("GBP") #=> 6.36
 
 ### 2.1 Late binding
 
-Example: `Enumerable` module
+As in most dynamic languages, Ruby's method calls are done via 
+late binding.
+
 
 ### 2.2 Shared state
+
+Each object has a single set of instance variables, even if it
+exists within a very complex ancestry chain. For example,
+the following code references an instance variable that was
+defined by its superclass:
 
 ```ruby
 require "ostruct"
@@ -240,17 +247,102 @@ p struct
 # c = 5
 ```
 
+The only way to know for sure what instance variables will
+be defined, accessed, and modified at runtime for a particular
+Ruby object is to read the source of every single class and
+module that exists upon its ancestry chain, both at the
+individual object and class definition level. 
+
+Because new variables can spring into existence any time a method 
+is called, this kind of static analyis is not practical for most 
+non-trivial programs. For example, whenever you inherit from
+`ActiveRecord::Base`, your object exists at the tail end of
+an ancestry chain that provides hundreds of methods through
+dozens of modules, and that's assuming that you haven't installed
+any third-party plugins.
+
+In lieu of being able to directly reason about state manipulation
+along ancestry chains in Ruby, we must rely on manual and automated
+testing to prove that our code works as expected, but that can only
+verify that the paths we tested were unaffected by the state we
+introduced.
+
+**Affected Reuse Methods:** Class inheritance, traditional mixins,
+per-object mixins, dynamically evaluated code blocks,
+monkey patching
+
+
 ### 2.3 Shared public interface
 
 ActiveRecord example? Or too boring?
 
 ### 2.4 Shared private interface
 
+Many code reuse techniques in Ruby are further complicated
+by the fact that `private` and `protected` methods are also shared 
+throughout the ancestry chain. 
+
+The primary risk here is accidental
+name collisions rather than inappropropriate external use, but
+there is also the concern that downstream components in the ancestry
+chain will make use of a private method in ways that their 
+ancestors didn't anticipate, leading to data corruption. This
+problem can be avoided with a bit of common sense, but is yet
+another source of complexity that can arise from a lack of
+encapsulation between components.
+
+**Affected Reuse Methods:** Class inheritance, traditional mixins,
+per-object mixins, dynamically evaluated code blocks, monkey patching
+
 ### 2.5 Shared ancestry chain
 
 ### 2.6 Self-schizophrenia
 
+Whenever metaprogramming is used to implement reusable components, you can no
+longer easily determine what object `self` will refer to by simply looking at
+the code. Consider the following incorrect use of the Prawn PDF library:
+
+```ruby
+@name = "Gregory Brown" 
+
+Prawn::Document.generate("hello.pdf") do
+  text "Hello #{@name}" 
+end
+```
+
+Because `Prawn::Document.generate` evaluates the provided codeblock within the
+context of a `Prawn::Document` instance, the `@name` variable defined outside
+the block is not the same as the one referenced within the block. To share data
+between the block and its enclosing scope, it is necessary to use local
+variables instead (due to the closure property of blocks):
+
+```ruby
+name = "Gregory Brown" 
+
+Prawn::Document.generate("hello.pdf") do
+  text "Hello #{name}" 
+end
+```
+
+But if we wanted to refer to methods defined in the enclosing scope, we'd be
+back to the same problem: because inside the block, all code is executed with an
+instance of `Prawn::Document` as the receiver.
+
+This problem also tends to occur when using dynamic delegation techniques to
+implement decorators. When defining methods within the decorator, it is
+sometimes tricky to reason about which methods will end up being called on the
+proxy itself, and which will be forwarded to the wrapped object.
+
+**Affected Reuse Methods:** Dynamically evaluated codeblocks, decorators
+
 ### 2.7 Dependency management
+
+The main tradeoff of using less-invasive code reuse mechanisms is that you
+become responsible for doing more of the boilerplate work on your own. This
+has advantages in terms of flexibility and data encapsulation, but comes at
+the cost of convenience.
+
+NEED A GOOD EXAMPLE
 
 ## 3. Notes and Recommendations
 
