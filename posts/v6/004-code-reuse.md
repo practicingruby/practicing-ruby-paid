@@ -1,5 +1,272 @@
-Practicing Ruby articles tend to be linear stories, CS papers are often the
-cross product of various concepts... this is meant to be along those lines
+Inheritance 
+  SUFFERS FROM
+    - shared behavior (rectangle example)
+    - shared state (prawn article example)
+    - late binding (TBD)
+
+  -- Implementation sharing 
+
+Composition 
+  SUFFERS FROM
+    - indirect access (cached example)
+    - manual message routing / dependency management (TBD)
+    - lack of established idioms
+    - bloated contracts (transparent delegation)
+    - self-schizophrenia (transparent delegation)
+
+  -- Behavior sharing 
+  -- Referential transparency??? 
+
+Edge Cases
+  -- Will we cover them?
+  -- DSLs / monkey patching
+
+Recommendations
+  Incidental vs. Essential inheritance
+  Do you need direct access to the internals? 
+    YES: Consider using the most low-impact form of inheritance you can
+    NO: Are there obvious downsides to a composition-based model?
+      YES: Will the extra work likely save you maintenance / understandability effort?
+         YES: Try to model with composition
+         NO: Use the lowest impact form of inheritance suitable for your problem
+      NO: Try to model with composition
+
+
+## Inheritance example
+
+SOURCE: https://docs.google.com/file/d/0BwhCYaYDn8EgNzAzZjA5ZmItNjU3NS00MzQ5LTkwYjMtMDJhNDU5ZTM0MTlh/edit?hl=en
+(Cite appropriately)
+
+When reusing an ancestor's features, it can be challenging to avoid 
+strange inconsistencies. We'll explore this idea by considering the
+classic example of attempting to derive a `Square` subclass from
+a `Rectangle`:
+
+```ruby
+class Rectangle
+  def initialize(width, height)
+    self.width   = width
+    self.height  = height
+  end
+
+  attr_accessor :width, :height
+
+  def area
+    width * height
+  end
+end
+
+class Square < Rectangle
+  def initialize(size)
+    super(size, size)
+  end
+end
+```
+
+On the surface, this code looks fairly simple, and seems to work as expected:
+
+```ruby
+square = Square.new(5)
+
+p square.area                   #=> 25
+p [square.width, square.height] #=> [5, 5]
+```
+
+But there is the potential for bad behavior here, because the `Square` class
+also inherits `Rectangle#width=` and `Rectangle#height=`, which can lead
+to inconsistent data in the `Square` object:
+
+```ruby
+square.width = 10
+
+p [square.width, square.height] #=> [10, 5] -- not a square!
+```
+
+One way to result this issue would be to override `Rectangle#width=` 
+and `Rectangle#height=` so that both values are always kept in sync
+with one another:
+
+```ruby
+class Square < Rectangle
+  def initialize(size)
+    super(size, size)
+  end
+
+  def width=(size)
+    @width   = size
+    @height  = size
+  end
+
+  def height=(size)
+    @width   = size
+    @height  = size
+  end
+end
+
+square = Square.new(5)
+
+square.width = 10
+p [square.width, square.height] #=> [10, 10]
+p square.area                   #=> 100
+```
+
+This change enables the kind of behavior you might expect from a `Square`,
+and if you are simply reusing code to keep things DRY, that might be 
+enough. However, there may still be some subtle issues in code which assumes
+that a rectangle's height can vary independently of its width, such as the
+following test code:
+
+```ruby
+def test_area
+  rect.width  = 5
+  rect.height = 10
+
+  assert 50, rect.area
+end
+```
+
+Arguably, this test is written poorly if it is meant to be used as a shared
+example for all descendents of the `Rectangle` object. The problem is that at a
+first glance, the problem is not at all obvious. And that essentially is the
+core problem with inheritance-based modeling: ancestors must
+guess about the kinds of ways that they will be extended, and descendents need
+to guess about whether their extensions will break upstream features. With
+some practice and careful design thought this is possible, but it certainly
+is not *easy* to reason about.
+
+## Composition example
+
+When access to an object's internals is truly necessary, it isn't practical
+to use composition based techniques. For example, consider the following
+mixin-based code which implements a memoization routine for caching method
+return values:
+
+```ruby
+module Cached
+  def cache(*method_names)
+    method_names.each do |m|
+      original = instance_method(m)
+      results  = {}
+
+      define_method(m) do |*a|
+        results[a] ||= original.bind(self).call(*a) 
+      end
+    end
+  end
+end
+
+## EXAMPLE USAGE:
+
+class Numbers
+  extend Cached
+
+  def fib(n)
+    raise ArgumentError if n < 0
+    return n if n < 2
+
+    fib(n - 1) + fib(n - 2)
+  end
+
+  cache :fib
+end
+
+n = Numbers.new
+  
+(0..100).each { |e| p [e, n.fib(e)] }
+```
+
+A naive attempt to refactor the `Cached` module into a `ComposedCache` class
+might end up looking something like this:
+
+```ruby
+class ComposedCache
+  def initialize(target)
+    @target = target
+  end
+
+  def cache(*method_names)
+    method_names.each do |m|
+      results = {}
+
+      define_singleton_method(m) do |*a|
+        results[a] ||= @target.send(m, *a)
+      end
+    end
+  end
+end
+
+n = ComposedCache.new(Numbers.new)
+n.cache(:fib)
+  
+(0..100).each { |e| p [e, n.fib(e)] }
+```
+
+Unfortunately, this code has a critical flaw in it that makes it unsuitable 
+for general use: It caches calls made through the `ComposedCache` proxy, but
+it does not cache internal calls made within the objects it wraps. In 
+practice, this makes it absolutely useless for optimizing the performance of
+recursive functions such as the `fib()` method we're working with here.
+
+There is no way around this problem without modifying the wrapped object.
+In order to stick with composition-based modeling and still get proper
+caching behavior, here's what we'd need to do: 
+
+```ruby
+class ComposedCache
+  def initialize(target)
+    @target  = target
+  end
+
+  def cache(*method_names)
+    method_names.each do |m|
+      original = @target.method(m)
+      results  = {}
+
+      @target.define_singleton_method(m) do |*a|
+        results[a] ||= original.call(*a)
+      end
+
+      define_singleton_method(m) do |*a|
+        @target.send(m, *a)
+      end
+    end
+  end
+end
+
+n = ComposedCache.new(Numbers.new)
+n.cache(:fib)
+  
+(0..100).each { |e| p [e, n.fib(e)] }
+```
+
+Such a design *would* prevent a new ancestor from being introduced
+into the `Numbers` object's lookup path, and it would externalize
+the code that actually understands how to handle the caching. However,
+because `ComposedCache` still directly modifies the behavior of
+the `Numbers` objects it wraps, it loses the benefit of encapsulation
+that typically comes along with composition based modeling.
+
+We also end up with an interface that feels awkward: defining what
+methods ought to be cached via an instance method call does not
+feel nearly as natural as using a class-level macro, and might
+be cumbersome to integrate within a real project. There are ways
+this interface can be improved, but they all bring with them a
+few new hoops to jump through.
+
+Because the `ComposedCache` expects all cached methods to be explicitly
+declared and it does not support automatic delegation to the underlying
+object, it might be cumbersome to work with -- it would either need
+to be modified to forward all uncached method calls to the object it
+wraps (losing the benefits of a narrow surface), or the caller would
+need to keep both a reference to the original object and the composed 
+cache object around (which is very awkward and confusing!).
+
+Good composition-based modeling produces code that is simpler than
+the sum of its parts, as a direct result of strong encapsulation
+and well-defined interactions between collaborators. Unfortunately,
+our implementation of the `ComposedCache` class has none of those 
+benefits, and so it serves as a useful (if pathological) example 
+of the downsides of composition-based modeling.
 
 # The complexities of code reuse
 
@@ -271,10 +538,10 @@ introduced.
 per-object mixins, dynamically evaluated code blocks,
 monkey patching
 
-
 ### 2.3 Shared public interface
 
-ActiveRecord example? Or too boring?
+
+
 
 ### 2.4 Shared private interface
 
@@ -295,6 +562,8 @@ encapsulation between components.
 per-object mixins, dynamically evaluated code blocks, monkey patching
 
 ### 2.5 Shared ancestry chain
+
+...
 
 ### 2.6 Self-schizophrenia
 
