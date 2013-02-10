@@ -17,24 +17,57 @@ necessary, to get the desired behavior of a program is something that's not
 discussed nearly enough. Most knowledge of debugging techniques is gained
 through direct experience, and rarely is it discussed in beginning programming
 material. Not feeling in control of the code you write leads to frustration
-and despair. The use of scientific techniques, however, can provide systematic
-ways to get out of any sticky situation.
+and despair. The use of a troubleshooting process, however, can provide
+systematic ways to get out of any sticky situation.
 
-## Narrow down the problem
+## Don't Panic
 
-* Infinite search space of interacting components
-* Use scientific method: make a hypothesis, design an experiment to confirm or deny, do it, analyze results, repeat.
-* Top-down vs bottom up, same goal: eliminate any moving pieces that are not contributing to the problem
+The first thing to remember when debugging code is to not panic. Debugging
+often occurs when production is down, customers are experiencing a problem, and
+managers are asking for status every five minutes. In this situation, panicking
+is a natural response, but it's a harmful state of mind in which to be
+debugging. It may lead to changing code on hunches rather than on evidence, or
+skipping writing tests. Then you may end up making the problem worse, or not
+knowing which of your changes actually fixed the problem.
 
-### Practice
+If external pressures are making it too difficult to not panic, first disable
+the feature that is causing the problem, or roll the code back to a known
+stable state. Then work on recreating the issue in a staging environment. End
+users would rather have the problem fixed, of course, but functioning code with
+fewer features is more useful than nonfunctioning code.
 
-For a talk on debugging that I gave with Jake Goulding at Codemash 2013, we
-did some live debugging on a Rails application. I created a Rails application
-with a particular bug manifestation, but every time we practiced I made the
-bug implementation a little trickier to find. [I've shared the code and the
-different bugs on GitHub](https://github.com/carols10cents/narrow_down) as
-potential practice for others. There are more details in the README; please
-let me know if you try this out and if you found the practice useful!
+## Narrow Down the Problem
+
+Even the most trivial piece of software can involve an infinite number of
+interacting components, from the web browser down to the hardware. In order to
+be able to fix a problem, you need to narrow down the involved components to
+those that are proven to be causing the issue. Start with a way to reproduce
+the problem: this may be an automated test, a script, or a set of manual steps.
+Then use either a top-down or bottom-up approach to reproduce the problem with
+fewer components involved, and repeat the process until you have pinpointed the
+problem.
+
+By top-down, I mean starting from an end-to-end reproduction and eliminating
+components. For example, if working with a Rails app and a set of user actions
+that cause a bug, try to eliminate the web browser by reproducing the issue in
+the Rails console. Or if the problem is occurring in a long method, print out
+relevant values about halfway through the long method to determine if the issue
+is due to code in the first half of the method or the second half. You're
+essentially performing a binary search of your code.
+
+A bottom-up approach would consist of starting with a new file or new
+environment and writing the least amount of code possible to recreate the issue
+you're seeing in your existing software. For example, create a brand new Rails
+app, add only the gems involved in the particular problem, and write just one
+action. Another way would be creating the least amount of data needed to
+recreate the issue-- write a test that creates one record in the database
+instead of dealing with all the records in your production database. In this
+way, you're removing many components from consideration by never adding them.
+
+Deciding whether to use the top-down or bottom-up approach depends on the
+particulars of your situation. I tend to use top-down more often when trying to
+find a problem that is in my own code (which it usually is!) and bottom-up when
+trying to prove that a problem is in a third-party library that I'm using.
 
 ## Read Stack Traces
 
@@ -49,23 +82,35 @@ The two most valuable pieces of information are the resulting error message
 (which is usually shown at the beginning of the stack trace in Ruby) and the
 last line of your code that was involved (which is usually somewhere in the
 middle). The error message will tell you *what* went wrong, and the last line
-of your code will tell you *where* the problem is coming from. For example:
+of your code will tell you *where* the problem is coming from.
+
+A particularly horrible stack trace is [this 1400 line trace from a Rails app using JRuby running on websphere](https://gist.github.com/carols10cents/4751381/raw/b75bdb41e7fa8ded54d13dc786808b464357effe/gistfile1.txt). In this case, the resulting error
+message, "ERROR [Default Executor-thread-15]", is not very helpful. The vast
+majority of the lines are coming from JRuby's java code and are also
+uninformative. However, skimming through and looking for lines that don't fit
+in, there are some lines that are longer than the others:
+
+    rubyjit.ApplicationHelper$$entity_label_5C9C81BAF0BBC4018616956A9F87C663730CB52E.__file__(/opt/local/wlp/usr/servers/staging/apps/abc/WEB-INF/app/helpers/application_helper.rb:232)
+    rubyjit.ApplicationHelper$$entity_label_5C9C81BAF0BBC4018616956A9F87C663730CB52E.__file__(/opt/local/wlp/usr/servers/staging/apps/abc/WEB-INF/app/helpers/application_helper.rb)
+
+These lines of the stack trace point to the last line of the Rails code that
+was involved. In this situation, on line 232 of application_helper.rb, two
+strings were being concatenated. By trying different values of the strings, it
+was easier to narrow down the root cause: the strings had different encodings,
+and [JRuby was calling a 1.9 method in 1.8 mode](https://github.com/jruby/jruby/issues/366).
 
 <!--
-Insert rstat.us stack trace here
+NOTE: I find this interesting because it's an example of something trying to make stack traces more useful, but I'm not sure how relevant it is:
+
+  The Turn test formatting library actually [filters the backtrace it displays](https://github.com/TwP/turn/blob/master/lib/turn/reporter.rb#L88) of the test harness to cut down on the noise a bit.
  -->
 
-There are some exceptions, such as the dreaded "syntax error, unexpected $end,
-expecting keyword_end" error, which will usually point to the end of one of
-your files. It actually means you're missing an `end` somewhere in that file.
-If you're not sure what an error is telling you, often a search for ruby and
-the error message will point you in the right direction.
-
-### Practice
-
-<!--
-Insert a different rstat.us stack trace and encourage someone to send a pull request to fix it??? Too self-serving?? ;)
- -->
+There are some exceptions when the line numbers are not very helpful. One is
+the dreaded "syntax error, unexpected $end, expecting keyword_end" error, which
+will usually point to the end of one of your files. It actually means you're
+missing an `end` somewhere in that file. If you're not sure what an error is
+telling you, often a search for "ruby" and the error message will point you in
+the right direction.
 
 
 ## Use debuggers
@@ -94,13 +139,6 @@ For example, if we have this code:
 and run it using `ruby whatever.rb`, this is what you'll see when the code
 hits the `binding.pry`:
 
-### Practice
-
-<!--
-Get the rstat.us codebase, insert a binding.pry in a location, look at these
-things and see these effects
- -->
-
 ## Lean on tests
 
 Whenever you need to fix a bug, you're writing a test first, right? This
@@ -114,19 +152,28 @@ end-to-end integration test that reproduces the bug, you
 
 Some tests don't make sense to add to a test suite, especially negative
 examples such as "it should not crash when given special characters". The
-situation is just too specific to happen exactly that way again. A better way
-to add such a test
+situation is just too specific to happen exactly that way again.
 
-<!--
-There are some examples in the rstat.us test suite that could be improved in this way
--->
+For example, here is a test that I added to [rstat.us' codebase](https://github.com/hotsh/rstat.us/commit/26444ea95ec8da12d4e74764bf52bdaad18e7776) about a year ago:
 
-### Practice
+		it "does let you update your profile even if you use a different case in the url" do
+			u = Factory(:user, :username => "LADY_GAGA")
+			a = Factory(:authorization, :user => u)
+			log_in(u, a.uid)
+			visit "/users/lady_gaga/edit"
+			bio_text = "To be or not to be"
+			fill_in "bio", :with => bio_text
+			click_button "Save"
 
-<!--
-Find some of your tests that could be rewritten? Write tests for a bug in
-the narrow_down codebase?
--->
+			assert_match page.body, /#{bio_text}/
+		end
+
+Rather than adding another test for the case of going to the url for username
+"lady_gaga" when the username is "LADY_GAGA" (don't ask why I chose Lady Gaga,
+I don't remember), I could have instead updated [the existing happy path test](https://github.com/hotsh/rstat.us/blob/26444ea95ec8da12d4e74764bf52bdaad18e7776/test/acceptance/profile_test.rb#L45) to encompass this situation
+(effectively replacing the existing happy path test with this special case
+test). In this way, the special case and the happy path are being tested, but
+there is less duplication.
 
 Even though sometimes it seems like software has a mind of its own, computers
 only do what a human has told them to do at some point. You **can** figure out
@@ -136,6 +183,7 @@ traces. You **can** use debuggers to experiment with what your code is
 actually doing as it runs. And you **can** write tests that help you while
 debugging and then turn them into useful regression tests. Go figure out some
 bugs! <3
+
 
 ## References
 
