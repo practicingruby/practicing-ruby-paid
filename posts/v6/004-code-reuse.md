@@ -1,46 +1,132 @@
-Inheritance 
-  SUFFERS FROM
-    - shared behavior (rectangle example)
-    - shared state (prawn article example)
-    - late binding (TBD)
-
-  -- Implementation sharing 
-
-Composition 
-  SUFFERS FROM
-    - indirect access (cached example)
-    - manual message routing / dependency management (TBD)
-    - lack of established idioms
-    - bloated contracts (transparent delegation)
-    - self-schizophrenia (transparent delegation)
-
-  -- Behavior sharing 
-  -- Referential transparency??? 
-
-Edge Cases
-  -- Will we cover them?
-  -- DSLs / monkey patching
-
-Recommendations
-  Incidental vs. Essential inheritance
-  Do you need direct access to the internals? 
-    YES: Consider using the most low-impact form of inheritance you can
-    NO: Are there obvious downsides to a composition-based model?
-      YES: Will the extra work likely save you maintenance / understandability effort?
-         YES: Try to model with composition
-         NO: Use the lowest impact form of inheritance suitable for your problem
-      NO: Try to model with composition
+% Code reuse in Ruby -- It's complicated 
+% Gregory Brown (practicingruby.com)
+% February 12, 2013
 
 
-## Inheritance example
+\begin{abstract} 
+Ruby provides at least seven common ways of reusing code, all of them with their
+own strengths and weaknesses. However, the main thing that separates these
+various techniques is whether they are a form of \emph{implementation sharing} or a
+form of \emph{behavior sharing}. This article explains what distinguishes those
+two categories, the kinds of complexities that can arise from each of
+them, and some practical recommendations that you can apply to reusing code
+within your own projects.
+\end{abstract}
 
-SOURCE: https://docs.google.com/file/d/0BwhCYaYDn8EgNzAzZjA5ZmItNjU3NS00MzQ5LTkwYjMtMDJhNDU5ZTM0MTlh/edit?hl=en
-(Cite appropriately)
+# 1. Introduction
 
-When reusing an ancestor's features, it can be challenging to avoid 
-strange inconsistencies. We'll explore this idea by considering the
-classic example of attempting to derive a `Square` subclass from
-a `Rectangle`:
+# 2. Common methods of code reuse
+
+Ruby's code sharing techniques can be broken down into two categories: those that
+provide direct access to the internals of the shared component (*implementation
+sharing*), and those that do not (*behavior sharing*). While each approach hs
+its own set of costs and benefits, a lot can be said about the
+complexity of a technique by knowing which reuse category it belongs to.
+
+## 2.1 Implementation sharing techniques
+
+The following techniques reuse code in ways that provide
+direct access to internals:
+
+- **inherit** from a superclass
+- **include** a module into a class
+- **extend** an individual object using a module
+- **patch** a class or individual object directly
+- **eval** code in the context of a class or individual object
+
+## 2.2 Behavior sharing techniques
+
+The following techniques rely on message passing
+between distinct objects for code sharing, limiting 
+direct access to internals:
+
+- **decorate** an object using a dynamic proxy
+- **compose** objects using simple aggregation
+
+## 2.3 Reference examples 
+
+Our goal is to discuss the complexities
+of implementation sharing and behavior sharing in general,
+so you don't need to be familiar with all seven methods
+of code reuse listed above in order to understand
+the rest of this article.
+
+However, if you want some additional clarification on what
+each of these terms mean, you can check out [this set of
+code-reuse examples](https://gist.github.com/sandal/4755113).
+
+# 3. Complexities of implementation sharing
+
+An entire book can be written about the complexities involved in sharing
+functionality without proper encapsulation between components. However,
+since we don't have room for that level of detail in this article, I've
+attempted to group the common issues together into three broad areas 
+of concern to look out for.
+
+## 3.1 Shared instance variables
+
+Each object has a single set of instance variables, even if it
+exists within a very complex ancestry chain. For example,
+the following code references an instance variable that was
+defined by its superclass:
+
+```ruby
+require "ostruct"
+
+class PrettyStruct < OpenStruct
+  def inspect
+    @table.map { |k,v| "#{k} = #{v.inspect}" }.join("\n")
+  end
+end
+
+struct = PrettyStruct.new(:a => 3, :b => 4, :c => 5)
+p struct
+
+# a = 3
+# b = 4
+# c = 5
+```
+
+When two or more shared components reference the same
+instance variable, it may be intentional or unintentional.
+It goes without saying that unintentional variable name
+collisions can lead to bugs that are hard to debug, but
+intentional shared access (such as in the snippet above)
+has more subtle issues to consider. 
+
+Whenever we directly access a variable rather than using 
+a public accessor, we may be skipping validations, 
+transformations, caching features, or concurrency-related 
+features that are meant to keep the underlying data
+consistent and synchronized. Is a simple read-only reference
+such as the one we've done here really that risky? The
+truth is, there's no way to know without reading the `OpenStruct`
+source code.
+
+Unfortunately, the only way to know for sure what instance variables 
+will be defined, accessed, and modified at runtime for *any*
+Ruby object is to read the source of every single class and
+module that is in its ancestry chain, both at the
+individual object and class definition level. Because new variables 
+can spring into existence any time a method is called, this kind 
+of static analyis is not practical for most non-trivial programs. 
+
+At the extreme end of the spectrum, you have objects that inherit
+from `ActiveRecord::Base`; these objects exists at the tail end of
+an ancestry chain that provides hundreds of methods through
+dozens of modules, and that's assuming that you haven't installed
+any third-party plugins. If you aren't convinced by the trivial
+example I've shown in this article, spend some time with the
+Rails source code and you'll surely get the point.
+
+## 3.2 Shared method definitions
+
+Even when reusing an ancestor's public API, it can be challenging to 
+avoid strange inconsistencies. Bob Martin provided a classic example
+of this problem in an article on the [Liskov Substitution
+Principle](http://www.objectmentor.com/resources/articles/lsp.pdf).
+Consider a `Rectangle` class with a `Square` subclass, as shown
+below:
 
 ```ruby
 class Rectangle
@@ -63,7 +149,8 @@ class Square < Rectangle
 end
 ```
 
-On the surface, this code looks fairly simple, and seems to work as expected:
+On the surface, this implementation looks fairly simple, and seems to work 
+as expected:
 
 ```ruby
 square = Square.new(5)
@@ -134,7 +221,71 @@ to guess about whether their extensions will break upstream features. With
 some practice and careful design thought this is possible, but it certainly
 is not *easy* to reason about.
 
-## Composition example
+## 3.3 Combinatorial effects 
+
+Shared method definitions and shared instance variables are at the root of what
+makes implementation-sharing complex, but that complexity is compounded by the 
+fact that ancestry chains can grow arbitrarily long. Module mixins in particular
+tend to cause this problem, because they tend to be viewed by Ruby programmers
+a tool for implementing orthogonal *plugins*, but are functionally more similar 
+to *multiple inheritance*.
+
+Consider an arbitrary class A, with four modules mixed into it: M~1~,
+M~2~, M~3~, and M~4~. Typically, each of these modules will provide some
+features to C and perhaps require that A implement a few methods to enable those
+features. Since each of these modules is meant to be used standalone, they
+aren't directly aware of one another, nor do they depend on each other's
+features. 
+
+In this scenario, each module might need to make
+calls to A's public API and vice-versa, but there would be no need for the
+modules to be able to call each other's public methods directly. Furthermore,
+in an ideal situation, A and its mixed-in modules would communicate entirely via
+public method calls, allowing each to have their own private methods and
+internal state. If these constraints were enforced at the language level, it'd be 
+possible to model mixins as a simple, horizontal lookup path that would be 
+trivial to reason about.
+
+From our perspective as Ruby users, the scenario described above might cover 90%
+of what we use modules for on a day to day basis. But because modules are
+actually a much more powerful and generalized construct, we cannot expect that
+simplistic mental model to be a good fit for how they actually work. In reality,
+every module we mix into a class has direct access to the variables and methods
+defined by every other mixed in module in that class, resulting in a
+combinatorial explosion of possible interactions.
+
+The following graph attempts to illustrate the difference between our typical
+way of thinking about (and using) modules, and how they actually work:
+
+![](topology.png)
+
+What you see above is just one small slice of the total method lookup path, but
+it illustrates the general problem that repeats itself along the whole path:
+every ancestor can impact every other one, and the number of possibilities
+expands greatly with each new component added to the chain.
+
+In practice, when concerns really are orthogonal, most of the combinatorial
+effects between components can safely be ignored as long as you apply some
+informal reasoning. However, the larger an object gets, the more likely it
+becomes that some pair of ancestors will accidentally develop conflicting
+definitions of what a method or variable is meant to be used for, and those
+issues can be very difficult to debug. Furthermore, each new ancestor
+also makes it harder to add new functionality to an object without 
+accidentally breaking existing features.
+
+This issue can be mitigated by the use of mixins at the individual object level,
+which can allow different bits of reusable functionality to be used in isolation
+of one another by only mixing in one module at at a time, but that technique
+only works around the issue rather than eliminating it entirely.
+
+# 4. Complexities of behavior sharing
+
+Behavior-sharing techniques do not suffer from any of the issues we've
+discussed so far, and that alone makes them worth considering. However, they
+do have their own share of problems, so you need to be aware of what the
+tradeoffs are when deciding how to model your systems.
+
+## 4.1 Indirect access
 
 When access to an object's internals is truly necessary, it isn't practical
 to use composition based techniques. For example, consider the following
@@ -268,354 +419,122 @@ our implementation of the `ComposedCache` class has none of those
 benefits, and so it serves as a useful (if pathological) example 
 of the downsides of composition-based modeling.
 
-# The complexities of code reuse
+## 4.2 Self-schizophrenia
 
-Ruby provides many tools that support convenient code re-use, but each of them
-comes with its own caveats and gotchas. This cheatsheet attempts to demonstrate
-all the different sources of complexity to be aware of when building reusable
-components in Ruby.
+When sharing behavior via decorators, it can sometimes be tricky to remember
+what `self` refers to. This can happen both on the proxy side (a reference to
+`self` accidentally refers to the proxy rather than the targer), and
+within the target object (a reference to `self` accidentally exposes the
+target rather than the proxy). This common mistake can lead to subtle bugs 
+that are tricky to detect.
 
-## 1. Ways to reuse code
-
-### 1.1 Class inheritance
-
-Subclassing allows you to use the features of a base class within your own
-class definition. Because Ruby is a single-inhertance language, each class has
-exactly one parent, so you need to choose wisely.
-
-A typical example of class inheritance in Ruby is found in ActiveRecord:
+A clear example of this problem can be found in the Celluloid concurrency
+framework. Pay attention to the lines marked #1 and #2 in the following
+code:
 
 ```ruby
-class Product < ActiveRecord::Base
-  belongs_to :category
+require "celluloid"
 
-  def self.lookup(item_code)
-    where(:item_code => item_code).first
-  end
-end
-```
+class Alert
+  include Celluloid
 
-### 1.2 Traditional mixins 
-
-Mixing a module into a class using `include` makes that module's features
-available to instances of that class. Unlike class-based inheritance, you
-can mix in as many modules into a class as you'd like.
-
-Perhaps the most commonly used module is `Enumerable`, which expects the
-classes that use it to implement only a meaningful `each` method:
-
-```ruby
-class Order
-  include Enumerable
-
-  def initialize(products)
-    @products = product
+  def initialize(message, delay)
+    @message = message
+    @delay   = delay
+    @display = Display.new
   end
 
-  def each
-    @products.each { |e| yield(e) }
-  end
+  attr_reader :message
 
-  def total_price
-    reduce { |s,e| s + e.price }
-  end
-end
-```
+  def run
+    loop do
+      sleep @delay
 
-### 1.3 Per-object mixins
-
-Modules can also be mixed in at the individual object level, via the `extend`
-keyword. Per-object mixins have a higher precedence than modules mixed into
-classes via `include`, but otherwise have similar semantics.
-
-This method of code sharing has become increasingly common in Ruby, as a
-convenient means of role-centric modeling:
-
-```ruby
-module Shopper
-  def add_to_cart(product)
-    cart << product
-  end
-
-  private
-
-  def cart
-    @cart ||= []
+      @display.async.render(Actor.current)  # 1
+    end
   end
 end
 
-# Usage:
+class Display
+  include Celluloid
 
-current_user.extend(Shopper)
-current_user.add_to_cart(product)
-```
-
-### 1.4 Decorators
-
-Many different techniques exist for implementing the decorator 
-pattern in Ruby. This method essentially involves adding new
-functionality on a proxy object, and then delegating all other
-messages to wrapped object. This kind of modeling can be hacked together
-by hand using `method_missing`, or via higher level abstractions. 
-
-The following example uses `DelegateClass` from Ruby's standard library:
-
-```ruby
-require "delegate"
-
-class InternationalProduct < DelegateClass(Product)
-  BASE_CURRENCY = "USD"
-
-  def initialize(product, currency)
-    @product  = product
-    @currency = currency
-
-    super(@product)
-  end
-  
-  def price
-    Currency.convert(@product.price, @currency, BASE_CURRENCY)
+  def render(actor)
+    puts actor.message
   end
 end
 
+alert = Alert.new("Foo", 5)
+alert.async.run # 2
 
-# Usage:
-
-product = InternationalProduct.new(Product.find(1337), "GBP")
-
-p product.description # delegates to Product
-p product.price       # uses InternationalProduct's definition
+sleep
 ```
 
-### 1.5 Simple composition
+In the line marked #1, the `Actor.current` method is called, rather than
+referring to `self`. This is a direct effect of Celluloid relying on a proxy
+mechanism for handling its fault tolerance and concurrency functionality.
 
-Composition-based code reuse is hard to describe, because it
-is baked into the concept of an object. But we can easily
-understand this style of modeling by constrasting it with
-any another approach to code sharing.
+When `alert.async.run` is called on the line marked #2, `Alert#run` does not get run
+directly, but instead gets scheduled to be run indirectly by a proxy object.
+However, once the method is actually executed, `self` refers to `Alert` and not
+the proxy object that implements the features which enable it to be used in a
+concurrent, thread-safe way. Celluloid stores a reference to that proxy object
+in a thread local variable which is returned by `Actor.current`, and this is
+how you can safely pass a reference to an object that you're using Celluloid
+with.
 
-Take for example the following object, which uses inheritance-based modeling:
+If that design technique sounds confusing, it's because it is. However, there
+isn't really a better composition-based workaround: this kind of complexity
+arises from the indirect access issue mentioned in the previous section, and
+is worsened by the automatic delegation that is meant to make two distinct
+objects appear as if they were one single coherent entity.
 
-```ruby
-class SalesReport < Array
-  def summary
-    "Your order:\n\n" +
-    map { |e| "* #{e.name}: #{e.price}" }.join("\n")
-  end
-end
+When faced with the self-schizophrenia issue, it's important to consider how
+much benefit is gained by encapsulating implementation details. In the case of
+Celluloid, the benefit of not mixing complicated concurrency mechanics into
+ordinary objects is probably well worth it, but in other cases it may make
+sense to use an implementation-sharing approach instead.
 
-# Usage:
+*NOTE: The self-schizophrenia problem also can occur when using the **eval**
+implementation-sharing approach. However, since it not a general problem for
+that category, I've categorized it as more of a behavior-sharing problem.*
 
-Product = Struct.new(:name, :price)
+## 4.3 Lack of established design practices 
 
-hat     = Product.new("Hat",      500)
-glasses = Product.new("Glasses", 1000)
+Although it is not a technical issue, one of the main barriers to making
+effective use of behavior-sharing based code reuse in Ruby is that most
+developers are simply not comfortable with using aggregation as a primary
+modeling technique. Ruby has lots of tools that make this style of programming
+easier, but they tend to take a back seat to module mixins and eval-based 
+domain-specific interfaces.
 
-puts SalesReport.new([hat, glasses]).summary
-```
+Decorators and simple composition are definitely gaining in popularity due to
+the encapsulation and understandability benefits that they offer, but in many
+cases they are used as direct replacements for inheritance-based modeling. This
+leads to somewhat high-ceremony and awkward interfaces that aren't necessarily
+convenient or comfortable to use.
 
-Here, `SalesReport` inherits from `Array` to save a few lines of code,
-but that causes it to gain every single method of `Array` as part of
-its API. If that functionality isn't required, an alternative would 
-be to use composition instead:
+In other words, we haven't yet established idioms or practices that truly allow
+composition based modeling to shine: most of our libraries and frameworks still
+heavily rely on implementation-sharing techniques, and until that changes, our
+applications will tend to follow in their footsteps.
 
-```ruby
-class SalesReport
-  def initialize(products)
-    @products = products
-  end
+This is an issue that will hopefully be resolved in time, but for now I think
+it's only fair to include a lack of familiarity with behavior-sharing methods as
+something that makes code that uses them more complicated to reason about.
 
-  def summary
-    "Your order:\n\n" +
-    @products.map { |e| "* #{e.name}: #{e.price}" }.join("\n")
-  end
-end
-```
+# 5. Notes and recommendations
 
-### 1.6 Dynamically evaluated codeblocks
+Recommendations
+  Incidental vs. Essential inheritance
+  Do you need direct access to the internals? 
+    YES: Consider using the most low-impact form of inheritance you can
+    NO: Are there obvious downsides to a composition-based model?
+      YES: Will the extra work likely save you maintenance / understandability effort?
+         YES: Try to model with composition
+         NO: Use the lowest impact form of inheritance suitable for your problem
+      NO: Try to model with composition
 
-It is a common practice for Ruby libraries to wrap their functionality in
-domain-specific interfaces. This kind of modeling involves evaluating
-code blocks within the context of command objects that do various kinds of
-magic under the hood.
-
-The following FactoryGirl code is a typical example of this style of API: 
-
-```ruby
-FactoryGirl.define do
-  factory :product do
-    name          "Super crusher 5000"
-    description   "The best product ever"
-    price         500
-  end
-end
-
-# ...
-
-# build() returns a saved Product instance
-product = FactoryGirl.build(:product) 
-
-p product.price #=> 500
-```
-
-### 1.7 Monkey patching
-
-The most direct way of sharing code in Ruby is to re-open a class definition and
-continue to add functionality to it, but it is also the most invasive. This
-approach is called monkey patching, and it is a widespread but controversial 
-practice.
-
-Syntactic sugar is often implemented via monkey patches, as in the code below:
-
-```ruby
-# NOTE: This is a terrible idea, don't actually do it!
-
-class Numeric
-  BASE_CURRENCY = "USD"
-
-  def in_currency(target)
-     Currency.new(self, BASE_CURRENCY, target)
-  end
-end
-
-# usage
-p 10.in_currency("GBP") #=> 6.36
-```
-
-## 2. Sources of design complexity
-
-### 2.1 Late binding
-
-As in most dynamic languages, Ruby's method calls are done via 
-late binding.
-
-
-### 2.2 Shared state
-
-Each object has a single set of instance variables, even if it
-exists within a very complex ancestry chain. For example,
-the following code references an instance variable that was
-defined by its superclass:
-
-```ruby
-require "ostruct"
-
-class PrettyStruct < OpenStruct
-  def inspect
-    @table.map { |k,v| "#{k} = #{v.inspect}" }.join("\n")
-  end
-end
-
-struct = PrettyStruct.new(:a => 3, :b => 4, :c => 5)
-p struct
-
-# a = 3
-# b = 4
-# c = 5
-```
-
-The only way to know for sure what instance variables will
-be defined, accessed, and modified at runtime for a particular
-Ruby object is to read the source of every single class and
-module that exists upon its ancestry chain, both at the
-individual object and class definition level. 
-
-Because new variables can spring into existence any time a method 
-is called, this kind of static analyis is not practical for most 
-non-trivial programs. For example, whenever you inherit from
-`ActiveRecord::Base`, your object exists at the tail end of
-an ancestry chain that provides hundreds of methods through
-dozens of modules, and that's assuming that you haven't installed
-any third-party plugins.
-
-In lieu of being able to directly reason about state manipulation
-along ancestry chains in Ruby, we must rely on manual and automated
-testing to prove that our code works as expected, but that can only
-verify that the paths we tested were unaffected by the state we
-introduced.
-
-**Affected Reuse Methods:** Class inheritance, traditional mixins,
-per-object mixins, dynamically evaluated code blocks,
-monkey patching
-
-### 2.3 Shared public interface
-
-
-
-
-### 2.4 Shared private interface
-
-Many code reuse techniques in Ruby are further complicated
-by the fact that `private` and `protected` methods are also shared 
-throughout the ancestry chain. 
-
-The primary risk here is accidental
-name collisions rather than inappropropriate external use, but
-there is also the concern that downstream components in the ancestry
-chain will make use of a private method in ways that their 
-ancestors didn't anticipate, leading to data corruption. This
-problem can be avoided with a bit of common sense, but is yet
-another source of complexity that can arise from a lack of
-encapsulation between components.
-
-**Affected Reuse Methods:** Class inheritance, traditional mixins,
-per-object mixins, dynamically evaluated code blocks, monkey patching
-
-### 2.5 Shared ancestry chain
-
-...
-
-### 2.6 Self-schizophrenia
-
-Whenever metaprogramming is used to implement reusable components, you can no
-longer easily determine what object `self` will refer to by simply looking at
-the code. Consider the following incorrect use of the Prawn PDF library:
-
-```ruby
-@name = "Gregory Brown" 
-
-Prawn::Document.generate("hello.pdf") do
-  text "Hello #{@name}" 
-end
-```
-
-Because `Prawn::Document.generate` evaluates the provided codeblock within the
-context of a `Prawn::Document` instance, the `@name` variable defined outside
-the block is not the same as the one referenced within the block. To share data
-between the block and its enclosing scope, it is necessary to use local
-variables instead (due to the closure property of blocks):
-
-```ruby
-name = "Gregory Brown" 
-
-Prawn::Document.generate("hello.pdf") do
-  text "Hello #{name}" 
-end
-```
-
-But if we wanted to refer to methods defined in the enclosing scope, we'd be
-back to the same problem: because inside the block, all code is executed with an
-instance of `Prawn::Document` as the receiver.
-
-This problem also tends to occur when using dynamic delegation techniques to
-implement decorators. When defining methods within the decorator, it is
-sometimes tricky to reason about which methods will end up being called on the
-proxy itself, and which will be forwarded to the wrapped object.
-
-**Affected Reuse Methods:** Dynamically evaluated codeblocks, decorators
-
-### 2.7 Dependency management
-
-The main tradeoff of using less-invasive code reuse mechanisms is that you
-become responsible for doing more of the boilerplate work on your own. This
-has advantages in terms of flexibility and data encapsulation, but comes at
-the cost of convenience.
-
-NEED A GOOD EXAMPLE
-
-## 3. Notes and Recommendations
-
-## 4. Further reading
+# 6. Further reading
 
 Practicing Ruby "Criteria for DI"
 
