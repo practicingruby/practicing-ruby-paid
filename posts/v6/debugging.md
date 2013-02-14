@@ -148,7 +148,7 @@ prevent regressions of this bug happening in this way again.
 
 But not all tests need to be added to your test suite. While debugging, it can
 be a useful way to record your discoveries. If you are only able to write an
-end-to-end integration test that reproduces the bug, you
+end-to-end integration test that reproduces the bug, you *************
 
 Some tests don't make sense to add to a test suite, especially negative
 examples such as "it should not crash when given special characters". The
@@ -177,7 +177,7 @@ there is less duplication.
 
 Even though sometimes it seems like software has a mind of its own, computers
 only do what a human has told them to do at some point. You **can** figure out
-why a bug is happening by using the scientific method to narrow down where the
+why a bug is happening by using deterministic processes to narrow down where the
 problem is happening. You **can** learn to pick out the useful parts of stack
 traces. You **can** use debuggers to experiment with what your code is
 actually doing as it runs. And you **can** write tests that help you while
