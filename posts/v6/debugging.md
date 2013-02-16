@@ -84,11 +84,12 @@ last line of your code that was involved (which is usually somewhere in the
 middle). The error message will tell you *what* went wrong, and the last line
 of your code will tell you *where* the problem is coming from.
 
-A particularly horrible stack trace is [this 1400 line trace from a Rails app using JRuby running on websphere](https://gist.github.com/carols10cents/4751381/raw/b75bdb41e7fa8ded54d13dc786808b464357effe/gistfile1.txt). In this case, the resulting error
-message, "ERROR [Default Executor-thread-15]", is not very helpful. The vast
-majority of the lines are coming from JRuby's java code and are also
-uninformative. However, skimming through and looking for lines that don't fit
-in, there are some lines that are longer than the others:
+A particularly horrible stack trace is [this 1400 line trace from a Rails app using JRuby running on websphere](https://gist.github.com/carols10cents/4751381/raw/b75bdb41e7fa8ded54d13dc786808b464357effe/gistfile1.txt).
+In this case, the resulting error message, "ERROR [Default
+Executor-thread-15]", is not very helpful. The vast majority of the lines are
+coming from JRuby's java code and are also uninformative. However, skimming
+through and looking for lines that don't fit in, there are some lines that are
+longer than the others:
 
     rubyjit.ApplicationHelper$$entity_label_5C9C81BAF0BBC4018616956A9F87C663730CB52E.__file__(/opt/local/wlp/usr/servers/staging/apps/abc/WEB-INF/app/helpers/application_helper.rb:232)
     rubyjit.ApplicationHelper$$entity_label_5C9C81BAF0BBC4018616956A9F87C663730CB52E.__file__(/opt/local/wlp/usr/servers/staging/apps/abc/WEB-INF/app/helpers/application_helper.rb)
@@ -112,7 +113,6 @@ missing an `end` somewhere in that file. If you're not sure what an error is
 telling you, often a search for "ruby" and the error message will point you in
 the right direction.
 
-
 ## Use debuggers
 
 Debuggers are tools that exist for most languages that let you inspect your
@@ -125,19 +125,58 @@ program was crashing. But my favorite debugger for Ruby right now is
 `binding.pry` at the location in your code where the problem is. Then run your
 code until it hits that point and you'll be placed in an interactive Pry
 session. Then you can do things like inspect the values in variables or run
-some code. Much like irb, this lets you try out ideas and hypotheses quickly.
+some code. Much like irb, this lets you try out ideas and hypotheses quickly. I
+often reach for pry when I'm not sure what I want to be able to inspect-- if I
+know what I want, I'll usually just print or log.
 
-For example, if we have this code:
+Debuggers are especially useful when it's difficult to recreate the exact
+circumstances in a different context, such as when working with events or
+threads. For example, take the
+[Ruby implementation of the Actor model](https://github.com/elm-city-craftworks/practicing-ruby-examples/blob/master/v6/003/lib/actors.rb)
+from [Issue 6.3](https://practicingruby.com/articles/100): if we want to be
+able to inspect what's happening in
+[`Waiter#request_to_eat`](https://github.com/elm-city-craftworks/practicing-ruby-examples/blob/master/v6/003/actors_from_scratch/dining_philosophers.rb#L59),
+we can `require 'pry'` in
+[`dining_philosophers.rb`](https://github.com/elm-city-craftworks/practicing-ruby-examples/blob/master/v6/003/actors_from_scratch/dining_philosophers.rb)
+and add a `binding.pry`:
 
-<!-- Need to flesh this out into something realistic -->
-    class Whatever
-      def something
-        binding.pry
-      end
+    def request_to_eat(philosopher)
+      binding.pry
+      return if @eating.include?(philosopher)
+
+      @eating << philosopher
+      philosopher.async.eat
     end
 
-and run it using `ruby whatever.rb`, this is what you'll see when the code
-hits the `binding.pry`:
+Then if we run dining_philosophers.rb, the first time that `request_to_eat` is
+called we will be dropped into a pry session:
+
+    From: /Users/carolnichols/Ruby/practicing-ruby-examples/v6/003/actors_from_scratch/dining_philosophers.rb @ line 61 Waiter#request_to_eat:
+
+        60: def request_to_eat(philosopher)
+     => 61:   binding.pry
+        62:   return if @eating.include?(philosopher)
+        63:
+        64:   @eating << philosopher
+        65:   philosopher.async.eat
+        66: end
+
+    [1] pry(#<Waiter>)>
+
+Then if we enter `philosopher` at the prompt to inspect it, we can see that it
+is indeed an instance of `Actor::Proxy` that has a `@target` of a particular
+`Philosopher` instance (Popper).
+
+If we `exit` this pry session, we'll quickly be in the next time
+`request_to_eat` is called, and this time we can inspect `@eating` and see that
+it contains the `Proxy` for Popper while the current `philosopher` is the
+`Proxy` for Schopenhauer.
+
+Replicating this exact situation in a test where we can access the values of
+`@eating` and `philosohper` at these particular points in the execution is not
+straightforward, but pry makes it easier. This merely scratches the surface of
+pry's capabilities-- there are many commands pry provides that are powerful
+tools for inspecting your code while it's running.
 
 ## Lean on tests
 
@@ -147,14 +186,19 @@ while you're experimenting, and if added to your test suite, it will help
 prevent regressions of this bug happening in this way again.
 
 But not all tests need to be added to your test suite. While debugging, it can
-be a useful way to record your discoveries. If you are only able to write an
-end-to-end integration test that reproduces the bug, you *************
+be a useful way to record your discoveries and experiments. You can start with
+an end-to-end integration test that is able to reproduce the problem and then
+write smaller and smaller tests as you are narrowing down where the issue is
+occurring until you get a unit test. Then you can fix the issue, run all the
+tests to confirm the fix, and commit just the unit test along with the fix.
 
 Some tests don't make sense to add to a test suite, especially negative
 examples such as "it should not crash when given special characters". The
 situation is just too specific to happen exactly that way again.
 
-For example, here is a test that I added to [rstat.us' codebase](https://github.com/hotsh/rstat.us/commit/26444ea95ec8da12d4e74764bf52bdaad18e7776) about a year ago:
+For example, here is a test that I added to
+[rstat.us' codebase](https://github.com/hotsh/rstat.us/commit/26444ea95ec8da12d4e74764bf52bdaad18e7776)
+about a year ago:
 
 		it "does let you update your profile even if you use a different case in the url" do
 			u = Factory(:user, :username => "LADY_GAGA")
@@ -170,10 +214,11 @@ For example, here is a test that I added to [rstat.us' codebase](https://github.
 
 Rather than adding another test for the case of going to the url for username
 "lady_gaga" when the username is "LADY_GAGA" (don't ask why I chose Lady Gaga,
-I don't remember), I could have instead updated [the existing happy path test](https://github.com/hotsh/rstat.us/blob/26444ea95ec8da12d4e74764bf52bdaad18e7776/test/acceptance/profile_test.rb#L45) to encompass this situation
-(effectively replacing the existing happy path test with this special case
-test). In this way, the special case and the happy path are being tested, but
-there is less duplication.
+I don't remember), I could have instead updated
+[the existing happy path test](https://github.com/hotsh/rstat.us/blob/26444ea95ec8da12d4e74764bf52bdaad18e7776/test/acceptance/profile_test.rb#L45)
+to encompass this situation (effectively replacing the existing happy path test
+with this special case test). In this way, the special case and the happy path
+are being tested, but there is less duplication.
 
 Even though sometimes it seems like software has a mind of its own, computers
 only do what a human has told them to do at some point. You **can** figure out
@@ -183,7 +228,6 @@ traces. You **can** use debuggers to experiment with what your code is
 actually doing as it runs. And you **can** write tests that help you while
 debugging and then turn them into useful regression tests. Go figure out some
 bugs! <3
-
 
 ## References
 
