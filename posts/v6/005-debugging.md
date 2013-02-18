@@ -80,25 +80,33 @@ down the problem.
 
 The two most valuable pieces of information are the resulting error message
 (which is usually shown at the beginning of the stack trace in Ruby) and the
-last line of your code that was involved (which is usually somewhere in the
-middle). The error message will tell you *what* went wrong, and the last line
-of your code will tell you *where* the problem is coming from.
+last line of your code that was involved (which is often in middle). The 
+error message will tell you *what* went wrong, and the last line of your 
+code will tell you *where* the problem is coming from.
 
-A particularly horrible stack trace is [this 1400 line trace from a Rails app using JRuby running on websphere](https://gist.github.com/carols10cents/4751381/raw/b75bdb41e7fa8ded54d13dc786808b464357effe/gistfile1.txt).
-In this case, the resulting error message, "ERROR [Default
-Executor-thread-15]", is not very helpful. The vast majority of the lines are
+A particularly horrible stack trace is [this 1400 line trace](https://gist.github.com/carols10cents/4751381/raw/b75bdb41e7fa8ded54d13dc786808b464357effe/gistfile1.txt)
+from a Rails app using JRuby running on websphere. In this case, the error message
+*"ERROR [Default Executor-thread-15]"* is not very helpful. The vast majority of the lines are
 coming from JRuby's java code and are also uninformative. However, skimming
 through and looking for lines that don't fit in, there are some lines that are
-longer than the others:
+longer than the others (shown wrapped and trimmed below for clarity):
 
-    rubyjit.ApplicationHelper$$entity_label_5C9C81BAF0BBC4018616956A9F87C663730CB52E.__file__(/opt/local/wlp/usr/servers/staging/apps/abc/WEB-INF/app/helpers/application_helper.rb:232)
-    rubyjit.ApplicationHelper$$entity_label_5C9C81BAF0BBC4018616956A9F87C663730CB52E.__file__(/opt/local/wlp/usr/servers/staging/apps/abc/WEB-INF/app/helpers/application_helper.rb)
+```
+rubyjit.ApplicationHelper
+  $$entity_label_5C9C81BAF0BBC4018616956A9F87C663730CB52E.
+  __file__(/..LONGPREFIX../app/helpers/application_helper.rb:232)
+  
+rubyjit.ApplicationHelper
+  $$entity_label_5C9C81BAF0BBC4018616956A9F87C663730CB52E
+  .__file__(/..LONGPREFIX../app/helpers/application_helper.rb)
+```
 
 These lines of the stack trace point to the last line of the Rails code that
 was involved. In this situation, on line 232 of application_helper.rb, two
-strings were being concatenated. By trying different values of the strings, it
-was easier to narrow down the root cause: the strings had different encodings,
-and [JRuby was calling a 1.9 method in 1.8 mode](https://github.com/jruby/jruby/issues/366).
+strings were being concatenated. By trying various values for those strings,
+we found the cause of the problem: [an encoding-related bug](https://github.com/jruby/jruby/issues/366)
+in JRuby was causing a Ruby 1.9 specific feature to be called from within Ruby 1.8 
+mode.
 
 <!--
 NOTE: I find this interesting because it's an example of something trying to make stack traces more useful, but I'm not sure how relevant it is:
