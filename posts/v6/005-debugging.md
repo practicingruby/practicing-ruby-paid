@@ -15,9 +15,9 @@ the way we expect it to.
 Considering that we spend so much time on finding and fixing bugs and dealing
 with bad behavior, it is surprising that we don't discuss these issues more
 often. Most knowledge of debugging techniques is gained
-through direct experience, and is rarely focused on in beginning programming
+through direct experience, and it is rarely focused on in beginning programming
 lessons. Not feeling in control of the code you write is part of what makes
-programming scary to beginners, and frustrating to developers of all skill
+programming scary to beginners and frustrating to developers of all skill
 levels.
 
 Developing a systematic way of getting out of sticky situations is an essential
@@ -31,10 +31,10 @@ help you maintain confidence even when things go wrong.
 Whenever something breaks, it can be hard to remain calm. Debugging
 often occurs when production is down, customers are experiencing a problem, and
 managers are asking for status updates every five minutes. In this situation, panicking
-is a natural response, but it can easily disrupt your troubleshooting process. It may 
-lead to changing code on hunches rather than on evidence, or writing
-untested code. By rushing to fix things immediately, you may make 
-the problem worse, or not know which of your changes actually 
+is a natural response, but it can easily disrupt your troubleshooting process. It may
+lead to changing code on hunches rather than on evidence or writing
+untested code. By rushing to fix things immediately, you may make
+the problem worse or not know which of your changes actually
 fixed the problem.
 
 If external pressures are causing you to panic, first disable
@@ -72,16 +72,16 @@ of your system, and it is similar to performing a binary search in that
 each new step breaks the problem space down into smaller and smaller chunks.
 
 **Bottom-up investigations** tend to start with a new file or new
-environment, and involve writing the least amount of code possible to 
-recreate the issue you're seeing in your existing software. For example, 
+environment and involve writing the least amount of code possible to
+recreate the issue you're seeing in your existing software. For example,
 if you had an issue with a newly introduced dependency in a project,
-you might try creating a minimal example using only the gems involved 
-in the particular problem, and then try to reproduce the bad behavior
+you might try creating a minimal example using only the gems involved
+in the particular problem and then try to reproduce the bad behavior
 with as few actions as possible. Similarly, if you expect that bad
 data might be to blame for a problem in your program, you could start 
 with an empty database and introduce only the records necessary 
 to reproduce the issue you're investigating. In both cases, this process
-allows you to removing many components from consideration by never involving
+allows you to remove many components from consideration by never involving
 them in the first place.
 
 Deciding whether to use the top-down or bottom-up approach depends on the
@@ -107,14 +107,14 @@ down the problem.
 
 The two most valuable pieces of information are the resulting error message
 (which is usually shown at the beginning of the stack trace in Ruby) and the
-last line of your code that was involved (which is often in middle). The 
-error message will tell you *what* went wrong, and the last line of your 
+last line of your code that was involved (which is often in middle). The
+error message will tell you *what* went wrong, and the last line of your
 code will tell you *where* the problem is coming from.
 
 A particularly horrible stack trace is [this 1400 line trace](https://gist.github.com/carols10cents/4751381/raw/b75bdb41e7fa8ded54d13dc786808b464357effe/gistfile1.txt)
 from a Rails app using JRuby running on websphere. In this case, the error message
 *"ERROR [Default Executor-thread-15]"* is not very helpful. The vast majority of the lines are
-coming from JRuby's java code and are also uninformative. However, skimming
+coming from JRuby's Java code and are also uninformative. However, skimming
 through and looking for lines that don't fit in, there are some lines that are
 longer than the others (shown wrapped and trimmed below for clarity):
 
@@ -131,10 +131,10 @@ rubyjit.ApplicationHelper
 These lines of the stack trace point to the last line of the Rails code that
 was involved, line 232 of *application_helper.rb*. But this particular line
 of code was simply concatenating two strings together, which made it pretty
-clear that the problem was not caused by our application code! But by trying 
-various  values for those strings, we eventually found the cause of the 
-problem: [an encoding-related bug](https://github.com/jruby/jruby/issues/366) in 
-JRuby was causing a Ruby 1.9 specific feature to be called from within Ruby 1.8 
+clear that the problem was not caused by our application code! By trying
+various  values for those strings, we eventually found the cause of the
+problem: [an encoding-related bug](https://github.com/jruby/jruby/issues/366) in
+JRuby was causing a Ruby 1.9 specific feature to be called from within Ruby 1.8
 mode. Even though our stack trace was very unpleasant to read and did not
 provide us with a useful error message, tracing the exception down to a
 particular line number was essential for identifying what would have otherwise
@@ -169,7 +169,7 @@ think of a way to capture the debugging information you need with some simple
 print statements or a logger, it's a sign that using Pry might get you 
 somewhere.
 
-This kind of wuorkflow is especially useful when control flow gets complicated, 
+This kind of workflow is especially useful when control flow gets complicated,
 such as when working with events or threads. For example, suppose we wanted to
 get a closer look at the behavior of [the actor model](https://github.com/elm-city-craftworks/practicing-ruby-examples/blob/master/v6/003/lib/actors.rb)
 from the Dining Philosopher's problem from [Issue 6.3](https://practicingruby.com/articles/100). 
@@ -236,7 +236,7 @@ locals: _  __  _dir_  _ex_  _file_  _in_  _out_  _pry_
 
 Once we're ready to move on to the next call to `request_to_eat`, we simply call
 `exit`. That immediately launches a new console that allows us to determine
-that Schopenhauer's is already in the `@eating` queue by the Aristotle's request
+that Schopenhauer's is already in the `@eating` queue by the time Aristotle's request
 is starting to be processed:
 
 ```
@@ -256,17 +256,17 @@ exact situation in a test where we can access the values of
 `@eating` and the internals of the `philosopher` argument at these 
 particular points in the execution would
 not be straightforward, but Pry makes it easier to casually poke at these
-values as part of an ad-hoc exploration. If there was a bug to be found here, 
-Pry could help you identify the conditions that trigger it, and then other 
-techniques could be used to reproduce the issue once it's root cause 
+values as part of an ad-hoc exploration. If there was a bug to be found here,
+Pry could help you identify the conditions that trigger it, and then other
+techniques could be used to reproduce the issue once its root cause
 was discovered.
 
 This particular use case merely scratches the surface of Pry's capabilities-- 
 there are many commands that Pry provides that are powerful tools for inspecting your
 code while it's running. That said, it is not a complete substitute for
-a traditional debugger. For example, gdb can be useful for hunting down 
-hard-to-investigate issues such as segfaults in MRI's C code. If you're interested in that kind 
-of thing, you may want to check out [this talk from Heath Lilley](http://vimeo.com/54736113)) 
+a traditional debugger. For example, gdb can be useful for hunting down
+hard-to-investigate issues such as segfaults in MRI's C code. If you're interested in that kind
+of thing, you may want to check out [this talk from Heath Lilley](http://vimeo.com/54736113)
 about using gdb to determine why a Ruby program was crashing.
 
 ## Lean on tests
