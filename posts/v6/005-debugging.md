@@ -3,100 +3,63 @@
 [carols10cents@rstat.us](https://rstat.us/users/Carols10cents)), one of the
 active maintainers of [rstat.us](https://rstat.us). Carol is also involved in
 the Pittsburgh Ruby community, and is a co-organizer of the [Steel City Ruby
-Conf](http://steelcityrubyconf.org/). She is currently employed at [Think
-Through Math](http://www.thinkthroughmath.com/) doing Rails development.*
+Conf](http://steelcityrubyconf.org/). At the time of writing this article,
+she was busy doing Rails development for [Think
+Through Math](http://www.thinkthroughmath.com/).*
 
-Most of us who consider ourselves software developers are
-more like software whisperers. We don't spend most of our time creating new
-code from scratch on greenfield projects -- we're much more likely to be
-up to our elbows in existing spaghetti code, trying to figure out why it isn't working 
-the way we expect it to.
-
-Considering that we spend so much time on finding and fixing bugs and dealing
-with bad behavior, it is surprising that we don't discuss these issues more
-often. Most knowledge of debugging techniques is gained
-through direct experience, and it is rarely focused on in beginning programming
-lessons. Not feeling in control of the code you write is part of what makes
-programming scary to beginners and frustrating to developers of all skill
-levels.
-
-Developing a systematic way of getting out of sticky situations is an essential
-part of becoming a better programmer, and it mostly boils down to having a
-disciplined troubleshooting process. This article will cover some of the basic tools
-and techniques that can help you improve your debugging skills, which will
-help you maintain confidence even when things go wrong.
-
-## Don't Panic
-
-Whenever something breaks, it can be hard to remain calm. Debugging
+Whenever our code breaks, it can be hard to remain calm. Debugging
 often occurs when production is down, customers are experiencing a problem, and
 managers are asking for status updates every five minutes. In this situation, panicking
 is a natural response, but it can easily disrupt your troubleshooting process. It may
 lead to changing code on hunches rather than on evidence or writing
 untested code. By rushing to fix things immediately, you may make
-the problem worse or not know which of your changes actually
-fixed the problem.
+things worse or not know which of your changes actually
+fixed the problem. As many of us have learned the hard way: a
+chaotic debugging process is no fun for you, and no fun for the people
+who rely on your saoftware.
 
-If external pressures are causing you to panic, first disable
-the feature that is causing the problem, or roll the code back to a known
-stable state. Then work on recreating the issue in a staging environment. Even
+Having a calm and collected way of approaching software defects goes a long way,
+especially if you also have a firm grasp of the tools and techniques that can
+help make the debugging process easier. This article is meant to help you with
+both of those things, so let's get started.
+
+## Don't Panic!
+
+If external pressures are stressing you out, either disable
+the feature that is causing the problem, or roll the production code back to a known
+stable state before attempting to investigate further. Even
 if it isn't ideal from a usability standpoint, functioning software with a
 few missing features is still more useful than unstable and potentially
 dangerous software.
+
+Once you've reproduced the issue in a development environment, you can start to narrow down the problem using
+a divide-and-conquer strategy. If you suspect the problem is coming from your
+application code, you might try starting with an end-to-end reproduction and
+then gradually eliminate components until you find the source of the issue.
+However, if you think the issues are coming from the infrastructure your
+project is built on top of (libraries, services, frameworks, and even Ruby
+itself!), it might be better to start with minimal stand-alone examples to test your 
+assumptions about your application's integration points. Picking a good 
+angle of attack depends on the nature of the problem, so don't be afraid to spend some time
+figuring out the right questions to ask -- even if you're under pressure.
+
+Regardless of your starting point, you won't be guaranteed to find the source
+of your problem right away. However, each new experiment you try out will add yet another constraint to your 
+problem space, making it easier to reason about what is going
+wrong. The fear of the unknown is a big part of what causes us to panic in the
+first place, and so this approach will help you build up the confidence you
+need in order to maintain a calm mindset as you work.
+
+Throughout the rest of this article, we'll discuss some things that will 
+help you find bugs, fix them, and make sure they stay fixed. But keep 
+this in mind: they work best if you don't panic!
 
 > Editor's Note: *Don't Panic* is the motivating
 > force behind several of the maintenance policies for practicingruby.com. For
 > more on this topic, see Lessons 4 and 5 from [Issue
 > 5.6](https://practicingruby.com/articles/91)
 
-## Narrow Down the Problem
-
-Even the most trivial piece of software can involve an infinite number of
-interacting components, from the web browser down to the hardware. In order to
-be able to fix a problem, you need to narrow down the involved components to
-those that are proven to be causing the issue. Start with a way to reproduce
-the problem: this may be an automated test, a script, or a set of manual steps.
-From there, you can try to reproduce the problem with fewer components involved, 
-repeating the process until you have pinpointed the problem. Depending on the
-kind of problem you're dealing with, you may choose to investigate using a
-top-down approach, a bottom-up approach, or some combination of the two:
-
-**Top-down investigations** start with an end-to-end reproduction followed
-by gradual isolation of components. For example, if working with a Rails app and a set of user actions
-that cause a bug, you could try to eliminate the web browser by reproducing the 
-issue in the Rails console. Or if the problem is occurring in a long method, you
-might log some relevant values about halfway through the long method to 
-determine if the issue is due to code in the first half of the method or the 
-second half. This basic divide-and-conquer strategy can be used at any level
-of your system, and it is similar to performing a binary search in that
-each new step breaks the problem space down into smaller and smaller chunks.
-
-**Bottom-up investigations** tend to start with a new file or new
-environment and involve writing the least amount of code possible to
-recreate the issue you're seeing in your existing software. For example,
-if you had an issue with a newly introduced dependency in a project,
-you might try creating a minimal example using only the gems involved
-in the particular problem and then try to reproduce the bad behavior
-with as few actions as possible. Similarly, if you expect that bad
-data might be to blame for a problem in your program, you could start 
-with an empty database and introduce only the records necessary 
-to reproduce the issue you're investigating. In both cases, this process
-allows you to remove many components from consideration by never involving
-them in the first place.
-
-Deciding whether to use the top-down or bottom-up approach depends on the
-particulars of your situation. The top-down approach tends to work well when you
-suspect that the problem is within your own code and you don't know exactly
-where it might be, while the bottom-up approach is very effective at dealing
-with issues that arise along the borderlines between your own code and
-third-party components. However, when dealing with complicated bugs in large
-systems, it's not uncommon to combine the two approaches as you incrementally
-work your way through the problem space. As long as each step of your
-investigation helps you narrow things down, there's nothing wrong with using a
-multi-faceted strategy.
-
-
-## Read Stack Traces
+## Read stack traces
 
 Stack traces are ugly. They typically present themselves as a wall of text 
 in your terminal when you aren't expecting them. When pairing, I've often seen people
@@ -130,10 +93,10 @@ rubyjit.ApplicationHelper
 
 These lines of the stack trace point to the last line of the Rails code that
 was involved, line 232 of *application_helper.rb*. But this particular line
-of code was simply concatenating two strings together, which made it pretty
+of code was simply concatenating two strings together -- making it pretty
 clear that the problem was not caused by our application code! By trying
 various  values for those strings, we eventually found the cause of the
-problem: [an encoding-related bug](https://github.com/jruby/jruby/issues/366) in
+problem: an [encoding-related bug](https://github.com/jruby/jruby/issues/366) in
 JRuby was causing a Ruby 1.9 specific feature to be called from within Ruby 1.8
 mode. Even though our stack trace was very unpleasant to read and did not
 provide us with a useful error message, tracing the exception down to a
@@ -152,7 +115,7 @@ exception and its message -- even if the results aren't directly related to your
 issue, they may give you useful hints that can help you discover the right
 questions to ask about your problem.
 
-## Use debuggers
+## Use debugging tools
 
 Debugging tools (such as ruby-debug) are useful because they allow you to inspect your code and its 
 environment while it's actually running. However, this is also true about using
@@ -261,7 +224,7 @@ Pry could help you identify the conditions that trigger it, and then other
 techniques could be used to reproduce the issue once its root cause
 was discovered.
 
-This particular use case merely scratches the surface of Pry's capabilities-- 
+This particular use case merely scratches the surface of Pry's capabilities -- 
 there are many commands that Pry provides that are powerful tools for inspecting your
 code while it's running. That said, it is not a complete substitute for
 a traditional debugger. For example, gdb can be useful for hunting down
@@ -269,30 +232,41 @@ hard-to-investigate issues such as segfaults in MRI's C code. If you're interest
 of thing, you may want to check out [this talk from Heath Lilley](http://vimeo.com/54736113)
 about using gdb to determine why a Ruby program was crashing.
 
-## Lean on tests
+You don't always need to use a heavyweight debugging utility to solve
+your problems. Whenever you can get away with it, it's reasonable to use the
+most simple thing that could possibly work; it's amazing how much a decent log
+file or some well placed print statements can tell you about what's going on in
+your code. But whenever you feel like those approaches are starting to get
+cumbersome, don't be afraid to break out the power tools.
+
+## Lean on tests, but don't overspecify
 
 Whenever you need to fix a bug, you're writing a test first, right? This
 serves multiple purposes: it gives you a convenient way to reproduce the issue
 while you're experimenting, and if added to your test suite, it will help
-prevent regressions of this bug happening in this way again.
+you detect regressions in future changes.
 
-But not all tests need to be added to your test suite. While debugging, it can
-be a useful way to record your discoveries and experiments. You can start with
-an end-to-end integration test that is able to reproduce the problem and then
-write smaller and smaller tests as you are narrowing down where the issue is
-occurring until you get a unit test. Then you can fix the issue, run all the
-tests to confirm the fix, and commit just the unit test along with the fix.
+Regardless of whether the tests you write end up becoming a permanent part of
+your test suite or not, they still provide a useful way to record your 
+discoveries and experiments during a debugging session. For example, you might 
+start with an end-to-end acceptance test that is able to reproduce the problem 
+and then write smaller and smaller tests as you are narrowing down where the 
+issue is occurring until you get to a unit test that covers the root cause.
+From there, you can fix the issue, run all the tests to confirm the fix, 
+and then finally remove the redundant tests that only reproduce the problem 
+indirectly. 
 
-Some tests don't make sense to add to a test suite, especially negative
-examples such as "it should not crash when given special characters". The
-situation is just too specific to happen exactly that way again.
-
-For example, here is a test that I added to
-[rstat.us' codebase](https://github.com/hotsh/rstat.us/commit/26444ea95ec8da12d4e74764bf52bdaad18e7776)
-about a year ago:
+But why bother removing intermediate tests? It's mostly just a matter of
+good housekeeping that helps maintain the clarity of your test suite. For
+example, negative tests like "it should not crash when given special characters" 
+are mostly just noise at the acceptance test level, unless someone could
+reasonably assume that the tested feature wouldn't support that use case.
+For a real example of this kind of over-specification, here is a test that I 
+added to [rstat.us' codebase](https://github.com/hotsh/rstat.us/commit/26444ea95ec8da12d4e74764bf52bdaad18e7776)
+a while ago:
 
 ```ruby
-it "does let you update your profile even if you use a different case in the url" do
+it "lets you update your profile even if you use a different case in the url" do
   u = Factory(:user, :username => "LADY_GAGA")
   a = Factory(:authorization, :user => u)
   log_in(u, a.uid)
@@ -310,19 +284,32 @@ Rather than adding another test for the case of going to the url for username
 I don't remember), I could have instead updated
 [the existing happy path test](https://github.com/hotsh/rstat.us/blob/26444ea95ec8da12d4e74764bf52bdaad18e7776/test/acceptance/profile_test.rb#L45)
 to encompass this situation (effectively replacing the existing happy path test
-with this special case test). In this way, the special case and the happy path
-are being tested, but there is less duplication.
+with this special case test). In this way, both the special case and the happy path
+would be tested, but with less duplication.
+
+If in doubt, it's probably better to have a few extra tests cornering a defect
+than too few, but just keep in mind that like all other code, your tests have a
+maintenance overhead along with a potential to become brittle. As with
+all things, having a sense of balance pays off here.
+
+## Reflections
 
 Even though sometimes it seems like software has a mind of its own, computers
-only do what a human has told them to do at some point. You **can** figure out
-why a bug is happening by using deterministic processes to narrow down where the
-problem is happening. You **can** learn to pick out the useful parts of stack
-traces. You **can** use debuggers to experiment with what your code is
-actually doing as it runs. And you **can** write tests that help you while
-debugging and then turn them into useful regression tests. Go figure out some
-bugs! <3
+only do what a human has told them to do at some point. So next time you end up
+facing a painful defect, remember the following things:
 
-## References
+* You can figure out why a bug is happening by using deterministic processes to narrow down where the
+problem is happening. 
 
-* [Debug it!](http://pragprog.com/book/pbdp/debug-it) by Paul Butcher
-* [Railscast on Pry](http://railscasts.com/episodes/280-pry-with-rails)
+* You can learn to pick out the useful parts of stack traces, even if they
+seem heavily obfuscated at first.
+
+* You can use debugging tools to experiment with what your code is
+actually doing as it runs, especially in cases where it wouldn't
+be easy to work out what was going on straight from your log files.
+
+* You can write tests that help you while debugging and then turn some
+or all of them into useful regression tests that will help make your
+codebase more stable as it grows. 
+
+Thanks for reading. Now go figure out some bugs! <3
