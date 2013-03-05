@@ -6,13 +6,21 @@ for the already initiated.
 Maybe give credit for submitting questions, a free month of Practicing Ruby for
 submitting answers?
 
+- How do I implement block based DSLs?
+- How do I avoid class variables?
+- How do I work with tempfiles and tempdirs in Ruby?
 - How do I configure my application without storing sensitive information in
   files?
 - How do I make a Ruby-based configuration file (possibly Lua style)
 - How do I deal with testing private methods?
-- How do I simplify method interfaces that have too many ordinal arguments?
-- How do I work with tempfiles and tempdirs in Ruby?
+- How do I avoid temporal coupling in my code?
+- How do I read unfamiliar code?
+
 - How do I write UNIX style command scripts?
+  * working with STDIN/STDOUT
+  * argument parsing
+  * see article for more
+
 - How do I work with binary file formats
   (reading, writing, packing, unpacking)
 - How do I work with subprocesses (fork/exec/pipes/etc)?
@@ -22,14 +30,11 @@ submitting answers?
 - How do I use fibers?
 - How do I implement:
     - class level macros?
-    - block based DSLs?
     - AST based DSLS? (Builder / Arel)
     - External DSLs?
 - How do I write a good bug report?
 - How do I do statistical reporting?
 - How do I reduce duplication between similiar methods?
-- How do I read unfamiliar code?
-- How do I avoid temporal coupling in my code?
 
 # These are good questions, but a bit vague and may need further development
 

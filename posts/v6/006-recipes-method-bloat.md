@@ -119,3 +119,6 @@ http = HyperClient.new(:service => service,
 ```
  
 However, this degrades the 80% case, which isn't necessarily A Good Thing.
+
+
+### Keyword arguments?
