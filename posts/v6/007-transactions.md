@@ -17,7 +17,7 @@ blocks
 commit
 rollback / rollforward
 automated rollback on failure
-manual rollback on failure (forced resolution)
+manual rollback on failure (forced conflict resolution, error handling)
 retry
 isolation
 synchronization
@@ -29,9 +29,13 @@ workers / units of work
 pre/post conditions, validations, and events
 
 http://en.wikipedia.org/wiki/Transaction_processing
+
 http://www.subbu.org/articles/nuts-and-bolts-of-transaction-processing
+
 http://en.wikipedia.org/wiki/ACID
+
 http://research.microsoft.com/en-us/um/people/gray/papers/theTransactionConcept.pdf
+
 http://publib.boulder.ibm.com/infocenter/cicsts/v3r2/index.jsp?topic=%2Fcom.ibm.cics.ts.productoverview.doc%2Fconcepts%2Facid.html
 
-
+http://en.wikipedia.org/wiki/Two-phase_commit
