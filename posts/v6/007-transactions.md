@@ -25,6 +25,8 @@ staging / advanced preparation
 versioning / history / audit log
 
 workers / units of work
+migrations
+database-cleaner
 
 pre/post conditions, validations, and events
 
