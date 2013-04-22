@@ -65,6 +65,8 @@ Spyglass::Messenger::DeliverGmail.
   (subject: "Links for you!!!!!!", message: message)
 ```
 
+One line explanation of each component with "No And’s, Or’s, or But’s"
+
 ... Objects for data, functions for action.
 Not pure functions (can have side effects)
 
