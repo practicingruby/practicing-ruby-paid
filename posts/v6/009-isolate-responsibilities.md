@@ -67,7 +67,7 @@ Spyglass::Messenger::DeliverGmail.
 
 One line explanation of each component with "No And’s, Or’s, or But’s"
 
-- Spyglass::Data::History -- Uses a PStore database to keep track of what links have been seen
+- Spyglass::Data::History -- Uses a PStore database to keep track of what urls have been seen
 
 - Spyglass::LinkFetcher::Reddit -- Converts raw data from a subreddit into Spyglass::Data::Link objects
 
