@@ -67,6 +67,16 @@ Spyglass::Messenger::DeliverGmail.
 
 One line explanation of each component with "No And’s, Or’s, or But’s"
 
+- Spyglass::Data::History -- Uses a PStore database to keep track of what links have been seen
+
+- Spyglass::LinkFetcher::Reddit -- Converts raw data from a subreddit into Spyglass::Data::Link objects
+
+- Spyglass::Formatter::PlainText -- renders Spyglass::Data::Link objects using
+  an ERB template
+
+- Spyglass::Messenger::DeliverGmail -- Delivers text-based messages via Gmail.
+  (configured by environment variables)
+
 ... Objects for data, functions for action.
 Not pure functions (can have side effects)
 
