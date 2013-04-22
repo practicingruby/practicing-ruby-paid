@@ -6,3 +6,6 @@ interchangeable parts.
 
 (In other words, apply the single responsiblity principle aggressively)
 yadda.. yadda... functional programming something something.
+
+Your objects become a toolchest of sorts to assist in the tasks carried out by
+your scripts.
