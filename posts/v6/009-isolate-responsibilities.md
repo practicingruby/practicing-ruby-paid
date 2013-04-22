@@ -67,15 +67,120 @@ Spyglass::Messenger::DeliverGmail.
 
 One line explanation of each component with "No And’s, Or’s, or But’s"
 
+- Spyglass::Data::Link - Simple value object storing data about links
+
+```ruby
+module Spyglass
+  module Data
+    class Link
+      def initialize(url: raise, score: raise, title: raise)
+        @url   = url
+        @score = score
+        @title = title
+      end
+
+      attr_reader :url, :score, :title
+    end
+  end
+end
+```
+
 - Spyglass::Data::History -- Uses a PStore database to keep track of what urls have been seen
 
+```ruby
+require "pstore"
+
+module Spyglass
+  module Data
+    class History
+      def initialize(filename)
+        @store = PStore.new(filename)
+      end
+
+      def new?(url)
+        @store.transaction { @store[url].nil? }
+      end
+
+      def update(links)
+        @store.transaction do
+          links.each { |link| @store[link.url] = true }
+        end
+      end
+    end
+  end
+end
+```
+
 - Spyglass::LinkFetcher::Reddit -- Converts raw data from a subreddit into Spyglass::Data::Link objects
+
+```ruby
+require "json"
+require "open-uri"
+require_relative "../data/link"
+
+module Spyglass
+  module LinkFetcher
+    Reddit = ->(subreddit) do
+      document = open("http://api.reddit.com/r/#{subreddit}?limit=100").read
+
+      JSON.parse(document)["data"]["children"].map do |e|
+        e = e["data"]
+        Data::Link.new(url: e["url"], score: e["score"], title: e["title"])
+      end
+    end
+  end
+end
+```
+
 
 - Spyglass::Formatter::PlainText -- renders Spyglass::Data::Link objects using
   an ERB template
 
+```ruby
+require "erb"
+
+module Spyglass
+  module Formatter
+    PlainText = ->(links: links, template: template) do
+      ERB.new(File.read(template), nil, "-").result(binding)
+    end
+  end
+end
+```
+
 - Spyglass::Messenger::DeliverGmail -- Delivers text-based messages via Gmail.
   (configured by environment variables)
+
+```ruby
+require 'mail'
+
+Mail.defaults do
+  delivery_method :smtp, { 
+    :address => 'smtp.gmail.com',
+    :port => '587',
+    :user_name => ENV["GMAIL_USER"],
+    :password =>  ENV["GMAIL_PASSWORD"],
+    :authentication => :plain,
+    :enable_starttls_auto => true
+  }
+end
+
+module Spyglass
+  module Messenger
+    DeliverGmail = ->(message: raise, subject: raise) do
+      mail = Mail.new
+
+      mail.from = ENV["GMAIL_USER"]
+      mail.to   = ENV["SPYGLASS_RECIPIENT"]
+
+      mail.subject = subject
+      mail.body    = message 
+
+      mail.deliver!
+    end
+  end
+end
+```
 
 ... Objects for data, functions for action.
 Not pure functions (can have side effects)
