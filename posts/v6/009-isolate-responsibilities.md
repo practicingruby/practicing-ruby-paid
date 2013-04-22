@@ -1,5 +1,5 @@
-Problem: I'm working on a data munging project that may require frequent
-changes to my codebase.
+Problem: I'm working on a data munging project, and the requirements
+change very frequently.
 
 Solution: Reduce the cost of rework by building your system out of 
 interchangeable parts.
