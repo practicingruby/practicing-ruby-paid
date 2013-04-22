@@ -1,5 +1,5 @@
 Problem: I'm working on a data munging project that may require frequent
-changes.
+changes to my codebase.
 
 Solution: Reduce the cost of rework by building your system out of 
 interchangeable parts.
