@@ -68,6 +68,9 @@ Spyglass::Messenger::DeliverGmail.
 ... Objects for data, functions for action.
 Not pure functions (can have side effects)
 
+.. Context independence! Each component is understandable in isolation from the
+rest of the system
+
 
 What we're really looking for is a design that gets some of the
 organizational benefits of object-oriented programming while preserving a bit of
