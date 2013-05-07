@@ -17,6 +17,18 @@ not, and what suggestions you might have for improving it!
 **Problem: It is very easy to sink a large amount of time and effort into a side
 project before discovering the core problems that need to be solved.**
 
+There are lots of reasons to work on side projects, but there are two that stand
+out above the rest: scratching a personal itch by solving a real problem, and 
+improving your understanding of various programming tools and techniques. These
+motivating factors are not mutally exclusive, but they are competing interests.
+For that reason, it pays to decide what your main goal is before setting out to 
+work on a new side project.
+
+Many of my side projects end up to be a rails application skeleton with a couple
+database models and a few half-built and poorly styled CRUD screens.
+
+
+
 Had a very complicated vision of an interesting program:
 
 - Add/edit/view/download as PDF recipes
