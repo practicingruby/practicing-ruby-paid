@@ -32,11 +32,11 @@ write the article you're reading now:
 
 > Because I have a toddler to take care of at home,
 meal planning can been a major source of stress for me. My wife and I are 
-often too busy to do planning in advance, so we often need to make a 
+often too distracted to do planning in advance, so we often need to make a 
 decision on what to eat, put together a shopping list, go to the grocery 
 store, and then come home and cook all in a single afternoon. 
 Whenever this proves to be too much of a challenge for us, we order 
-takeout or dig out some frozen junk food from the freezer. Unsurprisingly,
+takeout or dig out some frozen junk food. Unsurprisingly,
 this happens far more often than we'd like it to.
 
 > To make matters worse, our family cookbook has historically consisted of a 
@@ -44,6 +44,8 @@ collection of haphazardly formatted recipes from various different sources. Over
 made changes to the way we cook these recipes, but these revisions almost
 never get written down. So for the most part, our recipes are inaccurate, 
 hard to read, and can only be cooked by whichever one of us knows its quirks.
+Most of them aren't even labeled with the name of the dish, so you need to
+skim the instructions to find out what kind of dish it is!
 
 > On one of my afternoon walks, I decided I wanted to build a program
 that would help us solve some of these problems, so that we could make fewer
@@ -207,12 +209,18 @@ Examples:
 - Experimented with markdown files and manually rendering them via pandoc
 - Realized that time-based filtering is important: a 20 minute meal is not the same as a 1.5 hour meal, but if you let your stomach decide you may end up with the latter when you really need the former.
 - Realized that not all meals need a "recipe" -- simple things like sandwiches or pre-bought stuff from store
-- Realized that having the recipes in "source code" format is hugely valuable -- why do we treat recipes as read-only when we should really be editing them to tweak ingredients, amounts, times, etc. Now each time I cook I take notes and revise.
+- Realized that having the recipes in "source code" format is hugely valuable --
+  why do we treat recipes as read-only when we should really be editing them to
+  tweak ingredients, amounts, times, etc. Now each time I cook I take notes and
+  revise. (git + raw markdown proves to be more than enough here)
 
 ---
 
 **Discussion**
 
+The bulk of our problem was organizational / human, not technical. So it paid to
+take an approach that focuses more on the functional problem than the technical
+issues.
 
 Supporting materials:  
   
