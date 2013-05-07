@@ -48,6 +48,22 @@ before attempting to design a full-scale application or library.**
 - Discover the cost of markdown formatting / benefits of recipes under revision
   control (no longer read only!)
 
+```
+name,label
+"Veggie Cassarole w. Swiss Chard + Baguette",1
+"Stuffed Mushroom w. Leeks + Shallots",2
+"Lentil Soup w. Leeks + Kale",3
+"Spinach + White Bean Soup",4
+```
+
+```
+name,label,effort
+"Veggie Cassarole w. Swiss Chard + Baguette",1,3
+"Stuffed Mushroom w. Leeks + Shallots",2,3
+"Lentil Soup w. Leeks + Kale",3,3
+"Spinach + White Bean Soup",4,2
+```
+
 ```ruby
 require "csv"
 
