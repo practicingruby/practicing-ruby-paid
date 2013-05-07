@@ -19,30 +19,79 @@ project before discovering the core problems that need to be solved.**
 
 There are lots of reasons to work on side projects, but there are two that stand
 out above the rest: scratching a personal itch by solving a real problem, and 
-improving your understanding of various programming tools and techniques. These
-motivating factors are not mutally exclusive, but they are competing interests.
-For that reason, it pays to decide what your main goal is before setting out to 
-work on a new side project.
+gaining a better understanding of various programming tools and techniques.
+Because these two motivating factors are competing interests, it pays to set
+explicit goals before working on a new side project.
 
-Many of my side projects end up to be a rails application skeleton with a couple
-database models and a few half-built and poorly styled CRUD screens.
+Remembering this lesson is always a constant struggle for me, though. 
+Whenever I'm brainstorming about a new project while taking a walk or sketching
+something on a white board, I tend to dream big, ambitious dreams that extend far
+beyond what I can realistically accomplish in my available free time. To show
+you exactly what I mean, I can share the back story on what that lead me to 
+write the article you're reading now:
 
+> Because I have a toddler to take care of at home,
+meal planning can been a major source of stress for me. My wife and I are 
+often too busy to do planning in advance, so we often need to make a 
+decision on what to eat, put together a shopping list, go to the grocery 
+store, and then come home and cook all in a single afternoon. 
+Whenever this proves to be too much of a challenge for us, we order 
+takeout or dig out some frozen junk food from the freezer. Unsurprisingly,
+this happens far more often than we'd like it to.
 
+> To make matters worse, our family cookbook has historically consisted of a 
+collection of haphazardly formatted recipes from various different sources. Over time, we've
+made changes to the way we cook these recipes, but these revisions almost
+never get written down. So for the most part, our recipes are inaccurate, 
+hard to read, and can only be cooked by whichever one of us knows its quirks.
 
-Had a very complicated vision of an interesting program:
+> On one of my afternoon walks, I decided I wanted to build a program
+that would help us solve some of these problems, so that we could make fewer
+trips to the grocery store each week, while reducing the friction and cognitive
+load involved in preparing a decent home cooked meal. It all seemed so simple in
+my head, until I started writing out my ideas!
 
-- Add/edit/view/download as PDF recipes
-- Randomly assemble a 3 day menu on demand
-- produce a shopping list for all dishes on menu
-- Use a standard format and template for recipes
+By the time I got done with my brain dump, the following items were on the 
+wish list of things I wanted to accomplish in this side project:
 
-But this requires:
+* I figured this would be a great time to try out Rails 4, because this project
+would obviously need to be a web application of some sort.
 
-- a web app (probably rails)
-- a database model
-- a stylized front-end, etc.
+* It would be another opportunity for me to play around with Twitter Bootstrap.
+I am weak at frontend development, but I am also bothered by poor visual 
+design and usability, so it seems to be a toolset that's worth learning for
+someone like me.
 
-Problem: Awesome, but exhausting, and uncertain payoff.
+* I had been meaning to figure out a way to use the Pandoc toolchain from Ruby to 
+produce HTML and PDF output from Markdown formats, so this would be a perfect 
+chance to try that out, because I'd need my recipes to be viewable on the web 
+and in a printable format.
+
+* It would be really cool if the meal planner would look for patterns in our
+eating habits and generate recommendations for us once it had enough data to
+draw some interesting conclusions.
+
+* It would be nice to have a way of standardizing units of measures so that we
+could trivially scale recipes and combine multiple recipes into a shopping list
+automatically.
+
+* It would be neat to support revision control and variations on recipes within
+the application, in addition to basic CRUD functionality and search.
+
+* It would be awesome to be able to input a list of ingredients we have on hand
+and get back the recipes that match them.
+
+I won't lie to you: the system described above still sounds awesome to
+me, both because it'd involve lots of fun technological challenges, and because
+it'd be amazing to have such a powerful tool available to me. But it also
+represents a completely unreasonable set of goals for someone who has so little
+productive free time that even cooking dinner seems like too much work.
+
+So my initial brainstorming session proved to be a nice day dream, but 
+it wasn't a real solution to my problems. Instead, what I needed was an approach 
+to this problem that could deliver modest results in fractions of an hour 
+rather than in days and weeks. To do that, I'd have to radically scale back my
+expectations and set out in search of some low hanging fruit.
 
 ---
 
@@ -60,6 +109,11 @@ before attempting to design a full-scale application or library.**
 - Discover the cost of markdown formatting / benefits of recipes under revision
   control (no longer read only!)
 
+Can be edited via a spreadsheet or in a text editor
+Will be easy to import into a real database later.
+
+Started with 16 recipes from the cookbook, labeled them with a marker...
+
 ```
 name,label
 "Veggie Cassarole w. Swiss Chard + Baguette",1
@@ -67,6 +121,7 @@ name,label
 "Lentil Soup w. Leeks + Kale",3
 "Spinach + White Bean Soup",4
 ```
+
 
 ```
 name,label,effort
@@ -88,6 +143,9 @@ puts "How about this menu?\n\n" + candidates
   .map { |e| "* #{e['name']} (#{e['label']})" }
   .join("\n")
 ```
+
+Ignoring the suggestions because of too few meals in data set (duplicates or
+recently eaten meals came up often), and no difficulty filtering.
 
 ```ruby
 require "csv"
