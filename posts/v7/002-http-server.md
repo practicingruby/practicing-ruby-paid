@@ -1,12 +1,15 @@
 # Writing a simple HTTP server in Ruby
 
-Implementing a simple but real project is helpful when you're learning a new
-programming language. In the same way, implementing a simpler version of a
-technology you use every day can help you understand it better.
+Implementing a simpler version of a technology that you use every day can 
+help you understand it better. In this article, we will apply this
+technique by building a simple HTTP server in Ruby. 
 
-With that in mind, let's right a simple HTTP server in Ruby. The completed
-program will be able to serve files from your computer to a web browser using
-only the libraries in core Ruby (not counting WEBrick, of course!).
+By the time you're done reading, you will know how to serve files from your 
+computer to a web browser with no dependencies other than a few standard
+libraries that ship with Ruby. Although the server 
+we build will not be robust or anywhere near feature complete,
+it will allow you to look under the hood of one of the most fundamental 
+pieces of technology that we all use on a regular basis.
 
 ## HTTP Basics
 
