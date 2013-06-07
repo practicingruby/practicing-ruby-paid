@@ -11,16 +11,23 @@ we build will not be robust or anywhere near feature complete,
 it will allow you to look under the hood of one of the most fundamental 
 pieces of technology that we all use on a regular basis.
 
-## HTTP Basics
+## A (very) brief introduction to HTTP
 
-When you click a link to `http://example.com/file.txt` in your web browser, what
-happens?
+We all use web applications on a daily basis and many of us build
+them for a living, but much of our work is done far above the HTTP level. This
+is a good thing when it comes to writing web applications, but when it comes to
+building a web server, we're going to need to come down from the clouds a little
+bit. 
 
-The browser issues an HTTP request by opening a TCP socket connection to
+What we need to understand is what actually happens at the protocol
+level when someone clicks a link to `http://example.com/file.txt` in their
+web browser. The following steps roughly outline that process:
+
+1) The browser issues an HTTP request by opening a TCP socket connection to
 `example.com` on port 80. The server accepts the connection and opens another
 socket for bi-directional communication.
 
-Once the connection has been made, the HTTP client sends the request over the
+2) Once the connection has been made, the HTTP client sends the request over the
 connection:
 
 ```
@@ -30,15 +37,13 @@ Host: example.com
 Accept: */*
 ```
     
-The server parses the request. The first line is the Request-Line which contains
+3) The server then parses the request. The first line is the Request-Line which contains
 the HTTP method (`GET`), Request-URI (`/file.txt`), and HTTP version (`1.1`).
 Subsequent lines are headers, key-value pairs delimited by ":". After the
-headers is a blank line followed by an optional a message body (not present in
-this example). To determine how much data to read from the message body of the
-request, the server parses the Content-Length header or uses
-[Chunked-Encoding](http://en.wikipedia.org/wiki/Chunked_transfer_encoding).
+headers is a blank line followed by an optional message body (not used in
+this example).
 
-Using the same connection, the server responds:
+4) Using the same connection, the server responds with the contents of the file:
 
 ```
 HTTP/1.1 200 OK
@@ -48,12 +53,14 @@ Content-Length: 11
 hello world
 ```
 
-The server will close the socket after finishing the response to terminate the
-connection.
+5) Finally, the server closes the socket after finishing the response to 
+terminate the connection.
+
+Using this basic workflow as a guide, we can start writing some code!
 
 ## Writing the simplest Ruby HTTP server
 
-To begin, let's write the simplest thing that could possibly work: a web server
+To begin, let's build the simplest thing that could possibly work: a web server
 that always responds "hello world" with HTTP 200 to any request.
 
 Requiring the `socket` library allows us to use the `TCPServer` class.
