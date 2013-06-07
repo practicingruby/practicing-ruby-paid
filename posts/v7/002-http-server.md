@@ -29,8 +29,6 @@ User-Agent: ExampleBrowser/1.0
 Host: example.com
 Accept: */*
 ```
-
-Note, all lines need to end with `\r\n`, rather than just `\n`.
     
 The server parses the request. The first line is the Request-Line which contains
 the HTTP method (`GET`), Request-URI (`/file.txt`), and HTTP version (`1.1`).
@@ -100,7 +98,12 @@ loop do
   puts request
  
   response = "Hello world!\n"
- 
+
+  # NOTE: HTTP is whitespace sensitive! In particular:
+  #       
+  # * All header lines must end with CRLF (i.e. "\r\n")
+  # * A blank line must separate the header and response body 
+
   socket.print "HTTP/1.1 200 OK\r\n"
   socket.print "Content-Type: text/plain\r\n"
   socket.print "Content-Length: #{response.size}\r\n"
@@ -114,9 +117,7 @@ In this example, we're ignoring the Request-Line and returning the same response
 for every request, so we'll simply output the first line and ignore the rest of
 the request. In creating the response, we've set the Content-Type and
 Content-Length headers. These headers are important for letting the client know
-what kind of data we are returning and how big it is. As we saw above, all HTTP
-header lines must end in CRLF (`\r\n`). There's also an empty line between the
-headers and the response body.
+what kind of data we are returning and how big it is. 
 
 Start your server and try opening http://localhost:2345/anything in a browser.
 You should see the "Hello world!" message. Meanwhile, in the output for the HTTP
