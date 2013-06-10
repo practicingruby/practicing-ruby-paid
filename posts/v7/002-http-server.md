@@ -146,43 +146,29 @@ Congratulations, you've written a simple HTTP server! Now we'll build a more use
 
 ## Serving files over HTTP
 
-Let's expand our example to be able to serve files from a directory instead of
-just outputting "Hello world!"
+We're about to build a more realistic program that is capable of serving files over HTTP, 
+rather than simply responding to any request with "Hello World". In order to do that, we'll need
+to make a few changes to the way our server works.
 
-This will require adding some additional functionality to the server:
+For each incoming request, we'll parse the `Request-URI` header and translate it into 
+a path to a file within the server's public folder. If we're able to find a match, we'll 
+respond with its contents, using the file's size to determine the `Content-Length`, 
+and its extension to determine the `Content-Type`. If no matching file can be found, 
+we'll respond with a `404 Not Found` error status.
 
-* Translate the Request-URI into a local path.
-* Return 404 Not Found if the path isn't available.
-* Determine the Content-Type of the file based on its extension.
-* Output the contents of the file to the socket.
-
-First, create a subdirectory called "public" to hold the files to serve. This
-will be the server's web root directory. Put an index.html file in that
-directory.
-
-Now that we care what the request was, we'll need to parse the Request-URI from
-the Request-Line in the HTTP request and convert it into a filesystem path by
-joining it to the web root directory.
-
-Once we've translated the Request-URI into a filesystem path, we check to see if
-it exists and isn't a directory. If so, we write an HTTP response with the
-Content-Type and Content-Length headers. The body of the response is created by
-enumerating the lines of the file using `each` and printing each one to the
-socket.
-
-If the file doesn't exist, we'll respond with HTTP 404 Not Found, along with a
-message for the browser to display.
-
-Here is the enhanced code. Note that we've added a helper method `content_type`
-to return the content type of a file based on its extension.
+Most of these changes are fairly straightforward to implement, but mapping the 
+`Request-URI` to a path on the server's filesystem is a bit more complicated due 
+to security issues. To simplify things a bit, let's assume for the moment that a 
+`requested_file` function has been implemented for us already that can handle
+this task safely. Then we could build a rudimentary HTTP file server in the following way:
 
 ```ruby
 require 'socket'
 require 'uri'
- 
+
 # Files will be served from this directory
 WEB_ROOT = './public'
- 
+
 DEFAULT_CONTENT_TYPE = 'application/octet-stream'
 CONTENT_TYPE_MAPPING = {
   'html' => 'text/html',
@@ -190,59 +176,66 @@ CONTENT_TYPE_MAPPING = {
   'png' => 'image/png',
   'jpg' => 'image/jpeg'
 }
- 
+
 def content_type(path)
   ext = File.extname(path).split(".").last
   CONTENT_TYPE_MAPPING[ext] || DEFAULT_CONTENT_TYPE
 end
- 
+
+def requested_file(request_line)
+  # implementation details to be discussed later
+end
+
 server = TCPServer.new('localhost', 2345)
- 
+
 loop do
   # Open a socket to communicate with the client
   socket = server.accept
   # Read the first line of the HTTP request
   request_line = socket.gets
- 
+
   puts request_line
-  
-  # Request-Line looks like this: GET /path?foo=bar HTTP/1.1
-  # Splitting on spaces will give us an Array like ["GET", "/path?foo=bar", "HTTP/1.1"]
-  request_line_items = request_line.split(" ")
-  # Create a URI object so we can easily get the path part of the Request-URI
-  request_uri = URI(request_line_items[1])
-  # The path is URL-encoded, so it must be unescaped to translate it to a filesystem path
-  path_info = URI.unescape(request_uri.path)
- 
-  path = File.join(WEB_ROOT, path_info)
- 
-  # FIXME: Horrible security problem!
+
+  path = requested_file(request_line)
+
   if File.exist?(path) && !File.directory?(path)
     file = File.new(path)
- 
+
     socket.print "HTTP/1.1 200 OK\r\n"
     socket.print "Content-Type: #{content_type(file)}\r\n"
     socket.print "Content-Length: #{File.size(path)}\r\n"
     socket.print "\r\n"
+    
     file.each do |line|
       socket.print line
     end
   else
     message = "File not found"
+    
     socket.print "HTTP/1.1 404 Not Found\r\n"
     socket.print "Content-Type: text/plain\r\n"
     socket.print "Content-Length: #{message.size}\r\n"
     socket.print "\r\n"
     socket.print "#{message}\r\n"
   end
- 
+
   socket.close
 end
+
 ```
 
-Start the server, and then open your web browser to
-http://localhost:2345/index.html. You should see the index.html file you put in
-the public directory. Congratulations, you're serving files over HTTP!
+## Security
+
+Practically speaking, mapping the Request-Line to a file on the server's filesystem is easy: you extract the Request-URI, scrub out any parameters and URI-encoding, and then finally turn that into a path to a file in the server's public folder:
+
+```ruby
+def requested_file(request_line)
+  request_uri  = request_line.split(" ")[1]
+  raw_path     = URI(request_uri).path
+
+  File.join(WEB_ROOT, URI.unescape(raw_path))
+end
+```
 
 However, this implementation has a very bad security problem that has affected
 many, many web servers and CGI scripts over the years: the server will happily
@@ -304,6 +297,12 @@ the document root. For example, `http://localhost:2345/../http.rb` should give a
 404.
 
 ## Serving directories
+
+Start the server, and then open your web browser to
+http://localhost:2345/index.html. You should see the index.html file you put in
+the public directory. Congratulations, you're serving files over HTTP!
+
+---
 
 If you visit `http://localhost:2345` in your web browser, you'll see a 404 Not
 Found response, even though you've created an index.html file. Most real web
