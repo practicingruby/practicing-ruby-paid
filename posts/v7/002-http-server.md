@@ -437,3 +437,4 @@ if something goes wrong with the request.
 * Add support for POST requests. You could implement CGI by executing 
 a script when it matches the path, or implement the Rack spec to 
 let the server serve Rack apps with `call`.
+
