@@ -58,77 +58,59 @@ terminate the connection.
 
 Using this basic workflow as a guide, we can start writing some code!
 
-## Writing the simplest Ruby HTTP server
+## Writing the "Hello World" HTTP server
 
 To begin, let's build the simplest thing that could possibly work: a web server
-that always responds "hello world" with HTTP 200 to any request.
-
-Requiring the `socket` library allows us to use the `TCPServer` class.
-`TCPServer` waits for client connections and returns a `TCPSocket` for
-communication with the client from its `accept` method.
+that always responds "Hello World" with HTTP 200 to any request. The following
+code mostly follows the process outlined in the previous section, but is
+commented line-by-line to help you understand its implementation details:
 
 ```ruby
-require 'socket'
+require 'socket' # Provides TCPServer and TCPSocket classes
 
-server = TCPServer.new('localhost', 2345)    
-
-loop do
-  socket = server.accept
-  line = socket.gets
-  puts line
-  socket.print "Bye."
-  socket.close
-end
-```
-
-The `TCPServer` is initialized with a hostname and port to bind to.
-
-Once the `TCPServer` is initialized, we can loop forever, creating new sockets
-to handle connections with the `accept` method, which returns a `TCPSocket`.
-
-To read a line off of the `TCPSocket`, we can use `gets` (provided by
-`TCPSocket`'s parent class `IO`), and to send data to the client, we can use
-`TCPSocket#print`.
-   
-Putting it all together, here is a simple HTTP server:
-
-```ruby
-require 'socket'
- 
+# Initialize a TCPServer object that will listen 
+# on localhost:2345 for incoming connections.
 server = TCPServer.new('localhost', 2345)
  
+# loop infinitately, processing one incoming 
+# connection at a time. 
 loop do
+
+  # Wait until a client connects, then return a TCPSocket
+  # that can be used in a similar fashion to other Ruby
+  # I/O objects. (In fact, TCPSocket is a subclass of IO)
   socket = server.accept
+  
   # Read the first line of the request (the Request-Line)
   request = socket.gets
 
-  puts request
- 
-  response = "Hello world!\n"
+  # Log the request to the console for debugging
+  STDERR.puts request
 
-  # NOTE: HTTP is whitespace sensitive! In particular:
-  #       
-  # * All header lines must end with CRLF (i.e. "\r\n")
-  # * A blank line must separate the header and response body 
+  response = "Hello World!\n"
 
-  socket.print "HTTP/1.1 200 OK\r\n"
-  socket.print "Content-Type: text/plain\r\n"
-  socket.print "Content-Length: #{response.size}\r\n"
+  # We need to include the Content-Type and Content-Length headers
+  # to let the client know the size and type of data 
+  # contained in the response. Note that HTTP is whitespace
+  # sensitive, and expects each header line to end with CRLF (i.e. "\r\n")
+  socket.print "HTTP/1.1 200 OK\r\n" +
+               "Content-Type: text/plain\r\n" +
+               "Content-Length: #{response.size}\r\n" 
+               
+  # Print a blank line to separate the header from the response body,
+  # as required by the protocol.             
   socket.print "\r\n"
+          
+  # Print the actual response body, which is just "Hello World!\n"     
   socket.print response
+  
+  # Close the socket, terminating the connection
   socket.close
 end
 ```
-
-In this example, we're ignoring the Request-Line and returning the same response
-for every request, so we'll simply output the first line and ignore the rest of
-the request. In creating the response, we've set the Content-Type and
-Content-Length headers. These headers are important for letting the client know
-what kind of data we are returning and how big it is. 
-
-Start your server and try opening http://localhost:2345/anything in a browser.
-You should see the "Hello world!" message. Meanwhile, in the output for the HTTP
-server, you should see the request being logged:
+To test your server, run this code and then try opening `http://localhost:2345/anything` 
+in a browser. You should see the "Hello world!" message. Meanwhile, in the output for
+the HTTP server, you should see the request being logged:
 
 ```
 GET /anything HTTP/1.1
@@ -160,7 +142,7 @@ Hello world!
 * Closing connection #0
 ```
 
-Congratulations, you've written a simple HTTP server!
+Congratulations, you've written a simple HTTP server! Now we'll build a more useful one.
 
 ## Serving files over HTTP
 
