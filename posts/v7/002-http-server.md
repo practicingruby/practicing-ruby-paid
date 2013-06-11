@@ -169,7 +169,7 @@ require 'uri'
 # Files will be served from this directory
 WEB_ROOT = './public'
 
-DEFAULT_CONTENT_TYPE = 'application/octet-stream'
+# Map extensions to their content type
 CONTENT_TYPE_MAPPING = {
   'html' => 'text/html',
   'txt' => 'text/plain',
@@ -177,46 +177,60 @@ CONTENT_TYPE_MAPPING = {
   'jpg' => 'image/jpeg'
 }
 
+# Treat as binary data if content type cannot be found
+DEFAULT_CONTENT_TYPE = 'application/octet-stream'
+
+# This helper function parses the extension of the
+# requested file and then looks up its content type.
+
 def content_type(path)
   ext = File.extname(path).split(".").last
   CONTENT_TYPE_MAPPING[ext] || DEFAULT_CONTENT_TYPE
 end
 
+# This helper function parses the Request-Line and
+# generates a path to a file on the server.
+
 def requested_file(request_line)
-  # implementation details to be discussed later
+  # ... implementation details to be discussed later ...
 end
+
+# Except where noted below, the general approach of
+# handling requests and generating responses is
+# similar to that of the "Hello World" example
+# shown earlier.
 
 server = TCPServer.new('localhost', 2345)
 
 loop do
-  # Open a socket to communicate with the client
-  socket = server.accept
-  # Read the first line of the HTTP request
+  socket       = server.accept
   request_line = socket.gets
 
-  puts request_line
+  STDERR.puts request_line
 
   path = requested_file(request_line)
 
   if File.exist?(path) && !File.directory?(path)
-    file = File.new(path)
-
-    socket.print "HTTP/1.1 200 OK\r\n"
-    socket.print "Content-Type: #{content_type(file)}\r\n"
-    socket.print "Content-Length: #{File.size(path)}\r\n"
-    socket.print "\r\n"
+    File.new(path) do |file|
+      socket.print "HTTP/1.1 200 OK\r\n" +
+                   "Content-Type: #{content_type(file)}\r\n" +
+                   "Content-Length: #{file.size}\r\n"
+                 
+      socket.print "\r\n"
     
-    file.each do |line|
-      socket.print line
+      # print the contents of the file to the socket, line by line.
+      file.each { |line| socket.print line }
     end
   else
-    message = "File not found"
+    message = "File not found\n"
     
-    socket.print "HTTP/1.1 404 Not Found\r\n"
-    socket.print "Content-Type: text/plain\r\n"
-    socket.print "Content-Length: #{message.size}\r\n"
+    socket.print "HTTP/1.1 404 Not Found\r\n" +
+                 "Content-Type: text/plain\r\n" +
+                 "Content-Length: #{message.size}\r\n"
+                 
     socket.print "\r\n"
-    socket.print "#{message}\r\n"
+    
+    socket.print message
   end
 
   socket.close
