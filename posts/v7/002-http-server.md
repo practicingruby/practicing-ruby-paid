@@ -1,5 +1,3 @@
-# Writing a simple HTTP server in Ruby
-
 Implementing a simpler version of a technology that you use every day can 
 help you understand it better. In this article, we will apply this
 technique by building a simple HTTP server in Ruby. 
@@ -129,7 +127,8 @@ You'll see the detailed request and response headers:
 *   Trying 127.0.0.1... connected
 * Connected to localhost (127.0.0.1) port 2345 (#0)
 > GET /anything HTTP/1.1
-> User-Agent: curl/7.19.7 (universal-apple-darwin10.0) libcurl/7.19.7 OpenSSL/0.9.8r zlib/1.2.3
+> User-Agent: curl/7.19.7 (universal-apple-darwin10.0) libcurl/7.19.7 
+              OpenSSL/0.9.8r zlib/1.2.3
 > Host: localhost:2345
 > Accept: */*
 > 
@@ -213,7 +212,7 @@ loop do
   # Make sure the file exists and is not a directory
   # before attempting to open it.
   if File.exist?(path) && !File.directory?(path)
-    File.new(path) do |file|
+    File.open(path) do |file|
       socket.print "HTTP/1.1 200 OK\r\n" +
                    "Content-Type: #{content_type(file)}\r\n" +
                    "Content-Length: #{file.size}\r\n"
@@ -260,7 +259,6 @@ Practically speaking, mapping the Request-Line to a file on the server's filesys
 # by joining it with the WEB_ROOT.
 def requested_file(request_line)
   request_uri  = request_line.split(" ")[1]
-  
   path         = URI.unescape(URI(request_uri).path)
 
   File.join(WEB_ROOT, path)
@@ -305,7 +303,8 @@ def requested_file(request_line)
   parts.each do |part|
     # skip any empty or current directory (".") path components
     next if part.empty? || part == '.'
-    # If the path component goes up one directory level (".."), remove the last clean component
+    # If the path component goes up one directory level (".."), 
+    # remove the last clean component.
     # Otherwise, add the component to the Array of clean components
     part == '..' ? clean.pop : clean << part
   end
@@ -358,7 +357,7 @@ Suppose a request is received for `/somedir`. That request will automatically be
 
 It may be tempting to think that this small change would make it possible to remove the `File.directory?` check, and in normal circumstances you might be able to safely do with it. However, because leaving it in prevents an error condition in the edge case where someone attempts to serve up a directory named `index.html`, we've decided to leave that validation as it is.
 
-With this small improvement, our file server is now pretty much working we'd expect it to. If you want to play with it some more, you can grab the [complete source code]() from Github.
+With this small improvement, our file server is now pretty much working we'd expect it to. If you want to play with it some more, you can grab the [complete source code](https://github.com/elm-city-craftworks/practicing-ruby-examples/tree/master/v7/002) from Github.
 
 ## Where to go from here
 
