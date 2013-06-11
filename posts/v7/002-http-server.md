@@ -185,7 +185,7 @@ DEFAULT_CONTENT_TYPE = 'application/octet-stream'
 
 def content_type(path)
   ext = File.extname(path).split(".").last
-  CONTENT_TYPE_MAPPING[ext] || DEFAULT_CONTENT_TYPE
+  CONTENT_TYPE_MAPPING.fetch(ext, DEFAULT_CONTENT_TYPE)
 end
 
 # This helper function parses the Request-Line and
@@ -210,6 +210,8 @@ loop do
 
   path = requested_file(request_line)
 
+  # Make sure the file exists and is not a directory
+  # before attempting to open it.
   if File.exist?(path) && !File.directory?(path)
     File.new(path) do |file|
       socket.print "HTTP/1.1 200 OK\r\n" +
@@ -221,9 +223,10 @@ loop do
       # print the contents of the file to the socket, line by line.
       file.each { |line| socket.print line }
     end
-  else
+  else 
     message = "File not found\n"
     
+    # respond with a 404 error code to indicate the file does not exist
     socket.print "HTTP/1.1 404 Not Found\r\n" +
                  "Content-Type: text/plain\r\n" +
                  "Content-Length: #{message.size}\r\n"
@@ -235,19 +238,32 @@ loop do
 
   socket.close
 end
-
 ```
 
-## Security
+Although there is a lot more code here than what we saw in the 
+"Hello World" example, most of it is routine file manipulation
+similar to the kind we'd encounter in everyday code. Now there 
+is only one more feature left to implement before we can serve 
+files over HTTP: the `requested_file` method.
+
+## Safely converting a URI into a file path
 
 Practically speaking, mapping the Request-Line to a file on the server's filesystem is easy: you extract the Request-URI, scrub out any parameters and URI-encoding, and then finally turn that into a path to a file in the server's public folder:
 
 ```ruby
+# Takes a request line (e.g. "GET /path?foo=bar HTTP/1.1")
+# and extracts the path from it, scrubbing out parameters
+# and unescaping URI-encoding. 
+#
+# This cleaned up path (e.g. "/path") is then converted into 
+# a relative path to a file in the server's public folder 
+# by joining it with the WEB_ROOT.
 def requested_file(request_line)
   request_uri  = request_line.split(" ")[1]
-  raw_path     = URI(request_uri).path
+  
+  path         = URI.unescape(URI(request_uri).path)
 
-  File.join(WEB_ROOT, URI.unescape(raw_path))
+  File.join(WEB_ROOT, path)
 end
 ```
 
@@ -263,25 +279,29 @@ GET /../../../../etc/passwd HTTP/1.1
 
 On my system, when `File.join` is called on this path, the ".." path components
 will cause it escape the `WEB_ROOT` directory and serve the `/etc/passwd` file.
-Yikes! The `PATH_INFO` must be sanitized before use to prevent problems like
-this. (Note: You may need to use `curl` to demonstrate this because browsers may
-change the path to remove the ".." before sending it to the server.)
+Yikes! We'll need to sanitize the path before use in order to prevent problems 
+like this. 
 
-Since security code is notoriously difficult to get right, we will borrow some
-from [`Rack::File`](https://github.com/rack/rack/blob/master/lib/rack/file.rb)
-(In fact, this code was added to `Rack::File` [in response to a security
-vulnerability](http://web.nvd.nist.gov/view/vuln/detail?vulnId=CVE-2013-0262).),
-a Rack application that serves files.
+> **Note:** If you want to try to reproduce this issue on your own machine, 
+you may need to use a low level too like *curl* to demonstrate it. Some browsers 
+change the path to remove the ".." before sending a request to the server.
+
+Because security code is notoriously difficult to get right, we will borrow our
+implementation from [Rack::File](https://github.com/rack/rack/blob/master/lib/rack/file.rb).
+The approach shown below was actually added to `Rack::File` in response to a [similar 
+security vulnerability](http://web.nvd.nist.gov/view/vuln/detail?vulnId=CVE-2013-0262) that 
+was disclosed in early 2013:
 
 ```ruby
-def clean_path(path_info)
+def requested_file(request_line)
+  request_uri  = request_line.split(" ")[1]
+  path         = URI.unescape(URI(request_uri).path)
+  
   clean = []
- 
-  # The path is URL-encoded, so it must be unescaped to translate it to a filesystem path
-  path = URI.unescape(path_info)
- 
+
   # Split the path into components
   parts = path.split("/")
+
   parts.each do |part|
     # skip any empty or current directory (".") path components
     next if part.empty? || part == '.'
@@ -289,158 +309,68 @@ def clean_path(path_info)
     # Otherwise, add the component to the Array of clean components
     part == '..' ? clean.pop : clean << part
   end
- 
+
   # return the web root joined to the clean path 
   File.join(WEB_ROOT, *clean)
 end
 ```
 
-The `clean_path` method must be called before joining the path with the
-`WEB_ROOT`, like this:
+To test this implementation (and finally see your file server in action), replace the `requested_file` stub in the example from the previous section with the implementation shown above, and then create an `index.html` file in a `public/` folder that is contained within the same directory as your server script. Upon running the script, you should be able to visit `http://localhost:2345/index.html` but NOT be able to reach any files outside of the `public/` folder.
 
-```
-path = clean_path(request_uri.path)
-```
-
-After adding this to your web server, restart it and try to visit a path outside
-the web root.
-
-Visit `http://localhost:2345` in your browser and your file should be displayed.
-You should also find that visiting relative paths should not allow you to escape
-the document root. For example, `http://localhost:2345/../http.rb` should give a
-404.
-
-## Serving directories
-
-Start the server, and then open your web browser to
-http://localhost:2345/index.html. You should see the index.html file you put in
-the public directory. Congratulations, you're serving files over HTTP!
-
----
+## Serving up index.html implicitly
 
 If you visit `http://localhost:2345` in your web browser, you'll see a 404 Not
 Found response, even though you've created an index.html file. Most real web
 servers will serve an index file when the client requests a directory. Let's
 implement that.
 
-After cleaning the path, check to see if the file is a directory. If it is, join
-"index.html" onto the path. If there's no file named "index.html", that's no
-problem -- the next statement checks to see if the file exists, so if it
-doesn't, the server will simply return an HTTP 404 Not Found response.
+This change is more simple than it seems, and can be accomplished by adding
+a single line of code to our server script:
 
-```ruby
-path = clean_path(request['PATH_INFO'])
- 
-if File.directory?(path)
-  path = File.join(path, 'index.html')
-end
+```diff
+# ...
+path = requested_file(request_line)
+
++ path = File.join(path, 'index.html') if File.directory?(path)
 
 if File.exist?(path) && !File.directory?(path)
-  # .. serve the file
-else
-  # .. return 404 Not Found
-end
+  file = File.new(path)
+# ...
 ```
-  
-Notice how we still check to see if the file is a directory. That's because
-there's nothing a directory from being named "index.html". It's better to be
-safe than sorry.
 
-Here's the final listing for the web server:
+Doing so will cause any path that refers to a directory to have "/index.html" appended to 
+the end of it. This way, `/` becomes `/index.html`, and `/path/to/dir` becomes 
+`path/to/dir/index.html`.
+
+Perhaps surprisingly, the validations in our response code do not need
+to be changed. Let's recall what they look like and then examine why
+that's the case:
 
 ```ruby
-require 'socket'
-require 'uri'
- 
-# Files will be served from this directory
-WEB_ROOT = './public'
- 
-DEFAULT_CONTENT_TYPE = 'application/octet-stream'
-CONTENT_TYPE_MAPPING = {
-  'html' => 'text/html',
-  'txt' => 'text/plain',
-  'png' => 'image/png',
-  'jpg' => 'image/jpeg'
-}
- 
-def content_type(path)
-  ext = File.extname(path).split(".").last
-  CONTENT_TYPE_MAPPING[ext] || DEFAULT_CONTENT_TYPE
-end
- 
-def clean_path(path_info)
-  clean = []
- 
-  # The path is URL-encoded, so it must be unescaped to translate it to a filesystem path
-  path = URI.unescape(path_info)
- 
-  # Split the path into components
-  parts = path.split("/")
-  parts.each do |part|
-    # skip any empty or current directory (".") path components
-    next if part.empty? || part == '.'
-    # If the path component goes up one directory level (".."), remove the last clean component
-    # Otherwise, add the component to the Array of clean components
-    part == '..' ? clean.pop : clean << part
-  end
- 
-  # return the web root joined to the clean path 
-  File.join(WEB_ROOT, *clean)
-end
- 
-server = TCPServer.new('localhost', 2345)
- 
-loop do
-  # Open a socket to communicate with the client
-  socket = server.accept
-  # Read the first line of the HTTP request
-  request_line = socket.gets
- 
-  puts request_line
-  
-  # Request-Line looks like this: GET /path?foo=bar HTTP/1.1
-  # Splitting on spaces will give us an Array like ["GET", "/path?foo=bar", "HTTP/1.1"]
-  request_line_items = request_line.split(" ")
-  # Create a URI object so we can easily get the path part of the Request-URI
-  request_uri = URI(request_line_items[1])
- 
-  path = clean_path(request_uri.path)
- 
-  if File.directory?(path)
-    path = File.join(path, 'index.html')
-  end
- 
-  if File.exist?(path) && !File.directory?(path)
-    file = File.new(path)
- 
-    socket.print "HTTP/1.1 200 OK\r\n"
-    socket.print "Content-Type: #{content_type(file)}\r\n"
-    socket.print "Content-Length: #{File.size(path)}\r\n"
-    socket.print "\r\n"
-    file.each do |line|
-      socket.print line
-    end
-  else
-    message = "File not found"
-    socket.print "HTTP/1.1 404 Not Found\r\n"
-    socket.print "Content-Type: text/plain\r\n"
-    socket.print "Content-Length: #{message.size}\r\n"
-    socket.print "\r\n"
-    socket.print "#{message}\r\n"
-  end
- 
-  socket.close
+if File.exist?(path) && !File.directory?(path)
+  # serve up the file...
+else
+  # respond with a 404
 end
 ```
 
-## Next steps
+Suppose a request is received for `/somedir`. That request will automatically be converted by our server into `/somedir/index.html`. If the index.html exists within `/somedir`, then it will be served up without any problems. However, if `/somedir` does not contain an `index.html` file, the `File.exist?` check will fail, causing the server to respond with a 404 error code. This is exactly what we want!
 
-Congratulations! You've reviewed how HTTP works, then written a simple web
-server that can serve up files from a directory. You've also examined one of the
-most common security problems with web applications and fixed it.
+It may be tempting to think that this small change would make it possible to remove the `File.directory?` check, and in normal circumstances you might be able to safely do with it. However, because leaving it in prevents an error condition in the edge case where someone attempts to serve up a directory named `index.html`, we've decided to leave that validation as it is.
 
-However, the server we've written is extremely limited. Here are some ideas for
-improving the server:
+With this small improvement, our file server is now pretty much working we'd expect it to. If you want to play with it some more, you can grab the [complete source code]() from Github.
+
+## Where to go from here
+
+In this article, we reviewed how HTTP works, then built a simple web
+server that can serve up files from a directory. We've also examined 
+one of the most common security problems with web applications and 
+fixed it. If you've made it this far, congratulations! That's a lot
+to learn in one day.
+
+However, it's obvious that the server we've built is extremely limited. 
+If you want to continue in your studies, here are a few recommendations
+for how to go about improving the server:
 
 * According to the HTTP 1.1, specification a server must minimally 
 respond to GET and HEAD to be compliant. Implement the HEAD response.
@@ -451,3 +381,6 @@ if something goes wrong with the request.
 a script when it matches the path, or implement the Rack spec to 
 let the server serve Rack apps with `call`.
 
+Please do share your experiences and code if you decide to try any of 
+these ideas, or if you come up with some improvement ideas of your own. 
+Happy hacking!
