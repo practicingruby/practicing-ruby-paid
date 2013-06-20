@@ -12,14 +12,12 @@ pieces of technology that we all use on a regular basis.
 ## A (very) brief introduction to HTTP
 
 We all use web applications on a daily basis and many of us build
-them for a living, but much of our work is done far above the HTTP level. This
-is a good thing when it comes to writing web applications, but when it comes to
-building a web server, we're going to need to come down from the clouds a little
-bit.
+them for a living, but much of our work is done far above the HTTP level.
+Today, we'll need come down from the clouds a bit to exlore
+what actually happens at the protocol level when someone clicks a 
+link to `http://example.com/file.txt` in their web browser. 
 
-What we need to understand is what actually happens at the protocol
-level when someone clicks a link to `http://example.com/file.txt` in their
-web browser. The following steps roughly outline that process:
+The following steps roughly cover the typical HTTP request/response lifecycle:
 
 1) The browser issues an HTTP request by opening a TCP socket connection to
 `example.com` on port 80. The server accepts the connection which opens a
@@ -47,6 +45,7 @@ this example).
 HTTP/1.1 200 OK
 Content-Type: text/plain
 Content-Length: 11
+Connection: close
 
 hello world
 ```
@@ -54,7 +53,9 @@ hello world
 5) Finally, the server closes the socket after finishing the response to
 terminate the connection.
 
-Using this basic workflow as a guide, we can start writing some code!
+The basic workflow shown above is one of HTTP's most simple use cases,
+but it is also one of the most common interactions handled by web servers.
+Let's jump right into implementing it!
 
 ## Writing the "Hello World" HTTP server
 
@@ -285,8 +286,8 @@ GET /../../../../etc/passwd HTTP/1.1
 
 On my system, when `File.join` is called on this path, the ".." path components
 will cause it escape the `WEB_ROOT` directory and serve the `/etc/passwd` file.
-Yikes! We'll need to sanitize the path before use in order to prevent problems
-like this.
+Yikes! We'll need to sanitize the path before use in order to prevent this
+kind of problem.
 
 > **Note:** If you want to try to reproduce this issue on your own machine,
 you may need to use a low level tool like *curl* to demonstrate it. Some browsers change the path to remove the ".." before sending a request to the server.
