@@ -76,7 +76,7 @@ loop do
 
   # Wait until a client connects, then return a TCPSocket
   # that can be used in a similar fashion to other Ruby
-  # I/O objects. (In fact, TCPSocket is a subclass of IO)
+  # I/O objects. (In fact, TCPSocket is a subclass of IO.)
   socket = server.accept
 
   # Read the first line of the request (the Request-Line)
@@ -142,13 +142,15 @@ Hello world!
 * Closing connection #0
 ```
 
-Congratulations, you've written a simple HTTP server! Now we'll build a more useful one.
+Congratulations, you've written a simple HTTP server! Now we'll 
+build a more useful one.
 
 ## Serving files over HTTP
 
-We're about to build a more realistic program that is capable of serving files over HTTP,
-rather than simply responding to any request with "Hello World". In order to do that, we'll need
-to make a few changes to the way our server works.
+We're about to build a more realistic program that is capable of 
+serving files over HTTP, rather than simply responding to any request
+with "Hello World". In order to do that, we'll need to make a few 
+changes to the way our server works.
 
 For each incoming request, we'll parse the `Request-URI` header and translate it into
 a path to a file within the server's public folder. If we're able to find a match, we'll
@@ -250,7 +252,10 @@ files over HTTP: the `requested_file` method.
 
 ## Safely converting a URI into a file path
 
-Practically speaking, mapping the Request-Line to a file on the server's filesystem is easy: you extract the Request-URI, scrub out any parameters and URI-encoding, and then finally turn that into a path to a file in the server's public folder:
+Practically speaking, mapping the Request-Line to a file on the 
+server's filesystem is easy: you extract the Request-URI, scrub 
+out any parameters and URI-encoding, and then finally turn that 
+into a path to a file in the server's public folder:
 
 ```ruby
 # Takes a request line (e.g. "GET /path?foo=bar HTTP/1.1")
@@ -316,7 +321,13 @@ def requested_file(request_line)
 end
 ```
 
-To test this implementation (and finally see your file server in action), replace the `requested_file` stub in the example from the previous section with the implementation shown above, and then create an `index.html` file in a `public/` folder that is contained within the same directory as your server script. Upon running the script, you should be able to visit `http://localhost:2345/index.html` but NOT be able to reach any files outside of the `public/` folder.
+To test this implementation (and finally see your file server in action), 
+replace the `requested_file` stub in the example from the previous section 
+with the implementation shown above, and then create an `index.html` file 
+in a `public/` folder that is contained within the same directory as your
+server script. Upon running the script, you should be able to 
+visit `http://localhost:2345/index.html` but NOT be able to reach any
+files outside of the `public/` folder.
 
 ## Serving up index.html implicitly
 
@@ -379,7 +390,8 @@ respond to GET and HEAD to be compliant. Implement the HEAD response.
 if something goes wrong with the request.
 * Make the web root directory and port configurable.
 * Add support for POST requests. You could implement CGI by executing
-a script when it matches the path, or implement the Rack spec to
+a script when it matches the path, or implement 
+the [Rack spec](http://rack.rubyforge.org/doc/SPEC.html) to
 let the server serve Rack apps with `call`.
 
 Please do share your experiences and code if you decide to try any of
