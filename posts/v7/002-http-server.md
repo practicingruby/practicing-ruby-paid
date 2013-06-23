@@ -1,3 +1,7 @@
+*This article was written by Luke Francl, a Ruby developer living in
+San Francisco. He is a developer at [Swiftype](https://swiftype.com) where he
+works on everything from web crawling to answering support requests.*
+
 Implementing a simpler version of a technology that you use every day can
 help you understand it better. In this article, we will apply this
 technique by building a simple HTTP server in Ruby.
@@ -13,7 +17,7 @@ pieces of technology that we all use on a regular basis.
 
 We all use web applications on a daily basis and many of us build
 them for a living, but much of our work is done far above the HTTP level.
-Today, we'll need come down from the clouds a bit to exlore
+Today, we'll need come down from the clouds a bit to explore
 what actually happens at the protocol level when someone clicks a 
 link to `http://example.com/file.txt` in their web browser. 
 
@@ -370,7 +374,7 @@ Suppose a request is received for `/somedir`. That request will automatically be
 
 It may be tempting to think that this small change would make it possible to remove the `File.directory?` check, and in normal circumstances you might be able to safely do with it. However, because leaving it in prevents an error condition in the edge case where someone attempts to serve up a directory named `index.html`, we've decided to leave that validation as it is.
 
-With this small improvement, our file server is now pretty much working we'd expect it to. If you want to play with it some more, you can grab the [complete source code](https://github.com/elm-city-craftworks/practicing-ruby-examples/tree/master/v7/002) from Github.
+With this small improvement, our file server is now pretty much working we'd expect it to. If you want to play with it some more, you can grab the [complete source code](https://github.com/elm-city-craftworks/practicing-ruby-examples/tree/master/v7/002) from GitHub.
 
 ## Where to go from here
 
@@ -393,6 +397,8 @@ if something goes wrong with the request.
 a script when it matches the path, or implement 
 the [Rack spec](http://rack.rubyforge.org/doc/SPEC.html) to
 let the server serve Rack apps with `call`.
+* Reimplement the request loop using [GServer](http://www.ruby-doc.org/stdlib-2.0/libdoc/gserver/rdoc/GServer.html)
+(Ruby's generic threaded server) to handle multiple connections.
 
 Please do share your experiences and code if you decide to try any of
 these ideas, or if you come up with some improvement ideas of your own.
