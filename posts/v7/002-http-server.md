@@ -15,16 +15,16 @@ pieces of technology that we all use on a regular basis.
 
 ## A (very) brief introduction to HTTP
 
-We all use web applications on a daily basis and many of us build
+We all use web applications daily and many of us build
 them for a living, but much of our work is done far above the HTTP level.
 Today, we'll need come down from the clouds a bit to explore
-what actually happens at the protocol level when someone clicks a 
+what happens at the protocol level when someone clicks a 
 link to `http://example.com/file.txt` in their web browser. 
 
 The following steps roughly cover the typical HTTP request/response lifecycle:
 
 1) The browser issues an HTTP request by opening a TCP socket connection to
-`example.com` on port 80. The server accepts the connection which opens a
+`example.com` on port 80. The server accepts the connection, opening a
 socket for bi-directional communication.
 
 2) Once the connection has been made, the HTTP client sends the request over the
@@ -39,8 +39,8 @@ Accept: */*
 
 3) The server then parses the request. The first line is the Request-Line which contains
 the HTTP method (`GET`), Request-URI (`/file.txt`), and HTTP version (`1.1`).
-Subsequent lines are headers, key-value pairs delimited by ":". After the
-headers is a blank line followed by an optional message body (not shown in
+Subsequent lines are headers, which consists of key-value pairs delimited by ":". 
+After the headers is a blank line followed by an optional message body (not shown in
 this example).
 
 4) Using the same connection, the server responds with the contents of the file:
@@ -374,7 +374,7 @@ Suppose a request is received for `/somedir`. That request will automatically be
 
 It may be tempting to think that this small change would make it possible to remove the `File.directory?` check, and in normal circumstances you might be able to safely do with it. However, because leaving it in prevents an error condition in the edge case where someone attempts to serve up a directory named `index.html`, we've decided to leave that validation as it is.
 
-With this small improvement, our file server is now pretty much working we'd expect it to. If you want to play with it some more, you can grab the [complete source code](https://github.com/elm-city-craftworks/practicing-ruby-examples/tree/master/v7/002) from GitHub.
+With this small improvement, our file server is now pretty much working as we'd expect it to. If you want to play with it some more, you can grab the [complete source code](https://github.com/elm-city-craftworks/practicing-ruby-examples/tree/master/v7/002) from GitHub.
 
 ## Where to go from here
 
@@ -403,3 +403,7 @@ let the server serve Rack apps with `call`.
 Please do share your experiences and code if you decide to try any of
 these ideas, or if you come up with some improvement ideas of your own.
 Happy hacking!
+
+> We'd like to thank Eric Hodel, Magnus Holm, Piotr Szotkowski, and 
+Mathias Lafeldt for reviewing this article and providing feedback 
+before we published it.
