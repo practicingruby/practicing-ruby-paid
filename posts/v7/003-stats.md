@@ -11,3 +11,11 @@ days break into 3 hours 8am to 11pm, 15 hours.
 day average, the drag effect
 
 5. cycles. FFT on day averages
+
+
+---
+
+Discuss that the data exploration method is scientific but the measured data is
+not. If we switched to vital signs or spit test for hormone, could use
+similar tests and get objective results (downside: narrow the scope,
+because "mood" is a subjective concept).
