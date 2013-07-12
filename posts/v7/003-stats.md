@@ -1,3 +1,5 @@
+## REMOVE HARDCODED URLS / CHANGE URL BEFORE PUBLISHING!
+
 1. individual days, relationship between mood and time of the day
 patterns.
 days break into 3 hours 8am to 11pm, 15 hours.
@@ -9,11 +11,7 @@ days break into 3 hours 8am to 11pm, 15 hours.
 (<3 or >8), take n (maybe 10) data points around it, average different from 
 global average?
 
-4. periods of time, mood alleviated or depressed for a couple days?
-day average, the drag effect
-
-5. cycles. FFT on day averages
-
+Consider doing a day of the week histogram.
 
 ---
 
