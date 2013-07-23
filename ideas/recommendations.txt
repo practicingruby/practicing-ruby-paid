@@ -1,0 +1,78 @@
+## Design
+
+Connascence as a software design metric (2011.02.11)
+  https://practicingruby.com/articles/53
+
+  This article summarizes and expands upon various 
+  ideas from a talk given by Jim Weirich in 2009 on 
+  "The Building Blocks of Modularity". The concept of 
+  connascence gives us a powerful measure for discussing
+  various kinds of coupling in our code, and how to go 
+  about reducing it.
+
+  The concept of connascence is one that has been
+  underappreciated for far too long, so it's worth
+  bringing it back up again every couple years!
+
+Temporal coupling and the Law of Demeter (2012.08.19)
+  https://practicingruby.com/articles/71
+
+  This article explores a unique interpretation of the
+  classic "Law of Demeter" by David Smyth that was critical 
+  to the design and implementation of the software that 
+  is used to communicate with NASA's Mars Rovers. 
+  
+  I built a fun little simulator to demonstrate some of the
+  ideas in practice, but the main ideas are about reducing
+  temporal coupling, increasing robustness, and making
+  code more understandable.
+
+An adventure in prototypes (2012.12.11)
+  https://practicingruby.com/articles/95
+
+  Written by Avdi Grimm, this article takes a weird and 
+  wonderful journey through Ruby's metaprogramming 
+  features to produce a full-blown prototype-oriented 
+  object model that illustrates that the concept of
+  "object-oriented programming" doesn't necessarily need
+  to include classes or modules.
+
+  Rather than beating you over the head with theory,
+  Avdi incrementally builds up his prototype-based
+  system while simultaneously piecing together a 
+  text-based adventure game. This approach leads to 
+  what is admittedly one of the most surreal articles 
+  we've run in Practicing Ruby, but it's a fun one!
+
+## Strategy
+
+Learning new things step-by-step (2011.09.27)
+  https://practicingruby.com/articles/6
+
+From requirements discovery to release (2011.10.27)
+  https://practicingruby.com/articles/10
+
+Guidelines for growing a stable codebase (2012.10.16)
+  https://practicingruby.com/articles/91
+
+## Mechanics
+
+Event loops demystified (2012.09.04)
+  https://practicingruby.com/articles/80
+
+Process spawning patterns (2012.10.02)
+  https://practicingruby.com/articles/89
+
+Parsing JSON the hard way (2013.01.01)
+  https://practicingruby.com/articles/96
+
+## Practical Applications
+
+Building the rstat.us API -- Choices and challenges (2012.09.18)
+  https://practicingruby.com/articles/81
+
+Simulating the emergent behavior of ant colonies (2012.11.27)
+  https://practicingruby.com/articles/93
+
+Implementing a minimal HTTP file server in Ruby (2013.07.02)
+  https://practicingruby.com/articles/110  
