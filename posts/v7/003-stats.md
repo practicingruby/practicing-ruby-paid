@@ -1,3 +1,86 @@
+
+# A humble introduction to exploratory data analysis
+
+Many people never develop strong data analysis skills, mostly due to a lack of formal training in statistical modeling. For someone who has spent a good chunk of their career building web applications, the idea of going back and learning a lot of abstract mathematical principles might seem a bit intimidating. This is only natural, particularly because there is always so much to learn, and so little time to do it in.
+
+But because we now live in a deeply data-driven world, programmers will need to develop a stronger understanding of how data analysis techniques can be used to transform raw data into useful information. Although we may end up leaving the heavy statistical modeling to specialists and domain experts, we can and should learn how to do some basic data exploration tasks on our own.
+
+In this article, I will walk you through a small data analysis project that I put together to practice these skills. Along the way, I'll share some helpful tools and techniques that you can make use of in your own projects.
+
+## The project: Study my mood over time
+
+*If the purpose of classical data analysis is to find convincing answers to well-defined questions, then the role of exploratory data analysis is to help us find the right questions to ask. Although these two approaches are ultimately two sides of the same coin, they represent two very different ways of thinking about a problem.*
+
+In other words, these are metrics rather than predictive measures, equivalent to code smells!
+
+## The setup
+
+## Results
+
+## Interpretation
+
+## Conclusion
+
+
+
+---
+
+## Update with latest stats + report before shipping
+
+* 9: Fully content. no desire to change anything
+* 7-8: Happy. but possibly slightly tired or distracted (etc)
+* 5-6: Neutral. Doing something worthwhile, but not necessarily enjoying it because I'm either preoccupied about something else or the task itself is mundane, or both!
+* 3-4: Upset. My negative feelings are getting in the way of me doing what I want to do.
+* 1-2: Distressed. Unable to do what I want to do because I am overwhelmed with negative feelings.
+
+Things I was curious about:
+
+* Difference between work days and rest days
+* How much I'm affected by especially good and bad moods
+* Differences between days of week and times of day
+* How volatile my mood is in various contexts
+* What range does my mood span day to day? How high is the "average high", how low is the "average" low?
+
+How I did it:
+
+* Used a scheduled job which ran every ten minutes and had a one in six chance of sending me text messages asking for a mood rating.
+* Stored responses (1-9) in the database, along with a timestamp
+* Added some derived data from the raw data and made it available for download as a CSV
+* Wrote a menagerie of R scripts to process this data and run computations related to the questions above.
+* Used a rake file and some prawn code to make it easy to generate a PDF with all the results by running a single command.
+
+schema:
+
+```ruby
+DB.create_table(:mood_logs) do
+  primary_key :id
+  String  :message
+  Integer :recorded_at
+end
+```
+
+inputs:
+
+```
+1371164911	5	1	19	Thu	4
+1371167535	3	1	19	Thu	4
+1371169234	6	1	20	Thu	4
+1371171527	5	1	20	Thu	4
+1371179119	9	1	23	Thu	4
+1371215462	7	2	9	Fri	5
+1371227121	7	2	12	Fri	5
+1371227312	8	2	12	Fri	5
+1371233322	4	2	14	Fri	5
+1371234537	5	2	14	Fri	5
+1371235126	5	2	14	Fri	5
+1371235739	5	2	14	Fri	5
+```
+
+outputs:
+http://notes.practicingruby.com/mood-study-draft-2.pdf
+
+----
+
 ![Summary](http://i.imgur.com/aOVm2Sc.png)
 
 The summary graph above shows a weighted average of the mood updates over the entire study time period, considering a moving window of 20 data points at a time, and applying exponential smoothing. It gives a feel for the general ups and downs throughout the study, without being too noisy:
@@ -21,13 +104,18 @@ Unfortunately, this graph is much uglier than we wish it was, suggestions are we
 
 TODO: Try to color green above the curve, and coral below the curve, to make a sort of "cave view". Consider going back to rectangles for this.
 
+NOTE: Mention lowest observed is not necessarily lowest experienced
+
 ![Day of week](http://i.imgur.com/QlBajBn.png)
 
 The graph above is a straightforward grouping and averaging by day of week. Since I don't work a normal M-F schedule, it may not be as meaningful for me as it would be for someone else.
 
-The error bars show the standard deviation from the mean for each day. This allows us to see how volitile mood ratings are for a given day -- the tighter the error bars, the more stable the average rating was. Note that this is *not* the same as the min/mix range shown in the previous graph. Min/max here isn't especially useful since every day of the week has the potential to receive a 1 or 9. (although *average* min/max might be useful? -- consider TODO)
+The error bars show the standard deviation from the mean for each day. This allows us to see how volitile mood ratings are for a given day -- the tighter the error bars, the more stable the average rating was. Note that this is *not* the same as the min/mix range shown in the previous graph. Min/max here isn't especially useful since every day of the week has the potential to receive a 1 or 9.
 
 Observations (probably separate this out from method discussion above): My worst days (Wed / Sat) are also the most volitile. Those days have historically been "days off" for me, but the lower ratings might not be so easily explained by saying "I like to work more than I like to rest". Those days are also transition points between work and rest, so it may be the context switch that makes me unstable. My best days (Monday and Friday) correspond with when I tend to start something new, and when I tend to "wrap stuff up" for the week, like everyone else. (My weekend work tends to be more about pushing various existing things along rather than starting new stuff or finishing old stuff)
+
+TODO: One way ANOVA + Post-hoc test on means each day -- expect to see wed and sat to stand out
+      Variance test on stdev -- expect wed to stand out as more volatile
 
 
 ![Frequency](http://i.imgur.com/ZwSNOHTl.png)
@@ -39,10 +127,14 @@ The graphs show that as time goes on throughout the day, the number of positive 
 
 The interpretation here is that as willpower is exhausted throughout the day, it becomes easier to have negative experiences. But after dinner and evening chores it's time for relaxation, and that "recharges" the batteries, so to speak. But this story doesn't necessarily match up with what the following graphs show.
 
+TODO: Check frequency of five or lower (total percentage), see if there is a linear trend of decreasing from morning to 8pm, then increasing at the end.  
+
 
 ![Work days](http://i.imgur.com/a4Bh76u.png)
 
 Here we see averages broken out by hour for days that I've set aside as work days. It shows that my most volitile time periods are from 9am-11am, from 4pm-6pm, and from 8pm-9pm. These mark the well-defined "transition" points of my day... from morning chores to work, from work to evening chores, and from evening chores to "rest".
+
+-- consider showing transition points in different color. No stats are needed, just use a descriptive statement about the graph
 
 ![Rest days](http://i.imgur.com/oqNGYbJ.png)
 
@@ -54,10 +146,16 @@ There is also a period of several days where we were experiencing major stress i
 
 It'd be interesting to see whether this smooths out over time or not.
 
-TODO: Think about doing some work to exclude various factors shown above.
+--TODO: Add an afterward with few days of really bad outliers omitted.
+
+----
+
+
+
 
 --------
 
+Mention GGPlot2
 
 1. individual days, relationship between mood and time of the day
 patterns.days break into 3 hours 8am to 11pm, 15 hours.
