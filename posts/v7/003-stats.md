@@ -1,4 +1,3 @@
-
 # A humble introduction to exploratory data analysis
 
 Many people never develop strong data analysis skills, mostly due to a lack of formal training in statistical modeling. For someone who has spent a good chunk of their career building web applications, the idea of going back and learning a lot of abstract mathematical principles might seem a bit intimidating. This is only natural, particularly because there is always so much to learn, and so little time to do it in.
@@ -7,13 +6,22 @@ But because we now live in a deeply data-driven world, programmers will need to 
 
 In this article, I will walk you through a small data analysis project that I put together to practice these skills. Along the way, I'll share some helpful tools and techniques that you can make use of in your own projects.
 
-## The project: Study my mood over time
+## Setting the stage
 
-*If the purpose of classical data analysis is to find convincing answers to well-defined questions, then the role of exploratory data analysis is to help us find the right questions to ask. Although these two approaches are ultimately two sides of the same coin, they represent two very different ways of thinking about a problem.*
+One human quirk that fascinates me is the huge disparity between our moment-to-moment experiences and our perception  of past events. This is something that I've read about a lot in pop-psych books, and also is one of the main reasons that I practice insight meditation. However, it wasn't until I read Daniel Kahneman's book "Thinking, Fast and Slow" that I realized just how strongly separated our *experiencing self* is from our *remembering self*. 
 
-In other words, these are metrics rather than predictive measures, equivalent to code smells!
+In both Kahneman's book and [his talk at TED 2010](http://www.ted.com/talks/daniel_kahneman_the_riddle_of_experience_vs_memory.html), he uses a striking example comparing two colonoscopy patients who recorded their pain levels periodically throughout their procedure. From the data he shows, the first patient has a much shorter procedure and reports much less pain overall during the procedure than the second patient. However, when asked later about how painful the procedure was, the first patient remembered it to be much more unpleasant than the second patient did. How can that be?
 
-## The setup
+As it turns out, how an event ends has a lot to do with how we will perceive the overall experience when we recall it down the line. In the colonoscopy example, the first patient reported a high pain spike immediately before the end of their procedure, where the second patient had pain that was gradually reduced before the procedure ended. This is the explanation Kahneman offers as to why the first patient remembered their colonoscopy to be far worse of an experience than the second patient remembered it to be. 
+
+This disparity between experience and memory isn't just a one-off observation -- it's a robust finding, and it is has been repeated in many different contexts. The main lesson to learn from it is that we cannot trust our remembering mind to give a faithful account of the things we experience day-to-day. The unfortunate cost that comes along with this reality is that we're not as good about making judgements about our own well being as we could be if we did not have this cognitive limitation.
+
+I thought about this idea for a long time, particularly as it related to my day-to-day happiness. Like most software developers, my work has a lot of highs and lows to it, and so my gut feeling was that my days could be neatly divided into good days and bad days. But eventually I decided that I no longer wanted to simply rely on intuition, and so I decided to turn this psychological problem into an engineering problem by recording and analyzing my own mood ratings over time.
+
+## Designing an informal experiment
+
+Although I wanted my mood study to be rigorous enough to be meaningful on a personal level, I had no intentions of conducting a tightly controlled scientific study. What I really wanted was to build a simple breadcrumb trail of mood ratings so that I didn't need to rely on memory alone to gauge how my overall sense of well-being fluctuated over time.
+
 
 ## Results
 
@@ -21,7 +29,7 @@ In other words, these are metrics rather than predictive measures, equivalent to
 
 ## Conclusion
 
-
+*If the purpose of classical data analysis is to find convincing answers to well-defined questions, then the role of exploratory data analysis is to help us find the right questions to ask. Although these two approaches are ultimately two sides of the same coin, they represent two very different ways of thinking about a problem.*
 
 ---
 
