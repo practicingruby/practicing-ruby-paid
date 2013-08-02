@@ -1,13 +1,3 @@
-# A humble introduction to exploratory data analysis
-
-Many people never develop strong data analysis skills, mostly due to a lack of formal training in statistical modeling. For someone who has spent a good chunk of their career building web applications, the idea of going back and learning a lot of abstract mathematical principles might seem a bit intimidating. This is only natural, particularly because there is always so much to learn, and so little time to do it in.
-
-But because we now live in a deeply data-driven world, programmers will need to develop a stronger understanding of how data analysis techniques can be used to transform raw data into useful information. Although we may end up leaving the heavy statistical modeling to specialists and domain experts, we can and should learn how to do some basic data exploration tasks on our own.
-
-In this article, I will walk you through a small data analysis project that I put together to practice these skills. Along the way, I'll share some helpful tools and techniques that you can make use of in your own projects.
-
-## Setting the stage
-
 One human quirk that fascinates me is the huge disparity between our moment-to-moment experiences and our perception  of past events. This is something that I've read about a lot in pop-psych books, and also is one of the main reasons that I practice insight meditation. However, it wasn't until I read Daniel Kahneman's book "Thinking, Fast and Slow" that I realized just how strongly separated our *experiencing self* is from our *remembering self*. 
 
 In both Kahneman's book and [his talk at TED 2010](http://www.ted.com/talks/daniel_kahneman_the_riddle_of_experience_vs_memory.html), he uses a striking example comparing two colonoscopy patients who recorded their pain levels periodically throughout their procedure. From the data he shows, the first patient has a much shorter procedure and reports much less pain overall during the procedure than the second patient. However, when asked later about how painful the procedure was, the first patient remembered it to be much more unpleasant than the second patient did. How can that be?
@@ -16,16 +6,60 @@ As it turns out, how an event ends has a lot to do with how we will perceive the
 
 This disparity between experience and memory isn't just a one-off observation -- it's a robust finding, and it is has been repeated in many different contexts. The main lesson to learn from it is that we cannot trust our remembering mind to give a faithful account of the things we experience day-to-day. The unfortunate cost that comes along with this reality is that we're not as good about making judgements about our own well being as we could be if we did not have this cognitive limitation.
 
-I thought about this idea for a long time, particularly as it related to my day-to-day happiness. Like most software developers, my work has a lot of highs and lows to it, and so my gut feeling was that my days could be neatly divided into good days and bad days. But eventually I decided that I no longer wanted to simply rely on intuition, and so I decided to turn this psychological problem into an engineering problem by recording and analyzing my own mood ratings over time.
+I thought about this idea for a long time, particularly as it related to my day-to-day happiness. Like most software developers (and probably *all* writers), my work has a lot of highs and lows to it -- so my gut feeling was that my days could be neatly divided into good days and bad days. But because Kahneman had taught me that my intuitions couldn't be trusted, I eventually set out to turn this psychological problem into an engineering problem by recording and analyzing my own mood ratings over time.
 
 ## Designing an informal experiment
 
-Although I wanted my mood study to be rigorous enough to be meaningful on a personal level, I had no intentions of conducting a tightly controlled scientific study. What I really wanted was to build a simple breadcrumb trail of mood ratings so that I didn't need to rely on memory alone to gauge how my overall sense of well-being fluctuated over time.
+I wanted my mood study to be rigorous enough to be meaningful on a personal level, but I had no intentions of conducting a tightly controlled scientific study. What I really wanted was to build a simple breadcrumb trail of mood ratings so that I didn't need to rely on memory alone to gauge how my overall sense of well-being fluctuated over time.
 
+After thinking through various data collection strategies, I eventually settled on SMS messages as my delivery mechanism. The main reason for going this route was that I needed a polling mechanism that could follow me everywhere, but one that wouldn't badly disrupt whatever I was currently doing. Because I use a terrible phone that pretty much can only be used for phone calls and texting, this approach made it possible for me to regularly update my mood rating without getting sucked into all the things that would distract me on a computer.
 
-## Results
+The data I was interested in tracking was a simple number rating that described my current mood whenever I sent an update. Although the ratings themselves were purely subjective, they roughly aligned to the following scale:
 
-## Interpretation
+* Very Happy (9): No desire to change anything about my current experience.
+* Happy (7-8):  Pleased by the current experience, but may still be slightly tired, distracted, or anxious.
+* Neutral (5-6): Not bothered by my current experience, but not necessarily enjoying it.
+* Unhappy (3-4): My negative feelings are getting in the way of me doing what I want to do.
+* Very Unhappy (1-2): Unable to do what I want to do because I am overwhelmed with negative feelings.
+
+Originally I had intended to simply collect this data over the course of several weeks without any specific questions in mind. However, Jia convinced me that having at least a general sense of what questions I was interested in would help me organize the study better, so I started to think about what I might be able to observe from this seemingly trivial dataset.
+
+After a short brainstorming session, we settled on the following general questions:
+
+* Are there noticeable differences in my mood between rest days and work days?
+* Does day of the week and time of day have any effect on my mood?
+* How stable is my mood in general? In other words, how much variance is there over a given time period?
+* Are there any patterns in the high and low points that I experience each day? How far apart are the two?
+
+These questions helped me ensure that the data I intended to collect was sufficient. Once we confirmed that was the case, we were ready to start writing some code!
+
+## Building the data collection and reporting tools
+
+Data Collection:
+
+1. A rake task is run every 10 minutes, and has a one in six chance of sending an update notification.
+2. A sinatra application listens for calls from that rake task, and then delivers a SMS message via Twilio
+3. I respond to that message with my mood rating, which is then passed along via a webhook back to that same sinatra application.
+4. A timestamp and the rating is then stored in the database.
+
+Reporting:
+
+1. The same sinatra application that handles the SMS stuff also provides a CSV data export. This includes the raw data, along with some basic derived fields.
+2. This CSV data is used by a menagerie of R scripts to produce graphs and statistical calculations.
+3. A Prawn-based script converts the outputs from the R scripts into a single PDF report.
+
+(all of this shit is tied together through rake)
+
+Coupling is fairly low across the whole toolchain:
+
+* The scheduler only talks to my sinatra application, so it doesn't know anything about our service dependencies
+* The reporting code relies only on a downloaded CSV, so it doesn't need to directly interact with a database, and can be run against a local file without an internet connection.
+* The PDF generation code doesn't know anything about the reporting logic, it is solely responsible for 
+displaying the images and nothing else.
+
+## Analyzing the results
+
+## Interpreting my observations
 
 ## Conclusion
 
