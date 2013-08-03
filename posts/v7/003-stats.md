@@ -1,3 +1,7 @@
+# TAG AND REPLACE ALL LINKS BEFORE SHIPPING!
+# Update with latest stats + report before shipping
+# Send to Twilio
+
 One human quirk that fascinates me is the huge disparity between our moment-to-moment experiences and our perception  of past events. This is something that I've read about a lot in pop-psych books, and also is one of the main reasons that I practice insight meditation. However, it wasn't until I read Daniel Kahneman's book "Thinking, Fast and Slow" that I realized just how strongly separated our *experiencing self* is from our *remembering self*. 
 
 In both Kahneman's book and [his talk at TED 2010](http://www.ted.com/talks/daniel_kahneman_the_riddle_of_experience_vs_memory.html), he uses a striking example comparing two colonoscopy patients who recorded their pain levels periodically throughout their procedure. From the data he shows, the first patient has a much shorter procedure and reports much less pain overall during the procedure than the second patient. However, when asked later about how painful the procedure was, the first patient remembered it to be much more unpleasant than the second patient did. How can that be?
@@ -35,39 +39,72 @@ These questions helped me ensure that the data I intended to collect was suffici
 
 ## Building the data collection and reporting tools
 
-Data Collection:
+In order to run this study, I needed to build two small toolchains: one for data collection, and one for reporting.
 
-1. A rake task is run every 10 minutes, and has a one in six chance of sending an update notification.
-2. A sinatra application listens for calls from that rake task, and then delivers a SMS message via Twilio
-3. I respond to that message with my mood rating, which is then passed along via a webhook back to that same sinatra application.
-4. A timestamp and the rating is then stored in the database.
+The job of the data collection toolchain was primarily to deal with sending and receiving text messages at randomized intervals, dumping the responses into database records similar to what you see below:
 
-Reporting:
+```
+[{:id=>485, :message=>"8", :recorded_at=>1375470054},
+ {:id=>484, :message=>"8", :recorded_at=>1375465032},
+ {:id=>483, :message=>"8", :recorded_at=>1375457397},
+ {:id=>482, :message=>"9", :recorded_at=>1375450750},
+ {:id=>481, :message=>"8", :recorded_at=>1375411347}, ...]
+```
 
-1. The same sinatra application that handles the SMS stuff also provides a CSV data export. This includes the raw data, along with some basic derived fields.
-2. This CSV data is used by a menagerie of R scripts to produce graphs and statistical calculations.
-3. A Prawn-based script converts the outputs from the R scripts into a single PDF report.
+To support this workflow, I relied almost entirely on external services, including Twilio and Heroku. As a result, the whole data collection toolchain I built consisted of around 80 lines of code, roughly evenly distributed between two simple [rake tasks](https://github.com/sandal/dwbh/blob/master/dwbh.rb) and a small Sinatra-based [web service](https://github.com/sandal/dwbh/blob/master/dwbh.rb). Here's the basic storyline that describes what these two little programs are used for:
 
-(all of this shit is tied together through rake)
+1. Every ten minutes between 8:00am and 11:00pm each day, a randomizer gets run that has a one in six chance of triggering a mood update reminder.
 
-Coupling is fairly low across the whole toolchain:
+2. Whenever the randomizer decides to send a reminder, it does so by hitting the `/send-reminder` route on my web service, which then uses Twilio to deliver a SMS message to my phone.
 
-* The scheduler only talks to my sinatra application, so it doesn't know anything about our service dependencies
-* The reporting code relies only on a downloaded CSV, so it doesn't need to directly interact with a database, and can be run against a local file without an internet connection.
-* The PDF generation code doesn't know anything about the reporting logic, it is solely responsible for 
-displaying the images and nothing else.
+3. I respond to those messages with my current mood rating. This causes Twilio to fire a webhook that hits the `/record-mood` route on my web service with the message data as GET parameters. The data gets massaged slightly, then it is stored in a database for later processing.
+
+4. Some time later, the reporting toolchain will hit the `/mood-logs.csv` route to download a CSV dump of the whole dataset, which includes the raw data shown above along with a few other computed fields that make reporting easier.
+
+After a bit of hollywood magic involving a menagerie of R scripts, some more rake tasks, and a bit of Prawn-based PDF generation code, the reporting toolchain ends up spitting out a [two-page PDF report](http://notes.practicingruby.com/mood-study-draft-2.pdf) that looks like what you see below:
+
+[![](http://i.imgur.com/pcXuVWE.png?1)](http://notes.practicingruby.com/mood-study-draft-2.pdf)
+
+We'll be discussing some of the details about how the various graphs get generated and the challenges involved in implementing them later on in this article, but if you want to get a sense of what the Ruby glue code looks in the reporting toolchain, I'd recommend starting with its [Rakefile](https://github.com/elm-city-craftworks/practicing-ruby-examples/blob/master/v7/003/Rakefile). The basic idea is that with these tasks set up, I'm able to type `rake generate-report` in my console and cause the following chain of events to happen:
+
+1. The latest mood data will be downloaded from my web service in CSV format
+
+2. All of my R-based graphing scripts will be run, outputting a bunch of image files
+
+3. A PDF will be generated that nicely lays out these image files
+
+4. The CSV data and image files will then be deleted, because they're no longer needed.
+
+Between this reporting code and the data aggregation toolchain, I ended up with a system that has been very easy to work with for the many weeks that I have been running this study. The whole user experience boils down to entering single digit values into my phone when I'm prompted to do so, and then typing a single command to generate my reports whenever I want to take a look at them.
+
+At a first glance, the way this system is implemented may look a bit like its hung together with shoestrings and glue, but the very loose coupling between its components has made it easy to both work on individual pieces in isolation, and to make significant changes without a ton of rework. I was actually surprised by this, because it is one of the first times where I've felt that the "Worse is better" UNIX mantra might actually have some merit to it!
+
+More discussion about the design decisions I made while implementing this system is certainly welcome in the comments section, but for now let's take a look at what all those graphs have to say about my mood.
 
 ## Analyzing the results
 
-## Interpreting my observations
+(See notes below plus notes in my notebook)
+
+## Interpreting my observations  
+
+Remember -- take it all with a huge grain of salt, we're working backwards from observations to a model rather than the other way around.
+
+(See notes below plus notes in my notebook)
+
+Decreased sensitivity -- tired / overcommitted does not necessarily mean unhappy.
 
 ## Conclusion
 
-*If the purpose of classical data analysis is to find convincing answers to well-defined questions, then the role of exploratory data analysis is to help us find the right questions to ask. Although these two approaches are ultimately two sides of the same coin, they represent two very different ways of thinking about a problem.*
+Point out that this study is just one example of how we can explore data. Also point out that exploratory data analysis is a good precursor to doing classical analysis, because it helps you find interesting questions and consider how to model them before committing to a particular approach.  Plus, this is fun!
+
+Talk about the remembering mind as a glib salesman trying to tell a particular story. Data doesn't stop him from influencing you, but it might help keep him on point, and even may expose areas where he's obviously bullshitting you. This can give you leverage in decision making, because it's the job of the experiencing mind to do that!
+
+(NB: RStudio is awesome)
+
 
 ---
 
-## Update with latest stats + report before shipping
+
 
 * 9: Fully content. no desire to change anything
 * 7-8: Happy. but possibly slightly tired or distracted (etc)
