@@ -52,7 +52,7 @@ The job of the data collection toolchain was primarily to deal with sending and 
  {:id=>481, :message=>"8", :recorded_at=>1375411347}, ...]
 ```
 
-To support this workflow, I relied almost entirely on external services, including Twilio and Heroku. As a result, the whole data collection toolchain I built consisted of around 80 lines of code, roughly evenly distributed between two simple [rake tasks](https://github.com/sandal/dwbh/blob/master/dwbh.rb) and a small Sinatra-based [web service](https://github.com/sandal/dwbh/blob/master/dwbh.rb). Here's the basic storyline that describes what these two little programs are used for:
+To support this workflow, I relied almost entirely on external services, including Twilio and Heroku. As a result, the whole data collection toolchain I built consisted of around 80 lines of code, roughly evenly distributed between two simple [rake tasks](https://github.com/sandal/dwbh/blob/master/Rakefile) and a small Sinatra-based [web service](https://github.com/sandal/dwbh/blob/master/dwbh.rb). Here's the basic storyline that describes what these two little programs are used for:
 
 1. Every ten minutes between 8:00am and 11:00pm each day, a randomizer gets run that has a one in six chance of triggering a mood update reminder.
 
@@ -113,7 +113,7 @@ It's important to understand the tradeoffs here: by smoothing out the data, I lo
 
 Without rigorous statistical analysis and a far less corruptable means of studying myself, these bits of information could never truly predict my future or even be used as the primary basis for decision making. However, the extra information has been helping me put my mind in a historical perspective that isn't purely based on my remembered experiences, and that alone has turned out to be extremely useful to me.
 
-> **Implementation notes:**
+> **Implementation notes ([view source code](https://github.com/elm-city-craftworks/practicing-ruby-examples/blob/master/v7/003/moving-summary.R)):**
 >
 > I chose to use an exponentially-smoothed weighted average here, mostly because I wanted to see the trend line change direction as quickly as possible whenever new points of data hinted that my mood was getting better or worse over time. There are lots of different techniques for doing weighted averages, and this one is actually a little more complicated than some of the other options out there. If I had to implement the computations myself I may have chosen a more simple method. But since an exponential moving average function already existed in the [TTR package](http://rss.acs.unt.edu/Rdoc/library/TTR/html/MovingAverages.html), it didn't really cost me any extra effort to model things this way.
 
@@ -129,19 +129,25 @@ Without rigorous statistical analysis and a far less corruptable means of studyi
 
 ![Min Max](http://i.imgur.com/wGdWN1J.jpg)
 
-BLAH BLAH BLAH
+In a purely statistical sense, the highest and lowest values reported for each day might not be especially relevant. However, the nature of this particular study made me feel it was important to track them. After all, even if the "average" mood for two days were both around 7, a day where the lowest mood rating was a 1 will certainly be different sort of day than one where the lowest rating was a 5! For this reason, **Figure 2** shows the extreme high and low for each day in the study. This information is useful for the following purposes:
 
-In a purely statistical sense, the highest and lowest values reported for each day might be considered outliers that could be stripped out or ignored if they aren't close enough to the mean. However, the nature of this study makes it so that those extreme values are of interest: Even if the "average" mood for two days were both around 7, a day where a single mood rating of 1 was reported will certainly be different than a day where the lowest rating was a 5!
+* Determining what my daily peak experiences are like on average. For example, we can see from this data that there was only one day where I didn't report at least a single rating of 7 or higher, and that most days my high point was either an 8 or 9. 
 
-So to fill in this missing information, the graph above shows the extreme high and low for each day in the study. From it, we can see that there was only one day where I didn't report at least a single rating of 7 or higher, and that most days my high point was either an 8 or 9. We can also see that although the majority of days had a lower limit of 5 or higher, about 20% of days had a rating of 4 or lower.
+* Determining what my daily low points are like on average. Reading the data shown above, we can see that there were only three days in the entire study that I reported a low rating of 1, but that about one in five days had a low rating of 4 or less. 
 
-If you view the space betweeen the two graphs as a "cave", the ideal situation for maximizing mood stability would be for the both the "floor" and "ceiling" to be as high as possible.
+* Visualizing the range between high and low points on a daily basis. This can be visualized by looking at the space between the two lines: the smaller the distance, the smaller the mood swing for that day.
 
-Unfortunately, this graph is much uglier than we wish it was, suggestions are welcome!
+A somewhat obvious limitation of this visualization is that the range of moods recorded in a day do not necessarily reflect the range of moods actually experienced throughout that day. In most of the other ways I've sliced up the dataset, we can hope that averaging will smooth out some of the ill effects of missing information, but this view in particular can be easily corrupted by a single "missed event" per day. The key point here is that **Figure 2** can only be viewed as a rough sketch of the overall trend, and not a precise picture of day-to-day experience.
 
-TODO: Try to color green above the curve, and coral below the curve, to make a sort of "cave view". Consider going back to rectangles for this.
-
-NOTE: Mention lowest observed is not necessarily lowest experienced
+> **Implementation notes ([view source code](https://github.com/elm-city-craftworks/practicing-ruby-examples/blob/master/v7/003/daily-min-max.R)):**
+>
+> This was an extremely straightforward graph to produce using standard R functions, so there isn't too much to discuss about it. However, it's worth pointing out for folks who are unfamiliar with R that the support for data aggregation built into the language is amazing. Here is the code that takes the raw mood log entries and rolls them up by daily minimum and maximum:
+>
+> `data_max <- aggregate(rating ~ day, data, max)`
+>
+> `data_min <- aggregate(rating ~ day, data, min)`
+>
+> Because R is such a special-purpose language, it includes many neat data manipulation features similar to this one.
 
 ---
 
