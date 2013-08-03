@@ -143,6 +143,11 @@ TODO: Try to color green above the curve, and coral below the curve, to make a s
 
 NOTE: Mention lowest observed is not necessarily lowest experienced
 
+---
+
+**Figure 3 ([view source code](https://github.com/elm-city-craftworks/practicing-ruby-examples/blob/master/v7/003/day-of-week.R)):**
+
+
 ![Day of week](http://i.imgur.com/QlBajBn.png)
 
 The graph above is a straightforward grouping and averaging by day of week. Since I don't work a normal M-F schedule, it may not be as meaningful for me as it would be for someone else.
@@ -153,6 +158,11 @@ Observations (probably separate this out from method discussion above): My worst
 
 TODO: One way ANOVA + Post-hoc test on means each day -- expect to see wed and sat to stand out
       Variance test on stdev -- expect wed to stand out as more volatile
+      
+---
+
+**Figure 4 ([view source code](https://github.com/elm-city-craftworks/practicing-ruby-examples/blob/master/v7/003/frequency.R)):**
+
 
 
 ![Frequency](http://i.imgur.com/ZwSNOHTl.png)
@@ -165,6 +175,10 @@ The graphs show that as time goes on throughout the day, the number of positive 
 The interpretation here is that as willpower is exhausted throughout the day, it becomes easier to have negative experiences. But after dinner and evening chores it's time for relaxation, and that "recharges" the batteries, so to speak. But this story doesn't necessarily match up with what the following graphs show.
 
 TODO: Check frequency of five or lower (total percentage), see if there is a linear trend of decreasing from morning to 8pm, then increasing at the end.  
+
+--- 
+
+**Figure 5 ([view source code](https://github.com/elm-city-craftworks/practicing-ruby-examples/blob/master/v7/003/work-rest.R)):**
 
 
 ![Work days](http://i.imgur.com/a4Bh76u.png)
