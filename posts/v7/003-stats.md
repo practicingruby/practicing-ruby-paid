@@ -1,6 +1,7 @@
 # TAG AND REPLACE ALL LINKS BEFORE SHIPPING!
 # Update with latest stats + report before shipping
 # Send to Twilio
+# Change URL before shipping
 
 One human quirk that fascinates me is the huge disparity between our moment-to-moment experiences and our perception  of past events. This is something that I've read about a lot in pop-psych books, and also is one of the main reasons that I practice insight meditation. However, it wasn't until I read Daniel Kahneman's book "Thinking, Fast and Slow" that I realized just how strongly separated our *experiencing self* is from our *remembering self*. 
 
@@ -83,7 +84,106 @@ More discussion about the design decisions I made while implementing this system
 
 ## Analyzing the results
 
-(See notes below plus notes in my notebook)
+The full report for my mood study consists of five different graphs generated via the R statistical programming language, each of which attempts to show a different perspective on the data:
+
+* Figure 1 provides a summary view of the average mood ratings across the whole time period
+(> 50 days of data)
+* Figure 2 shows the daily minimum and maximums for the whole time period.
+* Figure 3 shows the average mood rating and variance broken out by day of week
+* Figure 4 shows the distribution of different mood ratings in five different time periods throughout the day (8am-11am, 11am-2pm, 2pm-5pm, 5pm-8pm, 8pm-11pm)
+* Figure 5 shows the average mood rating and variance on an hour-by-hour basis for both work days and rest days. 
+
+The order above is the same as that of the PDF report, and it is essentially sorted by the largest time scales down to the shortest ones. Since that is a fairly natural way to look at this data, we'll discuss it in the same order in this article.
+
+> **NOTE**: I've included implementation notes for each figure, which will hopefully be very interesting for folks who want to do data explorations of their own. That said, the notes are safe to skim or skip over entirely if you're just reading this article out of general curiosity.
+
+---
+
+**Figure 1 ([view source code](https://github.com/elm-city-craftworks/practicing-ruby-examples/blob/master/v7/003/moving-summary.R)):**
+
+![Summary](http://i.imgur.com/1gr6BIF.jpg)
+
+I knew as soon as I started working on this study that I'd want to somehow capture the general trend of the entire data series, but I didn't anticipate how noisy it would be to create a [plot with nearly 500 data points](http://i.imgur.com/NlIlgMI.png), many of which would prove to be too close together to visually distinguish from one another. To lessen the noise, I decided to plot a moving average instead of the individual ratings over time, which is what you see in **Figure 1** above.
+
+It's important to understand the tradeoffs here: by smoothing out the data, I lost the ability to see what the individual ratings were at any given time. However, I gained the ability to easily discern the following bits of useful information:
+
+* How my experiences over a period of a couple days compare to the global average (green horizontal line), and to the global standard deviation (gray horizontal lines). This information could tell me whether my day-to-day experience has been improving or getting worse over time, and also how stable the swing in my mood have been recently compared to what might be considered "typical" for me across a large time span.
+
+* Whether my recent mood updates indicated that my mood was trending upward or downward, and roughly how long I could expect that to last.
+
+Without rigorous statistical analysis and a far less corruptable means of studying myself, these bits of information could never truly predict my future or even be used as the primary basis for decision making. However, the extra information has been helping me put my mind in a historical perspective that isn't purely based on my remembered experiences, and that alone has turned out to be extremely useful to me.
+
+> **Implementation notes:**
+>
+> I chose to use an exponentially-smoothed weighted average here, mostly because I wanted to see the trend line change direction as quickly as possible whenever new points of data hinted that my mood was getting better or worse over time. There are lots of different techniques for doing weighted averages, and this one is actually a little more complicated than some of the other options out there. If I had to implement the computations myself I may have chosen a more simple method. But since an exponential moving average function already existed in the [TTR package](http://rss.acs.unt.edu/Rdoc/library/TTR/html/MovingAverages.html), it didn't really cost me any extra effort to model things this way.
+
+>I had first seen this technique used in [The Hacker's Diet](http://www.fourmilab.ch/hackdiet/www/hackdietf.html), where it proved to be a useful means of cancelling out the noise of daily weight fluctuations so that you could see if you were actually gaining or losing weight. I was hoping it would have the same effect for me with my mood monitoring, and so far it pretty much has worked as well as I expected it would.
+
+>
+>It's also worth noting that in this graph, the curve represents something close to a continous time scale. To accomplish this, I converted the UNIX timestamps into fractional days from the moment the study had started. It's not perfect, but it has the neat effect of making it possible to see visible change in the graph after even a single new data point has been recorded.
+
+---
+
+**Figure 2 ([view source code](https://github.com/elm-city-craftworks/practicing-ruby-examples/blob/master/v7/003/daily-min-max.R)):**
+
+
+![Min Max](http://i.imgur.com/wGdWN1J.jpg)
+
+BLAH BLAH BLAH
+
+In a purely statistical sense, the highest and lowest values reported for each day might be considered outliers that could be stripped out or ignored if they aren't close enough to the mean. However, the nature of this study makes it so that those extreme values are of interest: Even if the "average" mood for two days were both around 7, a day where a single mood rating of 1 was reported will certainly be different than a day where the lowest rating was a 5!
+
+So to fill in this missing information, the graph above shows the extreme high and low for each day in the study. From it, we can see that there was only one day where I didn't report at least a single rating of 7 or higher, and that most days my high point was either an 8 or 9. We can also see that although the majority of days had a lower limit of 5 or higher, about 20% of days had a rating of 4 or lower.
+
+If you view the space betweeen the two graphs as a "cave", the ideal situation for maximizing mood stability would be for the both the "floor" and "ceiling" to be as high as possible.
+
+Unfortunately, this graph is much uglier than we wish it was, suggestions are welcome!
+
+TODO: Try to color green above the curve, and coral below the curve, to make a sort of "cave view". Consider going back to rectangles for this.
+
+NOTE: Mention lowest observed is not necessarily lowest experienced
+
+![Day of week](http://i.imgur.com/QlBajBn.png)
+
+The graph above is a straightforward grouping and averaging by day of week. Since I don't work a normal M-F schedule, it may not be as meaningful for me as it would be for someone else.
+
+The error bars show the standard deviation from the mean for each day. This allows us to see how volitile mood ratings are for a given day -- the tighter the error bars, the more stable the average rating was. Note that this is *not* the same as the min/mix range shown in the previous graph. Min/max here isn't especially useful since every day of the week has the potential to receive a 1 or 9.
+
+Observations (probably separate this out from method discussion above): My worst days (Wed / Sat) are also the most volitile. Those days have historically been "days off" for me, but the lower ratings might not be so easily explained by saying "I like to work more than I like to rest". Those days are also transition points between work and rest, so it may be the context switch that makes me unstable. My best days (Monday and Friday) correspond with when I tend to start something new, and when I tend to "wrap stuff up" for the week, like everyone else. (My weekend work tends to be more about pushing various existing things along rather than starting new stuff or finishing old stuff)
+
+TODO: One way ANOVA + Post-hoc test on means each day -- expect to see wed and sat to stand out
+      Variance test on stdev -- expect wed to stand out as more volatile
+
+
+![Frequency](http://i.imgur.com/ZwSNOHTl.png)
+
+Here we break the day into quintets and take a look at the actual distribution of ratings during those time periods.
+The exact thing we're showing here is for a given rating number in the time period, what percentage of updates were for that rating number.
+
+The graphs show that as time goes on throughout the day, the number of positive ratings (>= 6) decrease, and the number of of negative ratings (<= 5) increase, up until about 8pm, in which the pattern returns to something quite similar to what is observed in the morning.
+
+The interpretation here is that as willpower is exhausted throughout the day, it becomes easier to have negative experiences. But after dinner and evening chores it's time for relaxation, and that "recharges" the batteries, so to speak. But this story doesn't necessarily match up with what the following graphs show.
+
+TODO: Check frequency of five or lower (total percentage), see if there is a linear trend of decreasing from morning to 8pm, then increasing at the end.  
+
+
+![Work days](http://i.imgur.com/a4Bh76u.png)
+
+Here we see averages broken out by hour for days that I've set aside as work days. It shows that my most volitile time periods are from 9am-11am, from 4pm-6pm, and from 8pm-9pm. These mark the well-defined "transition" points of my day... from morning chores to work, from work to evening chores, and from evening chores to "rest".
+
+-- consider showing transition points in different color. No stats are needed, just use a descriptive statement about the graph
+
+![Rest days](http://i.imgur.com/oqNGYbJ.png)
+
+Rest days are unfortunately all over the map, with high volitility at most times of the day, especially after 12:00pm and before 9:00pm. There are a number of factors that may come into play here, but one important may be that I have been much less reliable at recording updates during rest periods than I have been during my working time, and so this data may be less reliable and also biased towards extreme events.
+
+However, there is also the factor that "rest days" often have me thinking about my work at inconvenient times and places, and that my own mood tends to mirror that of my son's if we're doing something together. Because the rest days don't have fixed "alone time", it's hard to maintain stability.
+
+There is also a period of several days where we were experiencing major stress in my personal life, and that data could have easily skewed the whole dataset.
+
+It'd be interesting to see whether this smooths out over time or not.
+
+--TODO: Add an afterward with few days of really bad outliers omitted.
 
 ## Interpreting my observations  
 
@@ -159,73 +259,6 @@ outputs:
 http://notes.practicingruby.com/mood-study-draft-2.pdf
 
 ----
-
-![Summary](http://i.imgur.com/aOVm2Sc.png)
-
-The summary graph above shows a weighted average of the mood updates over the entire study time period, considering a moving window of 20 data points at a time, and applying exponential smoothing. It gives a feel for the general ups and downs throughout the study, without being too noisy:
-
-If we plotted the individual points, we'd see nothing but noise (there are hundreds of them), and if we plotted daily averages, you wouldn't see much difference across the whole study. In particular, you wouldn't be able to tell the difference between (1,1,1,9,9,9) and (5,5,5,5,5,5).
-
-It's important to remember that "average mood" still doesn't mean that the number shown is closest to what was actually experienced at a given point in time. But as the average mood number increases you can infer that experienced mood is generally improving over time, and vice-versa.
-
-The global average and standard deviation mostly give us a similar measure: If we generated this graph every 60 days, it'd tell us a lot to see a significant difference in either of these numbers. Change in global average tells us of grand-scale changes to overall mood, and change in standard deviation tells us how "volatile" the mood ratings have been. A tight standard deviation implies strong mood regulation, a wide distribution implies weak mood regulation.
-
-
-![Min Max](http://i.imgur.com/p65gNPp.png)
-
-In a purely statistical sense, the highest and lowest values reported for each day might be considered outliers that could be stripped out or ignored if they aren't close enough to the mean. However, the nature of this study makes it so that those extreme values are of interest: Even if the "average" mood for two days were both around 7, a day where a single mood rating of 1 was reported will certainly be different than a day where the lowest rating was a 5!
-
-So to fill in this missing information, the graph above shows the extreme high and low for each day in the study. From it, we can see that there was only one day where I didn't report at least a single rating of 7 or higher, and that most days my high point was either an 8 or 9. We can also see that although the majority of days had a lower limit of 5 or higher, about 20% of days had a rating of 4 or lower.
-
-If you view the space betweeen the two graphs as a "cave", the ideal situation for maximizing mood stability would be for the both the "floor" and "ceiling" to be as high as possible.
-
-Unfortunately, this graph is much uglier than we wish it was, suggestions are welcome!
-
-TODO: Try to color green above the curve, and coral below the curve, to make a sort of "cave view". Consider going back to rectangles for this.
-
-NOTE: Mention lowest observed is not necessarily lowest experienced
-
-![Day of week](http://i.imgur.com/QlBajBn.png)
-
-The graph above is a straightforward grouping and averaging by day of week. Since I don't work a normal M-F schedule, it may not be as meaningful for me as it would be for someone else.
-
-The error bars show the standard deviation from the mean for each day. This allows us to see how volitile mood ratings are for a given day -- the tighter the error bars, the more stable the average rating was. Note that this is *not* the same as the min/mix range shown in the previous graph. Min/max here isn't especially useful since every day of the week has the potential to receive a 1 or 9.
-
-Observations (probably separate this out from method discussion above): My worst days (Wed / Sat) are also the most volitile. Those days have historically been "days off" for me, but the lower ratings might not be so easily explained by saying "I like to work more than I like to rest". Those days are also transition points between work and rest, so it may be the context switch that makes me unstable. My best days (Monday and Friday) correspond with when I tend to start something new, and when I tend to "wrap stuff up" for the week, like everyone else. (My weekend work tends to be more about pushing various existing things along rather than starting new stuff or finishing old stuff)
-
-TODO: One way ANOVA + Post-hoc test on means each day -- expect to see wed and sat to stand out
-      Variance test on stdev -- expect wed to stand out as more volatile
-
-
-![Frequency](http://i.imgur.com/ZwSNOHTl.png)
-
-Here we break the day into quintets and take a look at the actual distribution of ratings during those time periods.
-The exact thing we're showing here is for a given rating number in the time period, what percentage of updates were for that rating number.
-
-The graphs show that as time goes on throughout the day, the number of positive ratings (>= 6) decrease, and the number of of negative ratings (<= 5) increase, up until about 8pm, in which the pattern returns to something quite similar to what is observed in the morning.
-
-The interpretation here is that as willpower is exhausted throughout the day, it becomes easier to have negative experiences. But after dinner and evening chores it's time for relaxation, and that "recharges" the batteries, so to speak. But this story doesn't necessarily match up with what the following graphs show.
-
-TODO: Check frequency of five or lower (total percentage), see if there is a linear trend of decreasing from morning to 8pm, then increasing at the end.  
-
-
-![Work days](http://i.imgur.com/a4Bh76u.png)
-
-Here we see averages broken out by hour for days that I've set aside as work days. It shows that my most volitile time periods are from 9am-11am, from 4pm-6pm, and from 8pm-9pm. These mark the well-defined "transition" points of my day... from morning chores to work, from work to evening chores, and from evening chores to "rest".
-
--- consider showing transition points in different color. No stats are needed, just use a descriptive statement about the graph
-
-![Rest days](http://i.imgur.com/oqNGYbJ.png)
-
-Rest days are unfortunately all over the map, with high volitility at most times of the day, especially after 12:00pm and before 9:00pm. There are a number of factors that may come into play here, but one important may be that I have been much less reliable at recording updates during rest periods than I have been during my working time, and so this data may be less reliable and also biased towards extreme events.
-
-However, there is also the factor that "rest days" often have me thinking about my work at inconvenient times and places, and that my own mood tends to mirror that of my son's if we're doing something together. Because the rest days don't have fixed "alone time", it's hard to maintain stability.
-
-There is also a period of several days where we were experiencing major stress in my personal life, and that data could have easily skewed the whole dataset.
-
-It'd be interesting to see whether this smooths out over time or not.
-
---TODO: Add an afterward with few days of really bad outliers omitted.
 
 ----
 
