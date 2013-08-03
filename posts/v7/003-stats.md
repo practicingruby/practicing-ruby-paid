@@ -90,7 +90,7 @@ The full report for my mood study consists of five different graphs generated vi
 (> 50 days of data)
 * Figure 2 shows the daily minimum and maximums for the whole time period.
 * Figure 3 shows the average mood rating and variance broken out by day of week
-* Figure 4 shows the distribution of different mood ratings in five different time periods throughout the day (8am-11am, 11am-2pm, 2pm-5pm, 5pm-8pm, 8pm-11pm)
+* Figure 4 breaks my day into five three-hour long segments and looks at the distribution of the different mood ratings in each segment.
 * Figure 5 shows the average mood rating and variance on an hour-by-hour basis for both work days and rest days. 
 
 The order above is the same as that of the PDF report, and it is essentially sorted by the largest time scales down to the shortest ones. Since that is a fairly natural way to look at this data, we'll discuss it in the same order in this article.
@@ -135,7 +135,7 @@ In a purely statistical sense, the highest and lowest values reported for each d
 
 * Determining what my daily low points are like on average. Reading the data shown above, we can see that there were only three days in the entire study that I reported a low rating of 1, but that about one in five days had a low rating of 4 or less. 
 
-* Visualizing the range between high and low points on a daily basis. This can be visualized by looking at the space between the two lines: the smaller the distance, the smaller the mood swing for that day.
+* Visualizing the range between high and low points on a daily basis. This can be seen by looking at the space between the two lines: the smaller the distance, the smaller the mood swing for that day.
 
 A somewhat obvious limitation of this visualization is that the range of moods recorded in a day do not necessarily reflect the range of moods actually experienced throughout that day. In most of the other ways I've sliced up the dataset, we can hope that averaging will smooth out some of the ill effects of missing information, but this view in particular can be easily corrupted by a single "missed event" per day. The key point here is that **Figure 2** can only be viewed as a rough sketch of the overall trend, and not a precise picture of day-to-day experience.
 
@@ -162,23 +162,9 @@ This visualization shows the mean and standard deviation for all mood updates br
 * Whether or not certain days of the week have more consistent mood ratings than others.
 * What the general ups-and-downs look like on a typical week in my life
 
-If you look at the data points shown in **Figure 3** above, you'll see that the high points (Monday and Friday) stand out noticeably from the low points (Wednesday and Saturday). Perhaps more interesting than their difference in means is their difference in variance: the former has much tighter error bars than the latter.
+If you look at the data points shown in **Figure 3** above, you'll see that the high points (Monday and Friday) stand out noticeably from the low points (Wednesday and Saturday). However, to see whether that difference is significant or not, we need to be confident that what we're observing isn't simply a result of random fluctuations and noise. This is where some basical statistical tests are needed.
 
-It's worth pointing out that while direct observations such as the one I just mentioned are a good starting point, that it's dubious to simply look at a graph and compare values without doing some basic statistical verification. The reason for this is simple: we need to be confident that what we're observing isn't simply a result of random fluctuations and noise.
-
-
-FILL IN REST OF STATS HERE:
-
-```
-  0      1      2      3      4      5     
-1 0.1512 -      -      -      -      -     
-2 0.9717 0.1611 -      -      -      -     
-3 0.2676 0.0070 0.2676 -      -      -     
-4 0.7749 0.0927 0.7749 0.3763 -      -     
-5 0.3763 0.5275 0.3763 0.0505 0.2585 -     
-6 0.0927 0.0017 0.0927 0.4376 0.1512 0.0070
-```
-
+To test for difference in the averages between days, we ran a one-way ANOVA test, and then did a pairwise test with FDR correction. Based on these tests we were able to show a significant difference (p < 0.01) between Monday+Wednesday, Monday+Saturday, and Friday+Saturday. The difference between Wednesday+Friday was not significant, but was close (p = 0.0502). I don't want to get into a long tangent here because I fear it'll be distracting, but if you are curious about what the raw results of the computations ended up looking like, take a look at [this gist](https://gist.github.com/sandal/6147469).
 
 > **Implementation notes ([view source code](https://github.com/elm-city-craftworks/practicing-ruby-examples/blob/master/v7/003/day-of-week.R)):**
 
@@ -191,11 +177,9 @@ FILL IN REST OF STATS HERE:
 **Figure 4 ([view source code](https://github.com/elm-city-craftworks/practicing-ruby-examples/blob/master/v7/003/frequency.R)):**
 
 
+![Frequency](http://i.imgur.com/xTVfpRN.png)
 
-![Frequency](http://i.imgur.com/ZwSNOHTl.png)
-
-Here we break the day into quintets and take a look at the actual distribution of ratings during those time periods.
-The exact thing we're showing here is for a given rating number in the time period, what percentage of updates were for that rating number.
+Here we break the day into a total of five three-hour long segments and take a look at the distribution of ratings during those time periods. 
 
 The graphs show that as time goes on throughout the day, the number of positive ratings (>= 6) decrease, and the number of of negative ratings (<= 5) increase, up until about 8pm, in which the pattern returns to something quite similar to what is observed in the morning.
 
@@ -227,6 +211,9 @@ It'd be interesting to see whether this smooths out over time or not.
 --TODO: Add an afterward with few days of really bad outliers omitted.
 
 ## Mapping a story to the data
+
+* Happiest and most stable time of day is early morning and late evening
+* (more things like this)
 
 Remember -- take it all with a huge grain of salt, we're working backwards from observations to a model rather than the other way around.
 
