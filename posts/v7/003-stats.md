@@ -1,5 +1,5 @@
 # TAG AND REPLACE ALL LINKS BEFORE SHIPPING!
-# Update with latest stats + report before shipping
+# Update with latest stats, images, + report before shipping (important for this to be consistent!)
 # Send to Twilio
 # Change URL before shipping
 
@@ -154,17 +154,38 @@ A somewhat obvious limitation of this visualization is that the range of moods r
 **Figure 3 ([view source code](https://github.com/elm-city-craftworks/practicing-ruby-examples/blob/master/v7/003/day-of-week.R)):**
 
 
-![Day of week](http://i.imgur.com/QlBajBn.png)
+![Day of week](http://i.imgur.com/qwytFft.jpg)
 
-The graph above is a straightforward grouping and averaging by day of week. Since I don't work a normal M-F schedule, it may not be as meaningful for me as it would be for someone else.
+This visualization shows the mean and standard deviation for all mood updates broken out by day of week. Looking at my mood data in this way provides the following information:
 
-The error bars show the standard deviation from the mean for each day. This allows us to see how volitile mood ratings are for a given day -- the tighter the error bars, the more stable the average rating was. Note that this is *not* the same as the min/mix range shown in the previous graph. Min/max here isn't especially useful since every day of the week has the potential to receive a 1 or 9.
+* Whether or not certain days of the week have better mood ratings on average than others.
+* Whether or not certain days of the week have more consistent mood ratings than others.
+* What the general ups-and-downs look like on a typical week in my life
 
-Observations (probably separate this out from method discussion above): My worst days (Wed / Sat) are also the most volitile. Those days have historically been "days off" for me, but the lower ratings might not be so easily explained by saying "I like to work more than I like to rest". Those days are also transition points between work and rest, so it may be the context switch that makes me unstable. My best days (Monday and Friday) correspond with when I tend to start something new, and when I tend to "wrap stuff up" for the week, like everyone else. (My weekend work tends to be more about pushing various existing things along rather than starting new stuff or finishing old stuff)
+If you look at the data points shown in **Figure 3** above, you'll see that the high points (Monday and Friday) stand out noticeably from the low points (Wednesday and Saturday). Perhaps more interesting than their difference in means is their difference in variance: the former has much tighter error bars than the latter.
 
-TODO: One way ANOVA + Post-hoc test on means each day -- expect to see wed and sat to stand out
-      Variance test on stdev -- expect wed to stand out as more volatile
-      
+It's worth pointing out that while direct observations such as the one I just mentioned are a good starting point, that it's dubious to simply look at a graph and compare values without doing some basic statistical verification. The reason for this is simple: we need to be confident that what we're observing isn't simply a result of random fluctuations and noise.
+
+
+FILL IN REST OF STATS HERE:
+
+```
+  0      1      2      3      4      5     
+1 0.1512 -      -      -      -      -     
+2 0.9717 0.1611 -      -      -      -     
+3 0.2676 0.0070 0.2676 -      -      -     
+4 0.7749 0.0927 0.7749 0.3763 -      -     
+5 0.3763 0.5275 0.3763 0.0505 0.2585 -     
+6 0.0927 0.0017 0.0927 0.4376 0.1512 0.0070
+```
+
+
+> **Implementation notes ([view source code](https://github.com/elm-city-craftworks/practicing-ruby-examples/blob/master/v7/003/day-of-week.R)):**
+
+> An annoying thing about R is that despite having very powerful graphing functionality built into the language, it does not have a standard feature for drawing error bars. We use a small [helper function](https://github.com/elm-city-craftworks/practicing-ruby-examples/blob/master/v7/003/helpers.R#L2-L5) to handle this work, which is based on code we found in [this blog post](http://bmscblog.wordpress.com/2013/01/23/error-bars-with-r ).
+
+> Apart from the errorbars issue and the calls to various statistical reporting functions, this code is otherwise functionally similar to what is used to generate **Figure 2**.
+
 ---
 
 **Figure 4 ([view source code](https://github.com/elm-city-craftworks/practicing-ruby-examples/blob/master/v7/003/frequency.R)):**
@@ -205,13 +226,18 @@ It'd be interesting to see whether this smooths out over time or not.
 
 --TODO: Add an afterward with few days of really bad outliers omitted.
 
-## Interpreting my observations  
+## Mapping a story to the data
 
 Remember -- take it all with a huge grain of salt, we're working backwards from observations to a model rather than the other way around.
 
 (See notes below plus notes in my notebook)
 
 Decreased sensitivity -- tired / overcommitted does not necessarily mean unhappy.
+
+Talk about current deadline pressure and how I've been approaching it differently.
+
+
+Observations (probably separate this out from method discussion above): My worst days (Wed / Sat) are also the most volitile. Those days have historically been "days off" for me, but the lower ratings might not be so easily explained by saying "I like to work more than I like to rest". Those days are also transition points between work and rest, so it may be the context switch that makes me unstable. My best days (Monday and Friday) correspond with when I tend to start something new, and when I tend to "wrap stuff up" for the week, like everyone else. (My weekend work tends to be more about pushing various existing things along rather than starting new stuff or finishing old stuff)
 
 ## Conclusion
 
