@@ -35,7 +35,6 @@ After a short brainstorming session, we settled on the following general questio
 * How stable is my mood in general? In other words, how much variance is there over a given time period?
 * Are there any patterns in the high and low points that I experience each day? How far apart are the two?
 * Does day of the week and time of day have any effect on my mood?
-* Are there noticeable differences in my mood between rest days and work days?
 
 These questions helped me ensure that the data I intended to collect was sufficient. Once we confirmed that was the case, we were ready to start writing some code!
 
@@ -63,9 +62,9 @@ To support this workflow, I relied almost entirely on external services, includi
 
 4. Some time later, the reporting toolchain will hit the `/mood-logs.csv` route to download a CSV dump of the whole dataset, which includes the raw data shown above along with a few other computed fields that make reporting easier.
 
-After a bit of hollywood magic involving a menagerie of R scripts, some more rake tasks, and a bit of Prawn-based PDF generation code, the reporting toolchain ends up spitting out a [two-page PDF report](http://notes.practicingruby.com/mood-study-draft-2.pdf) that looks like what you see below:
+After a bit of hollywood magic involving a menagerie of R scripts, some more rake tasks, and a bit of Prawn-based PDF generation code, the reporting toolchain ends up spitting out a [two-page PDF report](http://notes.practicingruby.com/mood-study-draft-3.pdf) that looks like what you see below:
 
-[![](http://i.imgur.com/pcXuVWE.png?1)](http://notes.practicingruby.com/mood-study-draft-2.pdf)
+[![](http://i.imgur.com/Ersv9fw.png)](http://notes.practicingruby.com/mood-study-draft-3.pdf)
 
 We'll be discussing some of the details about how the various graphs get generated and the challenges involved in implementing them later on in this article, but if you want to get a sense of what the Ruby glue code looks in the reporting toolchain, I'd recommend starting with its [Rakefile](https://github.com/elm-city-craftworks/practicing-ruby-examples/blob/master/v7/003/Rakefile). The basic idea is that with these tasks set up, I'm able to type `rake generate-report` in my console and cause the following chain of events to happen:
 
@@ -85,14 +84,13 @@ More discussion about the design decisions I made while implementing this system
 
 ## Analyzing the results
 
-The full report for my mood study consists of five different graphs generated via the R statistical programming language, each of which attempts to show a different perspective on the data:
+The full report for my mood study consists of four different graphs generated via the R statistical programming language, each of which attempts to show a different perspective on the data:
 
 * Figure 1 provides a summary view of the average mood ratings across the whole time period
 (> 50 days of data)
 * Figure 2 shows the daily minimum and maximums for the whole time period.
 * Figure 3 shows the average mood rating and variance broken out by day of week
 * Figure 4 breaks my day into five three-hour long segments and looks at the distribution of the different mood ratings in each segment.
-* Figure 5 shows the average mood rating and variance on an hour-by-hour basis for both work days and rest days. 
 
 The order above is the same as that of the PDF report, and it is essentially sorted by the largest time scales down to the shortest ones. Since that is a fairly natural way to look at this data, we'll discuss it in the same order in this article.
 
@@ -198,28 +196,6 @@ The most striking pattern I saw from the data shown above was that the percentag
 
 --- 
 
-**Figure 5 ([view source code](https://github.com/elm-city-craftworks/practicing-ruby-examples/blob/master/v7/003/work-rest.R)):**
-
-
-![Work days](http://i.imgur.com/dA21riZ.jpg)
-
-Here we see averages broken out by hour for days that I've set aside as work days. It shows that my most volitile time periods are from 9am-11am, from 4pm-6pm, and from 8pm-9pm. These mark the well-defined "transition" points of my day... from morning chores to work, from work to evening chores, and from evening chores to "rest".
-
--- consider showing transition points in different color. No stats are needed, just use a descriptive statement about the graph
-
-![Rest days](http://i.imgur.com/M6tGWXi.jpg)
-
-Rest days are unfortunately all over the map, with high volitility at most times of the day, especially after 12:00pm and before 9:00pm. There are a number of factors that may come into play here, but one important may be that I have been much less reliable at recording updates during rest periods than I have been during my working time, and so this data may be less reliable and also biased towards extreme events.
-
-However, there is also the factor that "rest days" often have me thinking about my work at inconvenient times and places, and that my own mood tends to mirror that of my son's if we're doing something together. Because the rest days don't have fixed "alone time", it's hard to maintain stability.
-
-There is also a period of several days where we were experiencing major stress in my personal life, and that data could have easily skewed the whole dataset.
-
-It'd be interesting to see whether this smooths out over time or not.
-
---TODO: Add an afterward with few days of really bad outliers omitted.
-
-> **Implementation notes ([view source code](https://github.com/elm-city-craftworks/practicing-ruby-examples/blob/master/v7/003/work-rest.R)):**
 
 ## Mapping a story to the data
 
