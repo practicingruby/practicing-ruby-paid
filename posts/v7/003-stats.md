@@ -2,7 +2,19 @@
 
 One human quirk that fascinates me is the huge disparity between our moment-to-moment experiences and our perception  of past events. This is something that I've read about a lot in pop-psych books, and also is one of the main reasons that I practice insight meditation. However, it wasn't until I read Daniel Kahneman's book "Thinking, Fast and Slow" that I realized just how strongly separated our *experiencing self* is from our *remembering self*. 
 
-In both Kahneman's book and [his talk at TED 2010](http://www.ted.com/talks/daniel_kahneman_the_riddle_of_experience_vs_memory.html), he uses a striking example comparing two colonoscopy patients who recorded their pain levels periodically throughout their procedure. From the data he shows, the first patient has a much shorter procedure and reports much less pain overall during the procedure than the second patient. However, when asked later about how painful the procedure was, the first patient remembered it to be much more unpleasant than the second patient did. How can that be?
+In both Kahneman's book and [his talk at TED
+2010](http://www.ted.com/talks/daniel_kahneman_the_riddle_of_experience_vs_memory.html),
+he uses a striking example comparing two colonoscopy patients who recorded their
+pain levels periodically throughout their procedure. Although modern sedation
+techniques have made this a much less painful procedure, no anethesia was used
+during this study, which pretty much guaranteed that both patients would
+be in for an unpleasant experience.
+
+From the data Kahneman shows, the first patient had a much shorter procedure 
+and reported much less pain overall during the procedure than the 
+second patient. However, when asked later about how painful their colonoscopy 
+was, the first patient remembered it to be much more unpleasant than 
+the second patient did. How can that be?
 
 As it turns out, how an event ends has a lot to do with how we will perceive the overall experience when we recall it down the line. In the colonoscopy study, the first patient reported a high pain spike immediately before the end of their procedure, where the second patient had pain that was gradually reduced before the procedure ended. This is the explanation Kahneman offers as to why the first patient remembered their colonoscopy to be far worse of an experience than the second patient remembered it to be. 
 
