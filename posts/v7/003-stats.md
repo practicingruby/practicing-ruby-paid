@@ -31,10 +31,11 @@ Originally I had intended to simply collect this data over the course of several
 
 After a short brainstorming session, we settled on the following general questions:
 
-* Are there noticeable differences in my mood between rest days and work days?
-* Does day of the week and time of day have any effect on my mood?
+
 * How stable is my mood in general? In other words, how much variance is there over a given time period?
 * Are there any patterns in the high and low points that I experience each day? How far apart are the two?
+* Does day of the week and time of day have any effect on my mood?
+* Are there noticeable differences in my mood between rest days and work days?
 
 These questions helped me ensure that the data I intended to collect was sufficient. Once we confirmed that was the case, we were ready to start writing some code!
 
@@ -179,26 +180,34 @@ To test for difference in the averages between days, we ran a one-way ANOVA test
 
 ![Frequency](http://i.imgur.com/xTVfpRN.png)
 
-Here we break the day into a total of five three-hour long segments and take a look at the distribution of ratings during those time periods. 
+This view of the data shows the distribution of mood ratings broken out by time of day. Because the number of mood ratings recorded in each time period weren't evenly distributed, I decided to plot the frequency of the mood rating values by percentage rather than total count for each. Presenting the data this way allows the five individual graphs to be directly compared to one another, because it ensures that they all use the same scale.
 
-The graphs show that as time goes on throughout the day, the number of positive ratings (>= 6) decrease, and the number of of negative ratings (<= 5) increase, up until about 8pm, in which the pattern returns to something quite similar to what is observed in the morning.
+Whenever I look at this figure, it provides me with the following information:
 
-The interpretation here is that as willpower is exhausted throughout the day, it becomes easier to have negative experiences. But after dinner and evening chores it's time for relaxation, and that "recharges" the batteries, so to speak. But this story doesn't necessarily match up with what the following graphs show.
+* How common various rating values are, broken out by time of day.
+* How stable my mood is at a given time of day
+* What parts of the day are more or less enjoyable than others on average
 
-TODO: Check frequency of five or lower (total percentage), see if there is a linear trend of decreasing from morning to 8pm, then increasing at the end.  
+The most striking pattern I saw from the data shown above was that the percentage of negative and negative-leaning ratings gradually increased throughout the day, up until 8pm, and then they rapidly dropped back down to similar levels as the early morning. In the 8am-11am time period, mood ratings of five or under account for about 7% of the overall distribution, but in the 5pm to 8pm slot, they account for about 20% of the ratings in that time period. Finally, the whole thing falls off a cliff in the 8pm-11pm slot and the ratings of five or lower drop back down to under 7%. It will be interesting to see whether or not this pattern holds up over time.
+
+> **Implementation notes ([view source code](https://github.com/elm-city-craftworks/practicing-ruby-examples/blob/master/v7/003/frequency.R)):**
+
+> Building this particular visualization turned out to be more complicated than I had hoped for it to be. It may be simply due to my relative inexperience with R, but I found the `hist()` function to be cumbersome to work with due to a bunch of awkward defaults. For example, it was combining mood ratings of 1 and 2 together, for reasons I still only vaguely understand. Also, the way that I implemented grouping by time period can probably be improved greatly.
+
+> Feedback on how to clean up this code is welcome!
 
 --- 
 
 **Figure 5 ([view source code](https://github.com/elm-city-craftworks/practicing-ruby-examples/blob/master/v7/003/work-rest.R)):**
 
 
-![Work days](http://i.imgur.com/a4Bh76u.png)
+![Work days](http://i.imgur.com/dA21riZ.jpg)
 
 Here we see averages broken out by hour for days that I've set aside as work days. It shows that my most volitile time periods are from 9am-11am, from 4pm-6pm, and from 8pm-9pm. These mark the well-defined "transition" points of my day... from morning chores to work, from work to evening chores, and from evening chores to "rest".
 
 -- consider showing transition points in different color. No stats are needed, just use a descriptive statement about the graph
 
-![Rest days](http://i.imgur.com/oqNGYbJ.png)
+![Rest days](http://i.imgur.com/M6tGWXi.jpg)
 
 Rest days are unfortunately all over the map, with high volitility at most times of the day, especially after 12:00pm and before 9:00pm. There are a number of factors that may come into play here, but one important may be that I have been much less reliable at recording updates during rest periods than I have been during my working time, and so this data may be less reliable and also biased towards extreme events.
 
@@ -209,6 +218,8 @@ There is also a period of several days where we were experiencing major stress i
 It'd be interesting to see whether this smooths out over time or not.
 
 --TODO: Add an afterward with few days of really bad outliers omitted.
+
+> **Implementation notes ([view source code](https://github.com/elm-city-craftworks/practicing-ruby-examples/blob/master/v7/003/work-rest.R)):**
 
 ## Mapping a story to the data
 
@@ -222,6 +233,9 @@ Remember -- take it all with a huge grain of salt, we're working backwards from 
 Decreased sensitivity -- tired / overcommitted does not necessarily mean unhappy.
 
 Talk about current deadline pressure and how I've been approaching it differently.
+
+
+The interpretation here is that as willpower is exhausted throughout the day, it becomes easier to have negative experiences. But after dinner and evening chores it's time for relaxation, and that "recharges" the batteries, so to speak. But this story doesn't necessarily match up with what the following graphs show.
 
 
 Observations (probably separate this out from method discussion above): My worst days (Wed / Sat) are also the most volitile. Those days have historically been "days off" for me, but the lower ratings might not be so easily explained by saying "I like to work more than I like to rest". Those days are also transition points between work and rest, so it may be the context switch that makes me unstable. My best days (Monday and Friday) correspond with when I tend to start something new, and when I tend to "wrap stuff up" for the week, like everyone else. (My weekend work tends to be more about pushing various existing things along rather than starting new stuff or finishing old stuff)
