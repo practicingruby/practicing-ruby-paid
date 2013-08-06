@@ -11,9 +11,9 @@ during this study, which pretty much guaranteed that both patients would
 be in for an unpleasant experience.
 
 From the data Kahneman shows, the first patient had a much shorter procedure 
-and reported much less pain overall during the procedure than the 
+and reported much less overall pain than the 
 second patient. However, when asked later about how painful their colonoscopy 
-was, the first patient remembered it to be much more unpleasant than 
+were, the first patient remembered it to be much more unpleasant than 
 the second patient did. How can that be?
 
 As it turns out, how an event ends has a lot to do with how we will perceive the overall experience when we recall it down the line. In the colonoscopy study, the first patient reported a high pain spike immediately before the end of their procedure, where the second patient had pain that was gradually reduced before the procedure ended. This is the explanation Kahneman offers as to why the first patient remembered their colonoscopy to be far worse of an experience than the second patient remembered it to be. 
@@ -34,7 +34,7 @@ To make data entry easy, I used a simple numerical scale for tracking my mood:
 * Happy (7-8):  Pleased by the current experience, but may still be slightly tired, distracted, or anxious.
 * Neutral (5-6): Not bothered by my current experience, but not necessarily enjoying it.
 * Unhappy (3-4): My negative feelings are getting in the way of me doing what I want to do.
-* Very Unhappy (1-2): Unable to do what I want to do because I am overwhelmed with negative feelings.
+* Very Unhappy (1-2): Unable to do what I want because I am overwhelmed with negative feelings.
 
 Originally I had intended to collect these mood updates over the course of several weeks without any specific questions in mind. However, Jia convinced me that having at least a general sense of what questions I was interested in would help me organize the study better -- so I started to think about what I might be able to observe from this seemingly trivial dataset.
 
@@ -46,7 +46,7 @@ After a short brainstorming session, we settled on the following general questio
 
 These questions helped me ensure that the data I intended to collect was sufficient. Once we confirmed that was the case, we were ready to start writing some code!
 
-## Building the data collection and reporting tools
+## Building the necessary tools
 
 To run this study, I used two small toolchains: one for data collection, and one for reporting.
 
@@ -64,31 +64,31 @@ To support this workflow, I relied almost entirely on external services, includi
 
 1. Every ten minutes between 8:00am and 11:00pm each day, the randomizer in the `app:remind` task gets run. It has a 1:6 chance of triggering a mood update reminder.
 
-2. Whenever the randomizer sends a reminder, it does so by hitting the `/send-reminder` route on my web service, which then uses Twilio to deliver a SMS message to my phone.
+2. Whenever the randomizer sends a reminder, it does so by hitting the `/send-reminder` route on my web service, which causes Twilio to deliver a SMS message to my phone.
 
-3. I respond to those messages with a mood rating. This causes Twilio to fire a webhook that hits the `/record-mood` route on the Sinatra app with the message data as GET parameters. The data gets massaged, then it is stored in a database for later processing.
+3. I respond to those messages with a mood rating. This causes Twilio to fire a webhook that hits the `/record-mood` route on the Sinatra app with the message data as GET parameters. The response data along with a timestamp are then stored in a database for later processing.
 
-4. Some time later, the reporting toolchain will hit the `/mood-logs.csv` route to download a CSV dump of the whole dataset, which includes the raw data shown above along with a few other computed fields that make reporting easier.
+4. Some time later, the reporting toolchain will hit the `/mood-logs.csv` route to download a dump of the whole dataset, which includes the raw data shown above along with a few other computed fields that make reporting easier.
 
 After a bit of hollywood magic involving a menagerie of R scripts, some more rake tasks, and a bit of Prawn-based PDF generation code, the reporting toolchain ends up spitting out a [two-page PDF report](http://notes.practicingruby.com/docs/7.3-mood-report.pdf) that looks like what you see below:
 
 [![](http://i.imgur.com/Ersv9fw.png)](http://notes.practicingruby.com/docs/7.3-mood-report.pdf)
 
-We'll be discussing some of the details about how the various graphs get generated and the challenges involved in implementing them later on in this article, but if you want to get a sense of what the Ruby glue code looks in the reporting toolchain, I'd recommend starting with its [Rakefile](https://github.com/elm-city-craftworks/practicing-ruby-examples/blob/pr-7.3/v7/003/Rakefile). The tasks it provides allow me to type `rake generate-report` in my console and cause the following chain of events to happen:
+We'll be discussing some of the details about how the various graphs get generated and the challenges involved in implementing them later on in this article, but if you want to get a sense of what the Ruby glue code looks in the reporting toolchain, I'd recommend looking at its [Rakefile](https://github.com/elm-city-craftworks/practicing-ruby-examples/blob/pr-7.3/v7/003/Rakefile). The tasks it provides allow me to type `rake generate-report` in a console and cause the following chain of events to happen:
 
-1. The latest mood data will be downloaded from my web service in CSV format
+1. The latest mood data get downloaded from the Sinatra app in CSV format.
 
-2. All of my R-based graphing scripts will be run, outputting a bunch of image files
+2. All of the R-based graphing scripts are run, outputting a bunch of image files.
 
-3. A PDF will be generated that nicely lays out these image files
+3. A PDF is generated to cleanly present those images in a single document.
 
-4. The CSV data and image files will then be deleted, because they're no longer needed.
+4. The CSV data and image files are then be deleted, because they're no longer needed.
 
-Between this reporting code and the data aggregation toolchain, I ended up with a system that has been very easy to work with for the many weeks that I have been running this study. The whole user experience boils down to entering single digit values into my phone when I'm prompted to do so, and then typing a single command to generate my reports whenever I want to take a look at them.
+Between this reporting code and the data aggregation toolchain, I ended up with a system that has been very easy to work with for the many weeks that I have been running this study. The whole user experience boils down to pressing a couple buttons on my phone when I'm prompted to do so, and then typing a single command to generate reports whenever I want to take a look at them.
 
-At a first glance, the way this system is implemented may look a bit like its hung together with shoestrings and glue, but the very loose coupling between its components has made it easy to both work on individual pieces in isolation, and to make significant changes without a ton of rework. I was actually surprised by this, because it is one of the first times where I've felt that the [worse is better](http://en.wikipedia.org/wiki/Worse_is_better) mantra might actually have some merit to it!
+At a first glance, the way this system is implemented may look a bit like its hung together with shoestrings and glue, but the very loose coupling between its components has made it easy to both work on individual pieces in isolation, and to make significant changes without a ton of rework. It seems like the [worse is better](http://en.wikipedia.org/wiki/Worse_is_better) mantra applies well to this sort of project.
 
-Discussions about the design of this system are definitely welcome once you've finished this article, but for now let's look at what all those graphs are saying about my mood.
+I'd be happy to discuss the design of these two toolchains with you once you've finished this article, but for now let's look at what all those graphs are saying about my mood.
 
 ## Analyzing the results
 
@@ -115,7 +115,7 @@ It's important to understand the tradeoffs here: by smoothing out the data, I lo
 
 * Whether my recent mood updates indicated that my mood was trending upward or downward, and roughly how long I could expect that to last.
 
-Without rigorous statistical analysis and a far less corruptable means of studying myself, these bits of information could never truly predict my future or even be used as the primary basis for decision making. However, the extra information has been helping me put my mind in a historical perspective that isn't purely based on my remembered experiences, and that alone has turned out to be extremely useful to me.
+Without rigorous statistical analysis and a far less corruptable means of studying myself, these bits of information could never truly predict the future or even be used as the primary basis for decision making. However, the extra information has been helping me put my mind in a historical perspective that isn't purely based on my remembered experiences, and that alone has turned out to be extremely useful to me.
 
 > **Implementation notes ([view source code](https://github.com/elm-city-craftworks/practicing-ruby-examples/blob/pr-7.3/v7/003/moving-summary.R)):**
 >
@@ -164,7 +164,7 @@ This visualization shows the mean and standard deviation for all mood updates br
 
 * Whether or not certain days of the week have better mood ratings on average than others.
 * Whether or not certain days of the week have more consistent mood ratings than others.
-* What the general ups-and-downs look like on a typical week in my life
+* What the general ups-and-downs look like in a typical week in my life
 
 If you look at the data points shown in **Figure 3** above, you'll see that the high points (Monday and Friday) stand out noticeably from the low points (Wednesday and Saturday). However, to see whether that difference is significant or not, we need to be confident that what we're observing isn't simply a result of random fluctuations and noise. This is where some basical statistical tests are needed.
 
