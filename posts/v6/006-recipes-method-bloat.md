@@ -1,6 +1,6 @@
 > **NOTE:** This issue of Practicing Ruby was one of several content experiments 
-that was run in Volume 6. It uses a recipe format rather than the traditional
-long-form article format we use in most Practicing Ruby articles.
+that was run in Volume 6. It uses a cookbook format (e.g. problem -> solution -> discussion)
+instead of the traditional long-form article format we use in most Practicing Ruby articles.
 
 **Problem: A method has many parameters, making it hard to remember its
 interface.**
