@@ -2,15 +2,6 @@
 that was run in Volume 6. It uses a cookbook format (e.g. problem -> solution -> discussion)
 instead of the traditional long-form article format we use in most Practicing Ruby articles.
 
-In this article, we'll attempt a repeat experiment of the recipe-style format
-that was first used in [Issue 6.6](https://practicingruby.com/articles/103). 
-You'll find that the content that follows is much shorter than 
-the average Practicing Ruby article, while maintaining a similar level of
-density. Please leave a comment letting me know whether you like this style or
-not, and what suggestions you might have for improving it!
-
----
-
 **Problem: Code for data munging projects can easily become brittle.**
 
 Whenever you work on a project that involves a significant amount of [data
