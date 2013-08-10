@@ -1,5 +1,5 @@
 > **NOTE:** This issue of Practicing Ruby was one of several content experiments 
-that was run in Volume 6. It uses a recipe-style format rather than the traditional
+that was run in Volume 6. It uses a recipe format rather than the traditional
 long-form article format we use in most Practicing Ruby articles.
 
 **Problem: A method has many parameters, making it hard to remember its
