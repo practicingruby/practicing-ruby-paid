@@ -1,17 +1,6 @@
- > **NOTE:** This issue of Practicing Ruby one of several experiments
-> to be published in Volume 6. It intentionally breaks away from the traditional
-> article format that we have developed over the years in the hopes of finding
-> new and interesting ways for you to level up your programming skills. The
-> primary purpose of these experiments is to get feedback from our readers, so
-> please do share your thoughts about each of them!
-
-In this article, we'll attempt a repeat experiment of the recipe-style format
-used in [Issue 6.6](https://practicingruby.com/articles/103). You'll find that the content that follows is much shorter than 
-the average Practicing Ruby article, while maintaining a similar level of
-density. Please leave a comment letting me know whether you like this style or
-not, and what suggestions you might have for improving it!
-
----
+> **NOTE:** This issue of Practicing Ruby was one of several content experiments 
+that was run in Volume 6. It uses a cookbook format (e.g. problem -> solution -> discussion)
+instead of the traditional long-form article format we use in most Practicing Ruby articles.
 
 **Problem: An adhoc script has devolved into an unmaintainable mess**
 
