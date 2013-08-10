@@ -1,22 +1,6 @@
-> **NOTE:** This issue of Practicing Ruby is the third of five content experiments
-> to be published in Volume 6. It intentionally breaks away from the traditional
-> article format that we have developed over the years in the hopes of finding
-> new and interesting ways for you to level up your programming skills. The
-> primary purpose of these experiments is to get feedback from our readers, so
-> please do share your thoughts about each of them!
-
-In this article, we'll try out a format that's common in things like programming
-cookbooks, but new to Practicing Ruby: highly focused recipes. The basic structure 
-of a recipe is to define a specific problem, show a good solution to it, and then 
-discuss that solution along with other alternatives and related points of 
-interests.
-
-You'll find that the content that follows is much shorter than the average
-Practicing Ruby article, while maintaining a similar level of
-density. Please leave a comment letting me know whether you like this style or
-not, and what suggestions you might have for improving it!
-
----
+> **NOTE:** This issue of Practicing Ruby was one of several content experiments 
+that was run in Volume 6. It uses a recipe-style format rather than the traditional
+long-form article format we use in most Practicing Ruby articles.
 
 **Problem: A method has many parameters, making it hard to remember its
 interface.**
