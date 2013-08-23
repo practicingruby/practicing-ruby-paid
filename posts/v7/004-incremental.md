@@ -40,6 +40,9 @@ Debate between rolling my own and using a library
 - Talk about how we ran into problems with DelayedJob due to 1.9.2 and
   temporarily deployed the slow code.
 
+- Talk about how we ran into Ruby 1.9.2 problems w. capistrano upgrades right
+before starting on this feature, and maybe other times earlier too.
+
 **Fluent API for simulated user**:
 
 http://en.wikipedia.org/wiki/Fluent_interface
