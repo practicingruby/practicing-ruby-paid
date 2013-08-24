@@ -76,3 +76,10 @@ EditArticleTest
 ```
 
 
+** Comment unbatching fiasco**
+
+Talk about the problems encountered while working on #165, and how it gradually
+lead me to start getting very sloppy.
+
+Leading to this horrible result, a syntax error deployed!
+http://i.imgur.com/70gK6jj.png
