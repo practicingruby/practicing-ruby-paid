@@ -1,3 +1,8 @@
+--- The stories we tell ourselves before we break ground on work, and long after
+the work was completed are not even close to giving a clear picture of what
+actually happened. This article could expose some of the day-to-day difficulties
+of working w. legacy code
+
 --- consider flow-of-consciousness diary style that tells the story of migrating
 from existing article URL scheme / sharing scheme to current, talking about
 challenges and pitfalls along the way. Underlying point: Changing an existing
