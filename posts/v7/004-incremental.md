@@ -83,3 +83,6 @@ lead me to start getting very sloppy.
 
 Leading to this horrible result, a syntax error deployed!
 http://i.imgur.com/70gK6jj.png
+
+Squash four trivial typos, then take a break!
+http://i.imgur.com/JgfwsVu.png
