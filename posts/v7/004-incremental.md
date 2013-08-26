@@ -1,3 +1,20 @@
+Intended changes:
+
+1) Unify URL scheme between "share links" and "internal links"
+2) Dynamically determine whether to use shared view or internal view depending
+on whether the visitor is logged in.
+3) Make URLs less opaque through the use of slugs
+4) Do all of this without breaking old links and behaviors
+
+
+```
+/articles/101                     => /articles/data-exploration-techniques?u=fadafada10
+/articles/shared/lkjlkjgadskjsgda => /articles/data-exploration-techniques?u=fadafada10
+```
+
+# ------------------------------------------------------------------------------
+
+
 --- The stories we tell ourselves before we break ground on work, and long after
 the work was completed are not even close to giving a clear picture of what
 actually happened. This article could expose some of the day-to-day difficulties
@@ -91,3 +108,7 @@ http://i.imgur.com/70gK6jj.png
 
 Squash four trivial typos, then take a break!
 http://i.imgur.com/JgfwsVu.png
+
+** Fixing comment linking bugs and making user share tokens visible publicly **
+
+Discuss how several semi-related features were getting log-jammed (#165, #169, #173)
