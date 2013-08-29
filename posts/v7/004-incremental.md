@@ -1,7 +1,12 @@
-CREDIT: Jordan Byron collaboration.
+> This article was a collaboration with Jordan Byron, who has maintained the web app that runs practicingruby.com throughout most of its existence.
 
-I am not a very good Rails developer, and have never claimed to be! Jordan helped out a lot,
-but only in his spare time.
+Is the story about waking up a dormant codebase? Is it about the risks vs. rewards of organic design? About the iceberg effect of software? About incremental complex change?
+
+
+http://www.joelonsoftware.com/articles/fog0000000356.html
+
+
+*HOW COMPLEX IS A GIVEN CHANGE? WE HAVE NO IDEA UNTIL WE FIND THE BOTTOM!*
 
 **TODO: Rewrite intended changes as before/after (maybe even using a diff or table view)**
 
