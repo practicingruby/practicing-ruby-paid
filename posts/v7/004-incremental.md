@@ -1,7 +1,21 @@
-> This article was a collaboration with Jordan Byron, who has maintained the web app that runs practicingruby.com throughout most of its existence.
+![](http://i.imgur.com/JqYK6TZ.jpg)
 
-Is the story about waking up a dormant codebase? Is it about the risks vs. rewards of organic design? About the iceberg effect of software? About incremental complex change?
+Software is similar to an iceberg: there is far more mass below the waterline than there appears to be at the surface level. As programmers, we're aware of this fact -- but we still deeply underestimate the challenges involved in making changes to the systems we maintain. 
 
+For a particular project, the only way to reliably survey the depth and complexity of the landscape is to dive into the frigid water and see it with your own eyes. However, gaining knowledge this way is a slow and arduous process that hinders your ability to notice general patterns that aren't project-specific. For this reason, trading stories with others about your explorations beneath the waterline can be extremely helpful. 
+
+To illustrate both the iceberg effect and the benefits of sharing stories about our experiences, this article walks you through a set of changes to practicingruby.com that ended up being much more work than I expected them to be. Fair warning: the plot may be painful at times, but it should at least leave you with some useful lessons to apply in your own projects.
+
+## Contributors to the iceberg effect
+
+* Framework issues (Rails behaviors)
+* Dependency compatability (outdated)
+* Lack of knowledge
+* Lack of informed decision making due to "organic" or "need based" design
+* Testing complexity, testing toolchain complexity
+
+
+> Special thanks goes to Jordan Byron (the maintainer of practicingruby.com) for collaborating with me on this article, and for helping Practicing Ruby run smoothly over the years.
 
 http://www.joelonsoftware.com/articles/fog0000000356.html
 
