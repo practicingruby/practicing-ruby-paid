@@ -123,7 +123,18 @@ Can't remember if there was a specific problem to be solved here or if it was ju
   But it's a nice example of the "add new functionality" -> "change callers to use new 
   functionality", -> "remove old functionality (flushing out with raise)" cycle.
   Also a good bonus point on Fluent vs. Instance-eval APIs. (discuss tradeoffs?)
+
+**Tokenized Emails (really just broadcasts) -- [pull request](https://github.com/elm-city-craftworks/practicing-ruby-web/pull/165)**
+
+Originally I had planned to take care of both broadcast emails and conversation mail at the same time,
+but forgot that we still had not unrolled the conversation mailer.
+
+We decided to add the broadcast tokenization even without the performance issues fixed, because it'd be something
+I could put up with once or twice if absolutely necessary.
   
+Only minor hiccup was with the test mailer, but I was able to fix that with a fake user shim.
+Patch was straightforward otherwise.
+
 **Diversion? Comment anchoring -- [pull request](https://github.com/elm-city-craftworks/practicing-ruby-web/pull/169)**
 
 This is a bug that we vaguely were aware of before, but became more noticeable during testing.
@@ -133,19 +144,63 @@ We prioritize bugs over feature work (even in these circumstances) so I started 
   
 (closed without merging)
 
-**Share by user Token -- FIXME**
+**Share by User Token -- [pull request](https://github.com/elm-city-craftworks/practicing-ruby-web/pull/173/files)**
 
-**Tokenized Emails (really just boradcasts -- FIXME**
+This is where the bulk of the "new behavior" actually got wired up.
+In particular, the following behavior changes happened:
+
+- Logged in users will see full article w. comments as normal
+- With a valid token, guests will see the "shared article" view
+- Without a valid token, guests will see the "that page is protected" error
+- Expired subscriptions now invalidate share links
+- Admin checks are no longer done on drafts (but the articles are only visible to those with the link)
+- Login button on share pages no longer redirects to practicingruby.com landing page first
+- Old share links redirect to user token links
+
+This is entirely too many changes to make at once, but there wasn't an easy way to separe 
+them meaningfully without creating inconsistent or awkward behavior. Although in hindsight
+there might be ways to separate at least some of these features, most had at least partially
+shared dependencies.
+
+I started this out as a spike, not expecting it to work, but then found a path forward 
+that wasn't *terrible* (even though it was far from pretty). Because reverting is cheap,
+I let this code run live for a couple days and caught a couple minor bugs that way (these
+caused weird behaviors, but nothing major)
+
+Because this code itself was a) built on a foundation that may need some cleanup once the
+dust settles and b) needed to be in place to enable some future work, I viewed it as
+a temporary bit of tech debt that we promised ourselves to pay off whenever the
+bad code is along our critical paths.
 
 **New Server!! -- FIXME**
 
+Jordan amazingly got this up and running. But I had to assume he might
+not get to it before publishing (update based on how Friday testing goes)
+
 **Delayed broadcast mailer -- FIXME**
 
+- Discuss delayed job, and how we tested in development by creating thousands of
+  users and realized it's definitely slow.
+
+- Talk about how we ran into problems with DelayedJob due to 1.9.2 and
+  temporarily deployed the slow code.
+
+- Add more detail after we actually try it out on new server.
+
 ## REMAINING ISSUES:
+
+Consider cutting this section or limiting only to clear missing pieces
+(i.e. removing cruft, sharing docs, etc.)
+  
+If small enough, roll into "closing thoughts"
+
+Wishlist:
 
 * Overhaul sharing UI and add documentation similar to Ramen's
 * Add tokenized comment emails (depends on our new server)
 * See board for rest.
+* Add an option for credit me (used to be on for all, now off for all)
+* Tweak shared article view (maybe add comment count + other stuff about PR?, maybe float bar?)
   
   
 ## CLOSING THOUGHTS
@@ -204,7 +259,7 @@ Debate between rolling my own and using a library
 
 **Email unbatching**:
 
-- Discuss testing challenges / misuse of Rails
+
 
 - Discuss delayed job, and how we tested in development by creating thousands of
   users and realized it's definitely slow.
@@ -212,8 +267,6 @@ Debate between rolling my own and using a library
 - Talk about how we ran into problems with DelayedJob due to 1.9.2 and
   temporarily deployed the slow code.
 
-- Talk about how we ran into Ruby 1.9.2 problems w. capistrano upgrades right
-before starting on this feature, and maybe other times earlier too.
 
 **Fluent API for simulated user**:
 
