@@ -1,28 +1,24 @@
-![](http://i.imgur.com/JqYK6TZ.jpg)
-
-Software is similar to an iceberg: there is far more mass below the waterline than there appears to be at the surface level. As programmers, we're aware of this fact -- but we still deeply underestimate the challenges involved in making changes to the systems we maintain. 
-
-For a particular project, the only way to reliably survey the depth and complexity of the landscape is to dive into the frigid water and see it with your own eyes. However, gaining knowledge this way is a slow and arduous process that hinders your ability to notice general patterns that aren't project-specific. For this reason, trading stories with others about your explorations beneath the waterline can be extremely helpful. 
-
-To illustrate both the iceberg effect and the benefits of sharing stories about our experiences, this article walks you through a set of changes to practicingruby.com that ended up being much more work than I expected them to be. Fair warning: the plot may be painful at times, but it should at least leave you with some useful lessons to apply in your own projects.
-
-## Contributors to the iceberg effect
-
-* Framework issues (Rails behaviors)
-* Dependency compatability (outdated)
-* Lack of knowledge
-* Lack of informed decision making due to "organic" or "need based" design
-* Testing complexity, testing toolchain complexity
-
-
 > Special thanks goes to Jordan Byron (the maintainer of practicingruby.com) for collaborating with me on this article, and for helping Practicing Ruby run smoothly over the years.
 
-http://www.joelonsoftware.com/articles/fog0000000356.html
+I have lived close to a massive [highway construction project](http://www.i95newhaven.com) for several years now. Because it has had a surprisingly small impact on our daily lives, I've been less annoyed by it and more inspired by having a daily reminder of what real engineering looks like:
 
+![](http://i.imgur.com/eej11xZ.jpg)
 
-*HOW COMPLEX IS A GIVEN CHANGE? WE HAVE NO IDEA UNTIL WE FIND THE BOTTOM!*
+Without a doubt, this is an ugly photograph. But if you look at it carefully, you'll find much to appreciate about what it represents:
 
-**TODO: Rewrite intended changes as before/after (maybe even using a diff or table view)**
+* On the far left side is the first half of a newly constructed suspension bridge, which is serving five lanes of northbound traffic.
+
+* Directly next to that bridge, cars are driving southbound on what was formerly the northbound side of the old bridge, serving 3 lanes of traffic.
+
+* Immediately to the right of those cars is the mostly demolished remnants of the former southbound side of the old bridge.
+
+This incremental improvement allowed for the northbound side of the highway to be widened by two lanes while the southbound side remained largely unchanged, aside for a minor shift in the traffic patterns. Several months later, the new bridge was split temporarily to take both northbound and southbound traffic (reducing the number of lanes on each side), but by that time a good amount of the demolition work had already been done. This allowed the project to keep moving forward while minimizing service interruptions until they became truly necessary.
+
+If this project took place in wide open spaces, the construction could have been done in such a way that the entire new bridge could have been built before the old one was demolished, and that would have worked even better. But what you can't see from the picture is that there simply wasn't a good place to put in a new bridge without tearing down the old bridge. With that in mind, this incremental approach was a very clever solution that we can learn something from, even though we're programmers and not civil engineers.
+
+## A case study in making incremental improvements to legacy code
+
+(describe changes side-by-side)
 
 Intended changes:
 
@@ -37,14 +33,26 @@ on whether the visitor is logged in.
 /articles/shared/lkjlkjgadskjsgda => /articles/data-exploration-techniques?u=fadafada10
 ```
 
-Things worked on (in order):
+---
+
+* Hide Robobar
+* Explicit Logins
+* Add Slugs
+* Add User Tokens
+* Add mail merge + individualized functionality to broadcasts
+* Tokenize Broadcast Mailer (+ Delayed Mailer Forward Ref)
+* Sharing / Access Control By Token
+* Server Upgrade
+* Delayed Mailer
+* Server Migration
+
+---
+
 
 > TODO: SPLIT PULL REQUESTS INTO DISCUSSION / "Files Changed" DIFF
 > Should we include diffs inline or code samples where relevant, or just link?
 
 # READ ALL PULL REQUESTS CAREFULLY AND ALSO THINK BACK ABOUT CHALLENGES, NOTES BELOW ARE JUST "TOP OF THE HEAD" SKETCHES.
-
-## PRELIMINARIES
 
 **Hide robobar -- [Pull Request](https://github.com/elm-city-craftworks/practicing-ruby-web/pull/125/files)**
 
@@ -79,7 +87,6 @@ Relatively simple fix (albeit with one hiccup that caused us to pull it from
 
 See above. Is this where I added an Outbox object? If so, maybe discuss it a little or link to it.
 
-## FUNCTIONAL IMPROVEMENTS
 
 **Adding slugs -- [pull request](https://github.com/elm-city-craftworks/practicing-ruby-web/pull/155/files)**
 
@@ -93,19 +100,23 @@ This was one of those requests where 80% of the time was spent on the first 80% 
 
 We got this shipped into production quickly (and rightly so, because it was only a useless parameter at that time, meant to allow us to make sure it ended up in all the right places), but then quickly realized the difficulty of writing this code in a DRY fashion.
 
-Eventually settled on adding a path helper override (article_path, article_url) which delegates to a low level object (ArticleLink). Where we were confident we'd have our ApplicationHelper and settle on its default behavior, we used the override, otherwise we explicitly make calls to ArticleLink.
+Eventually settled on adding a path helper override (`article_path`, `article_url`) which delegates to a low level object (ArticleLink). Where we were confident we'd have our ApplicationHelper and settle on its default behavior, we used the override, otherwise we explicitly make calls to ArticleLink.
 
-We had to dig way deeper into Rails core behavior than I wanted to in this code (to_params, Rails.app.routes.url_helpers, Capybara, assert_url_has_param in test helper, etc). But we decided to do the best we could, and to ship with warts and all.
+We had to dig way deeper into Rails core behavior than I wanted to in this code
+(`to_params`, `Rails.app.routes.url_helpers`, Capybara, `assert_url_has_param` in test helper, etc). But we decided to do the best we could, and to ship with warts and all.
 
 Somewhat ambitiously added some (wrong) code for conversation tokenizing here too.
 
 **Make broadcast mailer send individual emails + added mustache -- [pull request](https://github.com/elm-city-craftworks/practicing-ruby-web/pull/162)**
 
-Here we were bit by another Rails core oddity: The way we were using ActionMailer was wrong, and so ActionMailer::Base.deliveries was delivering corrupt results. This lead to a very annoying debugging session. (If you reproduce, check object_id out of curiousity).
+Here we were bit by another Rails core oddity: The way we were using
+ActionMailer was wrong, and so ActionMailer::Base.deliveries was delivering
+corrupt results. This lead to a very annoying debugging session. (If you
+reproduce, check `object_id` out of curiousity).
 
 This work also left us looking at some ugliness in our tests which we couldn't deal with at the moment, but exposed issues to return to later.
 
-By the end of it, we had mustache URL expansion {{article}}slug{{/article}} but not tokens.
+By the end of it, we had mustache URL expansion `{{article}}slug{{/article}}` but not tokens.
 
 Why add mustache here instead of doing it in a separate pull request? Because originally this was supposed to be a "tokenize broadcast emails" pull request, before we ran into slowness problems.
 
@@ -172,12 +183,22 @@ dust settles and b) needed to be in place to enable some future work, I viewed i
 a temporary bit of tech debt that we promised ourselves to pay off whenever the
 bad code is along our critical paths.
 
-**New Server!! -- FIXME**
+**New Server!! -- [pull request](https://github.com/elm-city-craftworks/practicing-ruby-web/pull/174)**
 
 Jordan amazingly got this up and running. But I had to assume he might
-not get to it before publishing (update based on how Friday testing goes)
+not get to it before publishing.
 
-**Delayed broadcast mailer -- FIXME**
+Mostly a painless cut over (see pull request for steps involved)
+
+Hiccups:
+
+* Minor github oauth configuration issue (caught by mixpanel)
+* Lack of Ruby 2.0 compatibility for Hominid (had to switch to MailChimp gem.
+Luckily we used a ports-and-adapters style here so the change was trivial!)
+https://github.com/elm-city-craftworks/practicing-ruby-web/pull/177/files
+
+
+**Delayed broadcast mailer -- [pull request](https://github.com/elm-city-craftworks/practicing-ruby-web/pull/164)**
 
 - Discuss delayed job, and how we tested in development by creating thousands of
   users and realized it's definitely slow.
@@ -185,7 +206,13 @@ not get to it before publishing (update based on how Friday testing goes)
 - Talk about how we ran into problems with DelayedJob due to 1.9.2 and
   temporarily deployed the slow code.
 
-- Add more detail after we actually try it out on new server.
+- Once new server was up and running, tested this the same way as before,
+create a bunch of users and turn off the delayed job processing.
+
+- After we imported *real* users, we tested again by using the new server
+to send out our maintenance emails. (necessary for "end to end" including
+sendgrid)
+
 
 ## REMAINING ISSUES:
 
@@ -197,8 +224,7 @@ If small enough, roll into "closing thoughts"
 Wishlist:
 
 * Overhaul sharing UI and add documentation similar to Ramen's
-* Add tokenized comment emails (depends on our new server)
-* See board for rest.
+* Add tokenized comment emails 
 * Add an option for credit me (used to be on for all, now off for all)
 * Tweak shared article view (maybe add comment count + other stuff about PR?, maybe float bar?)
   
