@@ -16,22 +16,32 @@ This incremental improvement allowed for the northbound side of the highway to b
 
 If this project took place in wide open spaces, the construction could have been done in such a way that the entire new bridge could have been built before the old one was demolished, and that would have worked even better. But what you can't see from the picture is that there simply wasn't a good place to put in a new bridge without tearing down the old bridge. With that in mind, this incremental approach was a very clever solution that we can learn something from, even though we're programmers and not civil engineers.
 
-## A case study in making incremental improvements to legacy code
+## A case study in making incremental improvements to legacy codes
 
-(describe changes side-by-side)
+(transition here)
 
-Intended changes:
+**FIXME** USE VALID LINKS BELOW
 
-1. Unify URL scheme between "share links" and "internal links"
-2. Dynamically determine whether to use shared view or internal view depending
-on whether the visitor is logged in.
-3. Make URLs less opaque through the use of slugs
-4. Do all of this without breaking old links and behaviors
+One of the earliest features we built for practicingruby.com was a way for subscribers to share our articles with non-subscribers. It got the job done, but was pretty clunky:
 
-```
-/articles/101                     => /articles/data-exploration-techniques?u=fadafada10
-/articles/shared/lkjlkjgadskjsgda => /articles/data-exploration-techniques?u=fadafada10
-```
+* You needed to explicitly generate a share link for the articles you wanted to share, by clicking a button that appeared at the bottom of each article, or by using our weird "robobar" feature.
+* If copied and pasted an internal link to an article rather than an explicitly generated shared link, our system would abruptly send whoever clicked on it through our registration process if they weren't Practicing Ruby subscribers. Even though this was an accidental side effect of how we handled authentication in the past, it frustrated many first-time visitors to the site.
+* If you visited a shared link while logged into Practicing Ruby, you would see guest version of the article rather than the subscriber version. In particular, this meant that you'd need to click a "login" button in order to see the comments on an article, even though you were already logged in.
+* Both internal links and share links were opaque (e.g. `/articles/101` and `/article/share/sfsdak5415895`), and because they used two completely different schemes, there was no way to tell from the URLs that they both pointed to the same article.
+
+At the time we built this feature, we cared a great deal about the ability for subscribers to share content, but we also had plenty of other things that needed to be built. For that reason, we didn't put a ton of thought into how we implemented our sharing functionality.
+
+As time went by, this system always felt a little bit awkward, and was occasionally a thorn in our side. The main barrier that got in the way of us going back and "doing things right" with it was mainly that changing this feature would be a small enough change to not be especially exciting compared to other stuff we wanted to work on, and it also was fairly far from being "low hanging fruit", because it would involve non-trivial rework of the underlying infrastructure to come up with something better.
+
+But as even more time passed, we started to get back to the point where we could revisit the problem. This is one of the perks of switching to a monthly publication schedule rather than a weekly one, but it was also a task whos time had come. We decided we wanted to overhaul the sharing system to have the following features:
+
+* We would unify the sharing link and article link URL schema, and make the links much more comprehensible. So rather than having `/articles/101` for an internal link and `/articles/shared/lkjlkjgadskjsgda` for a share link, we'd have `/articles/data-exploration-techniques?u=fadafada10` to serve both purposes.
+
+* We would dynamically determine whether to display a guest view or subscriber view based on whether the visitor was already logged into our system or not. If so, we'd display the subscriber view. If not, we'd use the user token to determine that it matched an active subscriber, and then display a guest view from there.
+
+* We would make sure that pretty much anywhere a subscriber could find a link to an article, it would include their user token (including in the announcement emails we send out and in the archives listings). This would make it possible to simply copy-and-paste links to share them, without needing to explicitly generate a special "share link".
+
+* Most importantly, we'd accomplish all of the above without breaking old-style internal links and share links.
 
 ---
 
