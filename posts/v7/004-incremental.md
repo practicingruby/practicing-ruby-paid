@@ -1,62 +1,57 @@
-> Special thanks goes to Jordan Byron (the maintainer of practicingruby.com) for collaborating with me on this article, and for helping Practicing Ruby run smoothly over the years.
-
-I have lived close to a massive [highway construction project](http://www.i95newhaven.com) for several years now. Because it has had a surprisingly small impact on our daily lives, I've been less annoyed by it and more inspired by having a daily reminder of what real engineering looks like:
+When you look at the photograph of highway construction shown below, what do you see?
 
 ![](http://i.imgur.com/eej11xZ.jpg)
 
-Without a doubt, this is an ugly photograph. But if you look at it carefully, you'll find much to appreciate about what it represents:
+If your answer was "ugly urban decay", then you are absolutely right! But because this construction project is only a few miles away from my house, I can tell you a few things about it that reveal a far more interesting story:
 
-* On the far left side is the first half of a newly constructed suspension bridge, which is serving five lanes of northbound traffic.
+* On the far left side of the photo, you can see the first half of a newly constructed suspension bridge. At the time this picture was taken, it was serving five lanes of northbound traffic.
 
-* Directly next to that bridge, cars are driving southbound on what was formerly the northbound side of the old bridge, serving 3 lanes of traffic.
+* Directly next to that bridge, cars are driving southbound on what was formerly the northbound side of our old bridge, serving 3 lanes of traffic.
 
-* Immediately to the right of those cars is the mostly demolished remnants of the former southbound side of the old bridge.
+* Dominating the rest of the photograph is the mostly deconstructed southbound side of our old bridge, a result of several months of active work.
 
-This incremental improvement allowed for the northbound side of the highway to be widened by two lanes while the southbound side remained largely unchanged, aside for a minor shift in the traffic patterns. Several months later, the new bridge was split temporarily to take both northbound and southbound traffic (reducing the number of lanes on each side), but by that time a good amount of the demolition work had already been done. This allowed the project to keep moving forward while minimizing service interruptions until they became truly necessary.
+So with those points in mind, what you are looking at here is an *incremental improvement* to a critical traffic bottleneck along the main route between New York City and Boston. This work was accomplished with hardly any service interruptions, despite the incredibly tight constraints on the project. This is legacy systems work at the highest level, and there is much we can learn from it that applies equally well to code as it does to concrete.
 
-If this project took place in wide open spaces, the construction could have been done in such a way that the entire new bridge could have been built before the old one was demolished, and that would have worked even better. But what you can't see from the picture is that there simply wasn't a good place to put in a new bridge without tearing down the old bridge. With that in mind, this incremental approach was a very clever solution that we can learn something from, even though we're programmers and not civil engineers.
+## Case study: Improving one of Practicing Ruby's oldest features
 
-## A case study in making incremental improvements to legacy codes
+Now that we've set the scene with a colorful metaphor, it is time to see how these ideas can influence the way we work on software projects. To do that, I will walk you through a major change we made to practicingruby.com that involved a fair amount of legacy coding headaches. You will definitely see some ugly code along the way, but hopefully a bit of cleverness will shine through as well.
 
-(transition here)
+The improvement that we will discuss is essentially a complete overhaul to our mechanism for sharing Practicing Ruby's content with non-subscribers. I've encouraged our readers to share our content openly since our earliest days, but there were several implementation details that made this an awkward process:
 
-**FIXME** USE VALID LINKS BELOW
+* You couldn't just copy-paste links to our articles. You needed to explictly click a share button that would generate a public share link for you.
 
-One of the earliest features we built for practicingruby.com was a way for subscribers to share our articles with non-subscribers. It got the job done, but was pretty clunky:
+* If you did copy-paste an internal link from our website rather than explicitly generating a share link, those who clicked on that link would be immediately launched into our registration process without warning. This behavior was a side-effect of how we did authorization and not an intentional "feature", but it was super annoying to folks who encountered it.
 
-* You needed to explicitly generate a share link for the articles you wanted to share, by clicking a button that appeared at the bottom of each article, or by using our weird "robobar" feature.
-* If copied and pasted an internal link to an article rather than an explicitly generated shared link, our system would abruptly send whoever clicked on it through our registration process if they weren't Practicing Ruby subscribers. Even though this was an accidental side effect of how we handled authentication in the past, it frustrated many first-time visitors to the site.
-* If you visited a shared link while logged into Practicing Ruby, you would see guest version of the article rather than the subscriber version. In particular, this meant that you'd need to click a "login" button in order to see the comments on an article, even though you were already logged in.
-* Both internal links and share links were opaque (e.g. `/articles/101` and `/article/share/sfsdak5415895`), and because they used two completely different schemes, there was no way to tell from the URLs that they both pointed to the same article.
+* If you visited a public share link while logged in, you'd see the guest view rather than the subscriber view, and you'd need to click a "log in" button to see the comments, navbar, etc.
 
-At the time we built this feature, we cared a great deal about the ability for subscribers to share content, but we also had plenty of other things that needed to be built. For that reason, we didn't put a ton of thought into how we implemented our sharing functionality.
+* Both our internal links and our share links were completely opaque (e.g. "articles/101" and "/articles/shared/zmkztdzucsgv"), making it impossible to see what they pointed to
+ before you clicked the link.
+ 
+Despite these flaws, subscribers did continue to use our sharing mechanism. They even made use of the feature in ways we didn't anticipate: it became the standard workaround for using Instapaper and other offline reading tools that need public access to work correctly. As time went on, we used this feature for our internal use as well, whether it was to give away free samples of our content, or to release old content to the public. To make a long story short, one of our most awkward features eventually also became one of the most important.
 
-As time went by, this system always felt a little bit awkward, and was occasionally a thorn in our side. The main barrier that got in the way of us going back and "doing things right" with it was mainly that changing this feature would be a small enough change to not be especially exciting compared to other stuff we wanted to work on, and it also was fairly far from being "low hanging fruit", because it would involve non-trivial rework of the underlying infrastructure to come up with something better.
+From time to time, we thought about how we might go about improving this system, but we were always scared off by the amount of work it would require to make significant changes to it. In fact, it took a combination of Practicing Ruby's move to a monthly publication schedule and my realization that I wanted to write an article about incrementally improving legacy systems to get us to the point where we were willing to seriously consider doing the work. Once we committed to the project, we came to realize that the changes we wanted were at least simple to describe:
 
-But as even more time passed, we started to get back to the point where we could revisit the problem. This is one of the perks of switching to a monthly publication schedule rather than a weekly one, but it was also a task whos time had come. We decided we wanted to overhaul the sharing system to have the following features:
+* We wanted to switch to subscriber-based share tokens rather than generating a new share token for each and every article. As long as a token was associated with an active subscriber, it could then be used to view any of our articles.
 
-* We would unify the sharing link and article link URL schema, and make the links much more comprehensible. So rather than having `/articles/101` for an internal link and `/articles/shared/lkjlkjgadskjsgda` for a share link, we'd have `/articles/data-exploration-techniques?u=fadafada10` to serve both purposes.
+* We wanted to clean up and unify our URL scheme. Rather than having internal path like "/articles/101" and share path like "/articles/shared/zmkztdzucsgv", we would have a single path for both purposes that looked like this:
 
-* We would dynamically determine whether to display a guest view or subscriber view based on whether the visitor was already logged into our system or not. If so, we'd display the subscriber view. If not, we'd use the user token to determine that it matched an active subscriber, and then display a guest view from there.
+```
+/articles/improving-legacy-systems?u=dc2ab0f9bb
+```
 
-* We would make sure that pretty much anywhere a subscriber could find a link to an article, it would include their user token (including in the announcement emails we send out and in the archives listings). This would make it possible to simply copy-and-paste links to share them, without needing to explicitly generate a special "share link".
+* We wanted to make sure to be smart about authorization. Guests who visited a link with a valid share key would always see the "guest view" of that article, and logged in subscribers would always see the "subscriber view". If a key was invalid or missing, a guest would be explicitly told that the page was protected, rather than dropped into our registration process without warning.
 
-* Most importantly, we'd accomplish all of the above without breaking old-style internal links and share links.
+* We wanted to make sure to make our links easy to share by copy-paste, from pretty much anywhere within our web interface, from the browser location bar, and also in our emails. This meant making sure we put your share token pretty much anywhere you might click on an article link.
 
----
+Laying out this set of requirements helped us figure out where our destination was, but we knew intuitively that the path to get there would be a long and winding road. The system we initially built for sharing articles did not take any of these concepts into account, and so we would need to find a way to shoehorn them in without breaking old behavior in any significant way. We also would need to find a way to do this *incrementally*, to avoid releasing a ton of changes to our system at once that could be difficult to debug and maintain. The rest of this article describes how we went on to do exactly that, one pull request at a time.
 
-* Hide Robobar
-* Explicit Logins
-* Add Slugs
-* Add User Tokens
-* Add mail merge + individualized functionality to broadcasts
-* Tokenize Broadcast Mailer (+ Delayed Mailer Forward Ref)
-* Sharing / Access Control By Token
-* Server Upgrade
-* Delayed Mailer
-* Server Migration
+(Get Day Numbers so people can get a sense on when each thing was available)
+
 
 ---
+
+> Special thanks goes to Jordan Byron (the maintainer of practicingruby.com) for collaborating with me on this article, and for helping Practicing Ruby run smoothly over the years.
+
 
 
 > TODO: SPLIT PULL REQUESTS INTO DISCUSSION / "Files Changed" DIFF
