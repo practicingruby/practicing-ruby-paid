@@ -46,7 +46,7 @@ From time to time, we thought about how we might go about improving this system,
 Laying out this set of requirements helped us figure out where our destination was, but we knew intuitively that the path to get there would be a long and winding road. The system we initially built for sharing articles did not take any of these concepts into account, and so we would need to find a way to shoehorn them in without breaking old behavior in any significant way. We also would need to find a way to do this *incrementally*, to avoid releasing a ton of changes to our system at once that could be difficult to debug and maintain. The rest of this article describes how we went on to do exactly that, one pull request at a time.
 
 (Get Day Numbers so people can get a sense on when each thing was available)
-
+(USE BOARD TO DETERMINE PULL REQUESTS TO DISCUSS)
 
 ---
 
