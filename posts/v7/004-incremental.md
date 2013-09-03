@@ -16,20 +16,20 @@ So with those points in mind, what you are looking at here is an *incremental im
 
 Now that we've set the scene with a colorful metaphor, it is time to see how these ideas can influence the way we work on software projects. To do that, I will walk you through a major change we made to practicingruby.com that involved a fair amount of legacy coding headaches. You will definitely see some ugly code along the way, but hopefully a bit of cleverness will shine through as well.
 
-The improvement that we will discuss is essentially a complete overhaul to our mechanism for sharing Practicing Ruby's content with non-subscribers. I've encouraged our readers to share our content openly since our earliest days, but there were several implementation details that made this an awkward process:
+The improvement that we will discuss is a complete overhaul of Practicing Ruby's content sharing features. Although I've encouraged our readers to share our articles openly since our earliest days, several awkward implementation details made this a confusing process:
 
-* You couldn't just copy-paste links to our articles. You needed to explictly click a share button that would generate a public share link for you.
+* You couldn't just copy-paste links to articles. You needed to explictly click a share button that would generate a public share link for you.
 
-* If you did copy-paste an internal link from our website rather than explicitly generating a share link, those who clicked on that link would be immediately launched into our registration process without warning. This behavior was a side-effect of how we did authorization and not an intentional "feature", but it was super annoying to folks who encountered it.
+* If you did copy-paste an internal link from the website rather than explicitly generating a share link, those who clicked on that link would be immediately asked for registration information without warning. This behavior was a side-effect of how we did authorization and not an intentional "feature", but it was super annoying to folks who encountered it.
 
 * If you visited a public share link while logged in, you'd see the guest view rather than the subscriber view, and you'd need to click a "log in" button to see the comments, navbar, etc.
 
-* Both our internal links and our share links were completely opaque (e.g. "articles/101" and "/articles/shared/zmkztdzucsgv"), making it impossible to see what they pointed to
- before you clicked the link.
+* Both internal paths and share paths were completely opaque (e.g. "articles/101" and "/articles/shared/zmkztdzucsgv"), making it hard to know what a URL pointed to without
+visiting it.
  
-Despite these flaws, subscribers did continue to use our sharing mechanism. They even made use of the feature in ways we didn't anticipate: it became the standard workaround for using Instapaper and other offline reading tools that need public access to work correctly. As time went on, we used this feature for our internal use as well, whether it was to give away free samples of our content, or to release old content to the public. To make a long story short, one of our most awkward features eventually also became one of the most important.
+Despite these flaws, subscribers did use Practicing Ruby's article sharing mechanism. They also made use of the feature in ways we didn't anticipate -- for example, it became the standard workaround for using Instapaper to read our content offline. As time went on, we used this feature for internal needs as well, whether it was to give away free samples, or to release old content to the public. To make a long story short, one of our most awkward features eventually also became one of the most important.
 
-From time to time, we thought about how we might go about improving this system, but we were always scared off by the amount of work it would require to make significant changes to it. In fact, it took a combination of Practicing Ruby's move to a monthly publication schedule and my realization that I wanted to write an article about incrementally improving legacy systems to get us to the point where we were willing to seriously consider doing the work. Once we committed to the project, we came to realize that the changes we wanted were at least simple to describe:
+We avoided changing this system for quite a long while because we always had something else to work on that seemed more important to us. But after enough time had passed, we decided to pay down our debts. In particular, we wanted to make the following changes to our sharing mechanism:
 
 * We wanted to switch to subscriber-based share tokens rather than generating a new share token for each and every article. As long as a token was associated with an active subscriber, it could then be used to view any of our articles.
 
@@ -43,23 +43,15 @@ From time to time, we thought about how we might go about improving this system,
 
 * We wanted to make sure to make our links easy to share by copy-paste, from pretty much anywhere within our web interface, from the browser location bar, and also in our emails. This meant making sure we put your share token pretty much anywhere you might click on an article link.
 
-Laying out this set of requirements helped us figure out where our destination was, but we knew intuitively that the path to get there would be a long and winding road. The system we initially built for sharing articles did not take any of these concepts into account, and so we would need to find a way to shoehorn them in without breaking old behavior in any significant way. We also would need to find a way to do this *incrementally*, to avoid releasing a ton of changes to our system at once that could be difficult to debug and maintain. The rest of this article describes how we went on to do exactly that, one pull request at a time.
+Laying out this set of requirements helped us figure out where the destination was, but we knew intuitively that the path to get there would be a long and winding road. The system we initially built for sharing articles did not take any of these concepts into account, and so we would need to find a way to shoehorn them in without breaking old behavior in any significant way. We also would need to find a way to do this *incrementally*, to avoid releasing a ton of changes to our system at once that could be difficult to debug and maintain. The rest of this article describes how we went on to do exactly that, one pull request at a time.
 
-(Get Day Numbers so people can get a sense on when each thing was available)
-(USE BOARD TO DETERMINE PULL REQUESTS TO DISCUSS)
+> **NOTE:** Throughout this article, I link to  the"files changed" view of pull requests to give you a complete picture of what changed in the code, but understanding every last detail is not important. It's fine to dig deep into some pull requests while skimming or skipping others.
 
----
+## Step 1: Hide the robobar
 
-> Special thanks goes to Jordan Byron (the maintainer of practicingruby.com) for collaborating with me on this article, and for helping Practicing Ruby run smoothly over the years.
+If you've been a subscriber to Practicing Ruby for long enough, you probably have seen this little guy poking out from the bottom of articles, like a cheap rip-off of Microsoft's Clippy:
 
-
-
-> TODO: SPLIT PULL REQUESTS INTO DISCUSSION / "Files Changed" DIFF
-> Should we include diffs inline or code samples where relevant, or just link?
-
-# READ ALL PULL REQUESTS CAREFULLY AND ALSO THINK BACK ABOUT CHALLENGES, NOTES BELOW ARE JUST "TOP OF THE HEAD" SKETCHES.
-
-**Hide robobar -- [Pull Request](https://github.com/elm-city-craftworks/practicing-ruby-web/pull/125/files)**
+![](http://i.imgur.com/UeG5rT3.png)
 
 We had two ways to generate share links, but we want to move towards "zero". We killed Robobar, 
 because it was obviously an unfinished work.
@@ -67,39 +59,44 @@ because it was obviously an unfinished work.
 However, extraction would be hard, so we hid it instead. Had to delete some tests
 to get things back to green, but they were areas that will go away.
 
-**Make logins explicit -- [pull request](https://github.com/elm-city-craftworks/practicing-ruby-web/issues/142)**
+> HISTORY: Deployed 2013-07-19, then merged the next day. 
+>
+>[View complete diff](https://github.com/elm-city-craftworks/practicing-ruby-web/pull/125/files)
+
+## Step 2: Make authorization failures explicit 
+
+(PICTURE HERE)
 
 This is a problem that would largely go away once the new system was in place. However, there 
 would still be old links lingering around, and this problem was happening regularly
 enough to be annoying.
 
 Relatively simple fix (albeit with one hiccup that caused us to pull it from
- deployment temporarily) and it solved this particular problem a month
- before we were able to ship the more general solution.
+deployment temporarily) and it solved this particular problem a month
+before we were able to ship the more general solution.
  
- When we found a bug, it hinted at a hole in our test suite which I filled.
- 
- **(Diversion?) Remove capybara-webkit -- [pull request](https://github.com/elm-city-craftworks/practicing-ruby-web/pull/151)**
- 
- Started down this road because I was worried that my tests not stopping was a sign of a broken environment (later reproduced elsewhere and facepalmed). Blew out my Ruby and its gems, and as a result couldn't recompile capybara-webkit with our weird mix of dependencies.
- 
- Lost a day to capybara-webkit dependency issues, and then some
- more to writing lower level payment tests. 
- 
- > Unsure whether to mention these details as an aside, discuss in detail, or omit entirely. Probably a 1-2 sentence callout is best.
+When we found a bug, it hinted at a hole in our test suite which I filled.
 
-** (Diversion?) Add subscription tests -- [pull request](https://github.com/elm-city-craftworks/practicing-ruby-web/pull/154)**
+> HISTORY: Deployed 2013-07-26 and then reverted a few days later due to a minor bug affecting registrations. Redeployed on 2013-08-06, then merged three days later. 
+>
+>[View complete diff](https://github.com/elm-city-craftworks/practicing-ruby-web/pull/145/files)
 
-See above. Is this where I added an Outbox object? If so, maybe discuss it a little or link to it.
+---
 
-
-**Adding slugs -- [pull request](https://github.com/elm-city-craftworks/practicing-ruby-web/pull/155/files)**
+## Step 3: Add article slugs
 
 Relatively painless change that we were able to deploy same day as we developed it.
 Adding all the slugs took much longer than that, and we didn't want to break /articles/id,
 but it had a partial benefit right away.
 
-**Adding user tokens -- [pull request](https://github.com/elm-city-craftworks/practicing-ruby-web/pull/158)**
+[pull request](https://github.com/elm-city-craftworks/practicing-ruby-web/pull/155/files)
+
+> HISTORY: FIXME. + Adding slugs was a manual process, so they didn't get fully populated until about a week after this feature shipped.
+
+## Step 4: Add subscriber share tokens
+
+
+[pull request](https://github.com/elm-city-craftworks/practicing-ruby-web/pull/158)
 
 This was one of those requests where 80% of the time was spent on the first 80% of the problem, and the other 80% of the time was spent on the remaining 20%.
 
@@ -112,7 +109,11 @@ We had to dig way deeper into Rails core behavior than I wanted to in this code
 
 Somewhat ambitiously added some (wrong) code for conversation tokenizing here too.
 
-**Make broadcast mailer send individual emails + added mustache -- [pull request](https://github.com/elm-city-craftworks/practicing-ruby-web/pull/162)**
+> HISTORY: FIXME
+
+## Step 5: Redesign and improve broadcast mailer
+
+[pull request](https://github.com/elm-city-craftworks/practicing-ruby-web/pull/162)
 
 Here we were bit by another Rails core oddity: The way we were using
 ActionMailer was wrong, and so ActionMailer::Base.deliveries was delivering
@@ -131,17 +132,12 @@ We attempted to shoehorn in a call to DelayedJob, but that dragged us back down 
 
 So we accepted the slowness temporarily while Jordan put the server upgrade on his TODO list, and broke those queueing commits off onto their own pull request with the hopes of applying them before we published this article.
 
-**Diversion? Refactor simulated user to fluent-style API -- [pull request](https://github.com/elm-city-craftworks/practicing-ruby-web/pull/163)**
+> HISTORY: FIXME
 
-Can't remember if there was a specific problem to be solved here or if it was just annoying me.
+## Step 6: Support share tokens in broadcast mailer
 
-> NOTE: May be cut or summarized as an aside if it doesn't fit the storyline.
-  But it's a nice example of the "add new functionality" -> "change callers to use new 
-  functionality", -> "remove old functionality (flushing out with raise)" cycle.
-  Also a good bonus point on Fluent vs. Instance-eval APIs. (discuss tradeoffs?)
-
-**Tokenized Emails (really just broadcasts) -- [pull request](https://github.com/elm-city-craftworks/practicing-ruby-web/pull/165)**
-
+ [pull request](https://github.com/elm-city-craftworks/practicing-ruby-web/pull/165)
+ 
 Originally I had planned to take care of both broadcast emails and conversation mail at the same time,
 but forgot that we still had not unrolled the conversation mailer.
 
@@ -151,16 +147,11 @@ I could put up with once or twice if absolutely necessary.
 Only minor hiccup was with the test mailer, but I was able to fix that with a fake user shim.
 Patch was straightforward otherwise.
 
-**Diversion? Comment anchoring -- [pull request](https://github.com/elm-city-craftworks/practicing-ruby-web/pull/169)**
+> HISTORY: FIXME
 
-This is a bug that we vaguely were aware of before, but became more noticeable during testing.
-(Also, the login button on the shared page).
+## Step 7: Allow guest access to articles via share tokens
 
-We prioritize bugs over feature work (even in these circumstances) so I started on a fix for this and learned that anchors are never submitted to the server (took some digging, due to my ignorance). The way I solved this turned out to be *incompatible* with the other changes I wanted to make though... so this was deployed temporarily and later stalled as I worked on token integration.
-  
-(closed without merging)
-
-**Share by User Token -- [pull request](https://github.com/elm-city-craftworks/practicing-ruby-web/pull/173/files)**
+[pull request](https://github.com/elm-city-craftworks/practicing-ruby-web/pull/173/files)
 
 This is where the bulk of the "new behavior" actually got wired up.
 In particular, the following behavior changes happened:
@@ -188,22 +179,23 @@ dust settles and b) needed to be in place to enable some future work, I viewed i
 a temporary bit of tech debt that we promised ourselves to pay off whenever the
 bad code is along our critical paths.
 
-**New Server!! -- [pull request](https://github.com/elm-city-craftworks/practicing-ruby-web/pull/174)**
+> HISTORY: FIXME
+
+## Step 8: Get the app running on an upgraded VPS
+
+ [pull request](https://github.com/elm-city-craftworks/practicing-ruby-web/pull/174)
 
 Jordan amazingly got this up and running. But I had to assume he might
 not get to it before publishing.
 
-Mostly a painless cut over (see pull request for steps involved)
+(discuss more details)
 
-Hiccups:
-
-* Minor github oauth configuration issue (caught by mixpanel)
-* Lack of Ruby 2.0 compatibility for Hominid (had to switch to MailChimp gem.
-Luckily we used a ports-and-adapters style here so the change was trivial!)
-https://github.com/elm-city-craftworks/practicing-ruby-web/pull/177/files
+> HISTORY: FIXME
 
 
-**Delayed broadcast mailer -- [pull request](https://github.com/elm-city-craftworks/practicing-ruby-web/pull/164)**
+## Step 9: Process broadcast mails using DelayedJob
+
+[pull request](https://github.com/elm-city-craftworks/practicing-ruby-web/pull/164)
 
 - Discuss delayed job, and how we tested in development by creating thousands of
   users and realized it's definitely slow.
@@ -218,13 +210,21 @@ create a bunch of users and turn off the delayed job processing.
 to send out our maintenance emails. (necessary for "end to end" including
 sendgrid)
 
+> HISTORY: FIXME
 
-## REMAINING ISSUES:
+## Step 10: Migrate to our new VPS
 
-Consider cutting this section or limiting only to clear missing pieces
-(i.e. removing cruft, sharing docs, etc.)
+Mostly a painless cut over (see pull request for steps involved)
+
+* Minor github oauth configuration issue (caught by mixpanel)
+* Lack of Ruby 2.0 compatibility for Hominid (had to switch to MailChimp gem.
+Luckily we used a ports-and-adapters style here so the change was trivial!)
+https://github.com/elm-city-craftworks/practicing-ruby-web/pull/177/files
+
+> HISTORY: FIXME
+
   
-If small enough, roll into "closing thoughts"
+## CLOSING THOUGHTS
 
 Wishlist:
 
@@ -233,8 +233,6 @@ Wishlist:
 * Add an option for credit me (used to be on for all, now off for all)
 * Tweak shared article view (maybe add comment count + other stuff about PR?, maybe float bar?)
   
-  
-## CLOSING THOUGHTS
 
 * Lots of old bad decisions (or non-decisions really) caught us... something easy to
 happen on a side project, or on a limited budget / slow moving project. Even though 
@@ -248,101 +246,5 @@ those issues got in the way of changing it.
 and I got to write this article. If I was billing $XXX/hr, I'm not sure
 if I'd work on this without wondering *what else* might be lower hanging fruit.
 
-# ------------------------------------------------------------------------------
 
-
---- The stories we tell ourselves before we break ground on work, and long after
-the work was completed are not even close to giving a clear picture of what
-actually happened. This article could expose some of the day-to-day difficulties
-of working w. legacy code
-
---- consider flow-of-consciousness diary style that tells the story of migrating
-from existing article URL scheme / sharing scheme to current, talking about
-challenges and pitfalls along the way. Underlying point: Changing an existing
-system is a lot more challenging than greenfield work, because of all the
-stuff below the water line. :-)
-
-Working effectively with legacy code? PR contains a mixture of old bad code from
-before we took a quality focus, and better code that wasn't quite finished
-before we took a break. 
-
---- Before and after coverage values!
-
-**Fill in earlier steps here (hiding robobar (why hide instead of kill?), and
-maybe explicit logins (what is the problem here?)**
-
-**User tokens**:
-
-Start with URL design
-
-(ramen music inspired, but using params instead of /route/token)
-
-https://practicingruby.com/articles/exploratory-data-analysis?u=p1e02d30558
-
-Had to figure out how to test URL params in Capybara
-
-**Email templating**:
-
-Debate between rolling my own and using a library
-
->> Mustache.render("Check out the article here:\n{{#article-url}}a-path-to-nowhere{{/article-url}}", "article-url" => ->(e) { articles[e]})
-=> "Check out the article here:\nhttps://practicingruby.com/articles/101?u=kdsljsaldgjhgkdljsadgkl"
-
-**Email unbatching**:
-
-
-
-- Discuss delayed job, and how we tested in development by creating thousands of
-  users and realized it's definitely slow.
-
-- Talk about how we ran into problems with DelayedJob due to 1.9.2 and
-  temporarily deployed the slow code.
-
-
-**Fluent API for simulated user**:
-
-http://en.wikipedia.org/wiki/Fluent_interface
-
-Add new functionality, fix interface conflicts (confirm email),
-then modify tests to use new functionality. 
-Remove old functionality last. (use exception to flush them out... particularly
-because blocks could be silently ignored)
-
-```
-EditArticleTest
-    ERROR (1:00:21.864) can edit articles with slugs
-          Block interface has been removed. Make direct method calls instead
-        @ test/support/integration.rb:80:in `simulated_user'
-          test/integration/edit_article_test.rb:5:in `block in <class:EditArticleTest>'
-          /home/gregory/.gem/ruby/1.9.2/gems/activesupport-3.2.13/lib/active_support/callbacks.rb:462:in `_run__1426996139241528895__setup__3843733857777541682__callbacks'
-          /home/gregory/.gem/ruby/1.9.2/gems/activesupport-3.2.13/lib/active_support/callbacks.rb:405:in `__run_callback'
-          /home/gregory/.gem/ruby/1.9.2/gems/activesupport-3.2.13/lib/active_support/callbacks.rb:385:in `_run_setup_callbacks'
-          /home/gregory/.gem/ruby/1.9.2/gems/activesupport-3.2.13/lib/active_support/callbacks.rb:81:in `run_callbacks'
-          /home/gregory/.gem/ruby/1.9.2/gems/activesupport-3.2.13/lib/active_support/testing/setup_and_teardown.rb:35:in `run'
-
-    ERROR (1:00:25.176) can edit articles without slugs
-          Block interface has been removed. Make direct method calls instead
-        @ test/support/integration.rb:80:in `simulated_user'
-          test/integration/edit_article_test.rb:5:in `block in <class:EditArticleTest>'
-          /home/gregory/.gem/ruby/1.9.2/gems/activesupport-3.2.13/lib/active_support/callbacks.rb:462:in `_run__1426996139241528895__setup__3843733857777541682__callbacks'
-          /home/gregory/.gem/ruby/1.9.2/gems/activesupport-3.2.13/lib/active_support/callbacks.rb:405:in `__run_callback'
-          /home/gregory/.gem/ruby/1.9.2/gems/activesupport-3.2.13/lib/active_support/callbacks.rb:385:in `_run_setup_callbacks'
-          /home/gregory/.gem/ruby/1.9.2/gems/activesupport-3.2.13/lib/active_support/callbacks.rb:81:in `run_callbacks'
-          /home/gregory/.gem/ruby/1.9.2/gems/activesupport-3.2.13/lib/active_support/testing/setup_and_teardown.rb:35:in `run'
-```
-
-
-** Comment unbatching fiasco**
-
-Talk about the problems encountered while working on #165, and how it gradually
-lead me to start getting very sloppy.
-
-Leading to this horrible result, a syntax error deployed!
-http://i.imgur.com/70gK6jj.png
-
-Squash four trivial typos, then take a break!
-http://i.imgur.com/JgfwsVu.png
-
-** Fixing comment linking bugs and making user share tokens visible publicly **
-
-Discuss how several semi-related features were getting log-jammed (#165, #169, #173)
+> Special thanks goes to Jordan Byron (the maintainer of practicingruby.com) for collaborating with me on this article, and for helping Practicing Ruby run smoothly over the years.
