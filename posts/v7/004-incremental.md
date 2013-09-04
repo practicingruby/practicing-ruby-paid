@@ -221,45 +221,162 @@ As part of this changeset, I modified the redirection code that I wrote when we 
 
 ## Step 4: Redesign and improve broadcast mailer
 
-[pull request](https://github.com/elm-city-craftworks/practicing-ruby-web/pull/162)
+I use a very basic web form in our admin panel to send email announcements out to Practicing Ruby subscribers. Originally, this feature relied on sending messages in batches, which was the simple thing to do when we assumed we'd be sending an identical message to everyone:
 
-BroadcastMailer needs to become a lot more dumb, but we don't want to drag logic up into controller, so we create Broadcaster object. (basically a service object)
+```ruby
+class BroadcastMailer < ActionMailer::Base
+  def deliver_broadcast(message={})
+    @body = message[:body]
 
-Here we were bit by another Rails core oddity: The way we were using
-ActionMailer was wrong, and so ActionMailer::Base.deliveries was delivering
-corrupt results. This lead to a very annoying debugging session. (If you
-reproduce, check `object_id` out of curiousity).
+    user_batches(message) do |users|
+      mail(
+        :to => "gregory@practicingruby.com",
+        :bcc => users,
+        :subject => message[:subject]
+      ).deliver
+    end
+  end
 
-This work also left us looking at some ugliness in our tests which we couldn't deal with at the moment, but exposed issues to return to later.
+  private
 
-By the end of it, we had mustache URL expansion `{{article}}slug{{/article}}` but not tokens.
+  def user_batches(message)
+    yield(message[:to]) && return if message[:commit] == "Test"
 
-Why add mustache here instead of doing it in a separate pull request? Because originally this was supposed to be a "tokenize broadcast emails" pull request, before we ran into slowness problems.
+    User.where(:notify_updates => true).to_notify.
+      find_in_batches(:batch_size => 25) do |group|
+        yield group.map(&:contact_email)
+    end
+  end
+end
+```
 
-In order to test our assumptions about speed, we ran a test in production with our queue turned off, so we could check how fast mail was being queued up. We used an exaggerated test (2000 recipients) and that was umm... far too slow. With the current number of recipients (~400) it is fast enough for an internal tool that only I use, but still extremely slow (10-20s, and risks failure on timeout).
+Despite being a bit of a hack, this code served us well enough for a fairly long time. It even supported a basic "test mode" that allowed me to send a broadcast email to myself before sending it out everyone. However, the design would need to change greatly if we wanted to include share tokens in the article links we emailed to subscribers. We'd need to send out individual emails rather than sending batched messages, and we'd also need to implement some sort of basic mail merge functionality to handle article link generation.
 
-We attempted to shoehorn in a call to DelayedJob, but that dragged us back down another rabbit hole that we put off before halting active development on the app... which we need to solve by upgrading to Ruby 2. But for us, that pretty much means a server upgrade.
+I don't want to get too bogged down in details here, but this changeset turned out to be far more complicated than I expected it to be. For starters, the way we were using `ActionMailer` in our original code was incorrect, and we were relying on undefined behavior without realizing it. Because the `BroadcastMailer` had been working fine for us in production and its (admittedly mediocre) tests were passing, we didn't notice the problem until we attempted to change its behavior. After attempting to introduce code that looked like this, I started to get all sorts of confusing test failures:
 
-So we accepted the slowness temporarily while Jordan put the server upgrade on his TODO list, and broke those queueing commits off onto their own pull request with the hopes of applying them before we published this article.
+```ruby
+class BroadcastMailer < ActionMailer::Base
+  # NOTE: this is an approximation, but it captures the basic idea...
+  def deliver_broadcast(message={})
+    @body = message[:body]
 
-> HISTORY: FIXME
+    User.where(:notify_updates => true).to_notify.each do |user|
+      mail(:to => user.contact_email, :subject => message[:subject]).deliver
+    end
+  end
+end
+```
 
-## Step 5: Support share tokens in broadcast mailer
+Even though this code appeared to work as expected in development (sending individual emails to each recipient), in my tests, `ActionMailer::Base.deliveries` was returning N copies of the first email sent in this loop. After some more playing around with ActionMailer and semi-fruitless internet searches, I concluded that this was because we weren't using the mailers in the officially sanctioned way. We'd need to change our code so that the mailer returned a `Mail` object, rather than handling the delivery for us.
 
- [pull request](https://github.com/elm-city-craftworks/practicing-ruby-web/pull/165)
+Because I didn't want that logic to trickle up into the controller, and because I expected things might get more complicated as we kept adding more features to this object, I decided to introduce an intermediate service object to handle some of the work for us, and then greatly simplify the mailer object. I also wanted to make the distinction between sending a test message and sending a message to everyone more explicit, so I took the opportunity to do that as well. The resulting code ended up looking something similar to what you see below:
 
-Test shim
- 
-Originally I had planned to take care of both broadcast emails and conversation mail at the same time,
-but forgot that we still had not unrolled the conversation mailer.
+```ruby
+class Broadcaster
+  def self.notify_subscribers(params)
+    BroadcastMailer.recipients.each do |email|
+      BroadcastMailer.broadcast(params, email).deliver
+    end
+  end
 
-We decided to add the broadcast tokenization even without the performance issues fixed, because it'd be something
-I could put up with once or twice if absolutely necessary.
+  def self.notify_testers(params)
+    BroadcastMailer.broadcast(params, params[:to]).deliver
+  end
+end
+
+class BroadcastMailer < ActionMailer::Base
+  def self.recipients
+    User.where(:notify_updates => true).to_notify.map(&:contact_email)
+  end
+
+  def broadcast(message, email)
+    mail(:to => email,
+         :subject => message[:subject])
+  end
+end
+```
+
+With this code in place, I had successfully converted the batch email delivery to individual emails. It was time to move on to adding a bit of code that would give me mail-merge functionality. I decided to use Mustache for this purpose, which would allow me to write emails that look like this:
+
+```
+Here is an awesome article I wrote:
+
+{{#article}}improving-legacy-systems{{/article}}
+```
+
+Mustache would then run some code behind the scenes and turn that message body into the following output:
+
+```
+Here is an awesome article I wrote:
+
+http://practicingruby.com/articles/improving-legacy-systems?u=dc20f9bb
+```
+
+As a proof of concept, I wrote a couple lines of code that handled the article link expansion, but didn't deal with share tokens just yet. It only took two extra lines in `BroadcastMailer#broadcast` to add this support:
+
+```ruby
+class BroadcastMailer < ActionMailer::Base
+  # ...
   
-Only minor hiccup was with the test mailer, but I was able to fix that with a fake user shim.
-Patch was straightforward otherwise.
+  def broadcast(message, email)
+    article_finder = ->(e) { article_url(Article[e]) }
+
+    @body = Mustache.render(message[:body], :article => article_finder)
+
+    mail(:to => email,
+         :subject => message[:subject])
+  end
+end
+```
+
+I deployed this code in production and sent myself a couple test emails, verifying that the article links were getting expanded as I expected them to. I had planned to work on adding the user tokens immediately after running those live tests, but at that moment realized that I had overlooked an important issue related to performance.
+
+Previous to this changeset, the `BroadcastMailer` was responsible for sending about 16 emails at a time (25 people per email). But now, it would be sending about 400 of them! Even though we use a DelayedJob worker to handle the actual delivery of the messages, it might take some significant amount of time to insert 400 custom-generated emails into the queue. Rather than investigating that problem right away, I decided to get myself some rest and tackle it the next day with Jordan.    
+
+> HISTORY: Deployed on 2013-08-22, and then merged the next day.
+>
+> [View complete diff](https://github.com/elm-city-craftworks/practicing-ruby-web/pull/162/files)
+
+## Step 5: Test broadcast mailer's performance
+
+Before we could go any farther with our work on the broadcast mailer, we needed to check the performance implications of switching to non-batched emails. We didn't need to do a very scientific test -- we just needed to see how noticeable the slowdown was. Because our previous code ran without a noticeable delay, pretty much anything longer than a second or two would be concerning to us.
+
+To conduct our test, we first populated our development environment with 2000 users (about 5x as many active users as we had on Practicing Ruby at the time). Then, we posted a realistic email in the broadcast mailer form, and kept an eye on the messages that were getting queued up via the Rails console. After 30 seconds or so we hadn't even queued up 500 jobs, so it became clear that performance very well could be a concern.
+
+To double check our estimates, and to form a more realistic test, we temporarily disabled our DelayedJob worker on the server and then ran the broadcast mailer in our live environment. Although the mailer did finish up queuing its messages without the request timing out, it took nearly a minute to do so. Once that test wrapped up, we cleared out the queued up jobs so that none of our test emails would actually be sent to our subscribers when we fired our workers back up.
+
+We learned several important things from this little experiment:
+
+1. The mail building and queuing process was definitely slow enough to worry us.
+2. In the worst case scenario, I would be able to deal with a 30 second delay in delivering broadcasts, but we would need to fix this problem if we wanted to unbatch other emails of ours, such as comment notifications.
+3. The most straightforward way to deal with this problem would be to run the entire mail building and queuing process in the background.
+
+The first two points were not especially surprising to us, but the third concerned us a bit. While we have had good luck using DelayedJob in conjunction with the MailHopper gem to send email, we had some problems in the past with trying to handle arbitrary jobs with it. We suspected this had to do with some of our dependencies being outdated, but never had time to investigate properly. With our fingers crossed, we decided to hope for the best and plan for the worst.
 
 ## Step 6: Process broadcast mails using DelayedJob
+
+```ruby
+module Admin
+  class BroadcastsController < ApplicationController
+    def create
+      # ...
+
+      message = { :subject => params[:subject],
+                  :body    => params[:body] } 
+
+      if params[:commit] == "Test"
+        message[:to] = params[:to]
+
+        Broadcaster.notify_testers(message)
+      else
+        Broadcaster.delay.notify_subscribers(message)
+      end
+
+      # ...
+    end
+  end
+end
+```
 
 [pull request](https://github.com/elm-city-craftworks/practicing-ruby-web/pull/164)
 
@@ -278,7 +395,32 @@ sendgrid)
 
 > HISTORY: FIXME
 
-## Step 7: Allow guest access to articles via share tokens
+## Step 7: Support share tokens in broadcast mailer
+
+
+In order to test our assumptions about speed, we ran a test in production with our queue turned off, so we could check how fast mail was being queued up. We used an exaggerated test (2000 recipients) and that was umm... far too slow. With the current number of recipients (~400) it is fast enough for an internal tool that only I use, but still extremely slow (10-20s, and risks failure on timeout).
+
+We attempted to shoehorn in a call to DelayedJob, but that dragged us back down another rabbit hole that we put off before halting active development on the app... which we need to solve by upgrading to Ruby 2. But for us, that pretty much means a server upgrade.
+
+So we accepted the slowness temporarily while Jordan put the server upgrade on his TODO list, and broke those queueing commits off onto their own pull request with the hopes of applying them before we published this artic
+
+
+ [pull request](https://github.com/elm-city-craftworks/practicing-ruby-web/pull/165)
+
+Test shim
+ 
+Originally I had planned to take care of both broadcast emails and conversation mail at the same time,
+but forgot that we still had not unrolled the conversation mailer.
+
+We decided to add the broadcast tokenization even without the performance issues fixed, because it'd be something
+I could put up with once or twice if absolutely necessary.
+  
+Only minor hiccup was with the test mailer, but I was able to fix that with a fake user shim.
+Patch was straightforward otherwise.
+
+> HISTORY: FIXME
+
+## Step 8: Allow guest access to articles via share tokens
 
 [pull request](https://github.com/elm-city-craftworks/practicing-ruby-web/pull/173/files)
 
@@ -310,7 +452,7 @@ bad code is along our critical paths.
 
 > HISTORY: FIXME
 
-## Step 8: Get the app running on an upgraded VPS
+## Step 9: Get the app running on an upgraded VPS
 
  [pull request](https://github.com/elm-city-craftworks/practicing-ruby-web/pull/174)
 
