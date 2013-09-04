@@ -120,13 +120,41 @@ This code, though not especially well designed, seemed to get the job done witho
 
 ## Step 2: Add article slugs
 
-Relatively painless change that we were able to deploy same day as we developed it.
-Adding all the slugs took much longer than that, and we didn't want to break /articles/id,
-but it had a partial benefit right away.
+When we first started working on practicingruby.com, we didn't put much thought to what our URLs looked like. In the first few weeks, we were rushing to get features like syntax highlighting and commenting out the door while keeping up with the publication schedule, and so we didn't have much energy to think about the minor details.
 
-[pull request](https://github.com/elm-city-craftworks/practicing-ruby-web/pull/155/files)
+Even if it made sense at the time, this is one decision I came to regret. In particular, I really disliked the notion that the paths that subscribers saw (e.g. "/articles/101") were completely different than the ones we generated for public viewing (e.g. "/articles/shared/zmkztdzucsgv"). and that there was no way to associate the two. When you add in the fact that both of these URL schemes are completely opaque, it definitely stood out as a poor design decision on our part.
 
-> HISTORY: FIXME. + Adding slugs was a manual process, so they didn't get fully populated until about a week after this feature shipped.
+Technically speaking, it would be possible to unify the two different schemes using subscriber tokens without worrying about the descriptiveness of the URLs, perhaps using paths like "/articles/101?u=dc2ab0f9bb". However, since we would need to be messing around with article path generation as it was, it seemed like a good idea to make those paths much more attractive by adding slugs. The goal was to have a path like: "/articles/improving-legacy-systems?u=dc2ab0f9bb". 
+
+Because we knew article slugs would be easy to implement, we decided to build and ship them before moving on to the more complicated changes we had planned to make. The pair of methods below are the most interesting implementation details from this changeset:
+
+```ruby
+class Article < ActiveRecord::Base
+  # ...
+
+  def self.[](key)
+    find_by_slug(key) || find_by_id(key)
+  end
+
+  def to_param
+    if slug.present?
+      slug
+    else
+      id.to_s
+    end
+  end
+end
+```
+
+The `Article[]` method is a drop-in replacement for `Article.find` that allows lookup by slug or by id. This means that both `Article[101]` and `Article['improving-legacy-code']` are valid calls, each of them returning an `Article` object. Because we only call `Article.find()` in a few places in our codebase, it was easy to swap those calls out to use `Article[]` instead.
+
+The `Article#to_params` method is used internally by Rails to generate paths. So wherever `article_url` or `article_path` get called with an `Article` object, this method will be called to determine what gets returned. If the article has a slug associated, it'll return something like "/articles/improving-legacy-code". If it doesn't have a slug set yet, it will return the familiar opaque database ids, i.e. "/articles/101".
+
+In the process of making this change, I also took care to add a redirect to the new style URLs whenever a slug existed for an article. By doing this, I was able to effectively deprecate the old URL style without breaking existing links. While we won't ever disable lookup by database ID, this at least preserves some consistency at the surface level.
+
+> HISTORY: Deployed 2013-08-16 and then merged the next day. Adding slugs to articles was a manual process that I completed a few days after the feature shipped.
+>
+> [View complete diff](https://github.com/elm-city-craftworks/practicing-ruby-web/pull/155/files)
 
 ## Step 3: Add subscriber share tokens
 
