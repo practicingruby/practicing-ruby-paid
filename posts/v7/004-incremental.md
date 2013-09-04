@@ -124,7 +124,7 @@ When we first started working on practicingruby.com, we didn't put much thought 
 
 Even if it made sense at the time, this is one decision I came to regret. In particular, I really disliked the notion that the paths that subscribers saw (e.g. "/articles/101") were completely different than the ones we generated for public viewing (e.g. "/articles/shared/zmkztdzucsgv"). and that there was no way to associate the two. When you add in the fact that both of these URL schemes are completely opaque, it definitely stood out as a poor design decision on our part.
 
-Technically speaking, it would be possible to unify the two different schemes using subscriber tokens without worrying about the descriptiveness of the URLs, perhaps using paths like "/articles/101?u=dc2ab0f9bb". However, since we would need to be messing around with article path generation as it was, it seemed like a good idea to make those paths much more attractive by adding slugs. The goal was to have a path like: "/articles/improving-legacy-systems?u=dc2ab0f9bb". 
+Technically speaking, it would be possible to unify the two different schemes using subscriber tokens without worrying about the descriptiveness of the URLs, perhaps using paths like "/articles/101?u=dc20f9bb". However, since we would need to be messing around with article path generation as it was, it seemed like a good idea to make those paths much more attractive by adding slugs. The goal was to have a path like: "/articles/improving-legacy-systems?u=dc2ab0f9bb". 
 
 Because we knew article slugs would be easy to implement, we decided to build and ship them before moving on to the more complicated changes we had planned to make. The pair of methods below are the most interesting implementation details from this changeset:
 
@@ -150,7 +150,9 @@ The `Article[]` method is a drop-in replacement for `Article.find` that allows l
 
 The `Article#to_params` method is used internally by Rails to generate paths. So wherever `article_url` or `article_path` get called with an `Article` object, this method will be called to determine what gets returned. If the article has a slug associated, it'll return something like "/articles/improving-legacy-code". If it doesn't have a slug set yet, it will return the familiar opaque database ids, i.e. "/articles/101".
 
-In the process of making this change, I also took care to add a redirect to the new style URLs whenever a slug existed for an article. By doing this, I was able to effectively deprecate the old URL style without breaking existing links. While we won't ever disable lookup by database ID, this at least preserves some consistency at the surface level.
+There is a bit of an inconsistency in this design worth noting: I chose to override the `to_params` method, but not the `find` method on my model. However, since the former is a method that is designed to be overridden and the latter might be surprising to override, I felt somewhat comfortable with this design decision.
+
+Although it's not worth showing the code for it, I also added a redirect to the new style URLs whenever a slug existed for an article. By doing this, I was able to effectively deprecate the old URL style without breaking existing links. While we won't ever disable lookup by database ID, this at least preserves some consistency at the surface level of the application.
 
 > HISTORY: Deployed 2013-08-16 and then merged the next day. Adding slugs to articles was a manual process that I completed a few days after the feature shipped.
 >
@@ -158,21 +160,64 @@ In the process of making this change, I also took care to add a redirect to the 
 
 ## Step 3: Add subscriber share tokens
 
+In theory it should have been nearly trivial to implement subscriber-based share tokens. After all, we were simply generating a random string for each subscriber and then appending it to the end of article URLs as a GET parameter (e.g. "u=u=dc20f9bb". In practice, there were many edge cases that would complicate our implementation.
 
-[pull request](https://github.com/elm-city-craftworks/practicing-ruby-web/pull/158)
+The ideal situation would be to override the `article_path` and `article_url` methods to add the currently logged in user's share token to any article links throughout the application. However, we weren't able to find a single place within the Rails call chain where such a global override would make sense. It would easy enough to get this kind of behavior in both our views and controllers by putting the methods in a helper and then mixing that helper into our ApplicationController, but it wasn't easy to take the same approach in our tests and mailers. To make matters worse, some of the places we wanted to use these path helpers would have access to the ones rails provided by default, but would not include our overrides, and so we'd silently lose the behavior we wanted to add.
 
-This was one of those requests where 80% of the time was spent on the first 80% of the problem, and the other 80% of the time was spent on the remaining 20%.
+We were unable to find an elegant solution to this problem, but eventually settled on a compromise. We built a low level object for generating the URLs with subscriber tokens, as shown below:
 
-We got this shipped into production quickly (and rightly so, because it was only a useless parameter at that time, meant to allow us to make sure it ended up in all the right places), but then quickly realized the difficulty of writing this code in a DRY fashion.
+```ruby
+class ArticleLink
+  include Rails.application.routes.url_helpers
 
-Eventually settled on adding a path helper override (`article_path`, `article_url`) which delegates to a low level object (ArticleLink). Where we were confident we'd have our ApplicationHelper and settle on its default behavior, we used the override, otherwise we explicitly make calls to ArticleLink.
+  def initialize(article, params)
+    self.article = article
+    self.params = params
+  end
 
-We had to dig way deeper into Rails core behavior than I wanted to in this code
-(`to_params`, `Rails.app.routes.url_helpers`, Capybara, `assert_url_has_param` in test helper, etc). But we decided to do the best we could, and to ship with warts and all.
+  def path(token)
+    article_path(article, params_with_token(token))
+  end
 
-Somewhat ambitiously added some (wrong) code for conversation tokenizing here too.
+  def url(token)
+    article_url(article, params_with_token(token))
+  end
 
-> HISTORY: FIXME
+  private
+
+  attr_accessor :params, :article
+
+  def params_with_token(token)
+    {:u => token}.merge(params)
+  end
+end
+```
+
+Then in our `ApplicationHelper`, we added the following bits of glue code:
+
+```ruby
+module ApplicationHelper
+  def article_url(article, params={})
+    return super unless current_user
+
+    ArticleLink.new(article, params).url(current_user.share_token)
+  end
+
+  def article_path(article, params={})
+    return super unless current_user
+
+    ArticleLink.new(article, params).path(current_user.share_token)
+  end
+end
+```
+
+Adding these simple shims made it so that we got the behavior we wanted in the ordinary use cases of `article_url` and `article_path`, which were in our controllers and views. In our mailers and tests, we opted to use the `ArticleLink` object directly, because we needed to explicitly pass in tokens in those areas anyway. Because it was impossible for us to make this code completely DRY, this convention-based design was the best we could come up with.
+
+As part of this changeset, I modified the redirection code that I wrote when we were introducing slugs to also take tokens into account. If a subscriber visited a link that didn't include a share token, it would rewrite the URL to include their token. This was yet another attempt at introducing a bit of consistency where there previously was none.
+
+> HISTORY: Deployed code to add tokens upon visiting an article on 2013-08-20, then did a second deploy to update the archives and library links the next day, merged on 2013-08-23.
+>
+> [View complete diff](https://github.com/elm-city-craftworks/practicing-ruby-web/pull/158/files)
 
 ## Step 4: Redesign and improve broadcast mailer
 
@@ -214,9 +259,26 @@ I could put up with once or twice if absolutely necessary.
 Only minor hiccup was with the test mailer, but I was able to fix that with a fake user shim.
 Patch was straightforward otherwise.
 
+## Step 6: Process broadcast mails using DelayedJob
+
+[pull request](https://github.com/elm-city-craftworks/practicing-ruby-web/pull/164)
+
+- Discuss delayed job, and how we tested in development by creating thousands of
+  users and realized it's definitely slow.
+
+- Talk about how we ran into problems with DelayedJob due to 1.9.2 and
+  temporarily deployed the slow code.
+
+- Once new server was up and running, tested this the same way as before,
+create a bunch of users and turn off the delayed job processing.
+
+- After we imported *real* users, we tested again by using the new server
+to send out our maintenance emails. (necessary for "end to end" including
+sendgrid)
+
 > HISTORY: FIXME
 
-## Step 6: Allow guest access to articles via share tokens
+## Step 7: Allow guest access to articles via share tokens
 
 [pull request](https://github.com/elm-city-craftworks/practicing-ruby-web/pull/173/files)
 
@@ -248,7 +310,7 @@ bad code is along our critical paths.
 
 > HISTORY: FIXME
 
-## Step 7: Get the app running on an upgraded VPS
+## Step 8: Get the app running on an upgraded VPS
 
  [pull request](https://github.com/elm-city-craftworks/practicing-ruby-web/pull/174)
 
@@ -256,30 +318,6 @@ Jordan amazingly got this up and running. But I had to assume he might
 not get to it before publishing.
 
 (discuss more details)
-
-> HISTORY: FIXME
-
-
-## Step 8: Process broadcast mails using DelayedJob
-
-[pull request](https://github.com/elm-city-craftworks/practicing-ruby-web/pull/164)
-
-- Discuss delayed job, and how we tested in development by creating thousands of
-  users and realized it's definitely slow.
-
-- Talk about how we ran into problems with DelayedJob due to 1.9.2 and
-  temporarily deployed the slow code.
-
-- Once new server was up and running, tested this the same way as before,
-create a bunch of users and turn off the delayed job processing.
-
-- After we imported *real* users, we tested again by using the new server
-to send out our maintenance emails. (necessary for "end to end" including
-sendgrid)
-
-> HISTORY: FIXME
-
-## Step 9: Migrate to our new VPS
 
 Mostly a painless cut over (see pull request for steps involved)
 
