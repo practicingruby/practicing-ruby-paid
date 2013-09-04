@@ -45,45 +45,80 @@ We avoided changing this system for quite a long while because we always had som
 
 Laying out this set of requirements helped us figure out where the destination was, but we knew intuitively that the path to get there would be a long and winding road. The system we initially built for sharing articles did not take any of these concepts into account, and so we would need to find a way to shoehorn them in without breaking old behavior in any significant way. We also would need to find a way to do this *incrementally*, to avoid releasing a ton of changes to our system at once that could be difficult to debug and maintain. The rest of this article describes how we went on to do exactly that, one pull request at a time.
 
-> **NOTE:** Throughout this article, I link to  the"files changed" view of pull requests to give you a complete picture of what changed in the code, but understanding every last detail is not important. It's fine to dig deep into some pull requests while skimming or skipping others.
+> **NOTE:** Throughout this article, I link to the "files changed" view of pull requests to give you a complete picture of what changed in the code, but understanding every last detail is not important. It's fine to dig deep into some pull requests while skimming or skipping others.
 
-## Step 1: Hide the robobar
+## Step 1: Deal with authorization failures gracefully
 
-If you've been a subscriber to Practicing Ruby for long enough, you probably have seen this little guy poking out from the bottom of articles, like a cheap rip-off of Microsoft's Clippy:
+When we first started working on practicingruby.com, we thought it would be convenient to automatically handle Github authentication behind the scenes so that subscribers rarely needed to explicitly click a "sign in" button in order to read articles. This is a good design idea, but we only really considered the happy path while building and testing it.
 
-![](http://i.imgur.com/UeG5rT3.png)
+Many months down the line, we realized that people would occasionally share internal links to our articles by accident, rather than explicitly generating public links. Whenever that happened, the visitor would be put through our entire registration process without warning, including:
 
-We had two ways to generate share links, but we want to move towards "zero". We killed Robobar, 
-because it was obviously an unfinished work.
+* Approving our use of Github to authorize their account
+* Going through an email confirmation process
+* Getting prompted for credit card information
 
-However, extraction would be hard, so we hid it instead. Had to delete some tests
-to get things back to green, but they were areas that will go away.
+Most would understandably abandon this process part of the way through. In the best case scenario, our application's behavior would be seen as very confusing, though I'm sure for many it felt downright rude and unpleasant. It's a shame that such a bad experience could emerge from what was actually good intentions both on our part and on whoever shared a link to our content in the first place. Think of what a different experience it might have been to simply have been redirected to our landing page where they could see the following message:
 
-> HISTORY: Deployed 2013-07-19, then merged the next day. 
->
->[View complete diff](https://github.com/elm-city-craftworks/practicing-ruby-web/pull/125/files)
+![](http://i.imgur.com/kA3ePJI.png)
 
-## Step 2: Make authorization failures explicit 
+Although that wouldn't be quite as nice as getting free access to an article that someone wanted to share with them, it would at least avoid any confusion about what had just happened. My first attempt at introducing this kind of behavior into the system looked like what you see below:
 
-(PICTURE HERE)
+```ruby
+class ApplicationController < ApplicationController::Base
+  # ...
+  
+  def authenticate
+    return if current_authorization 
+   
+    flash[:notice] = 
+      "That page is protected. Please sign in or sign up to continue"
+      
+    store_location
+    redirect_to(root_path)
+  end
+end 
+```
 
-This is a problem that would largely go away once the new system was in place. However, there 
-would still be old links lingering around, and this problem was happening regularly
-enough to be annoying.
+We deployed this code and for a few days, it seemed to be a good enough stop-gap measure for resolving this bug, even if it meant that subscribers might need to click a "sign in" button a little more often. However, I realized that it was a bit too naive of a solution when I received an email asking why it was necessary to click "sign in" in order to make the "subscribe" button work. My quick fix had broken our registration system. :cry:
 
-Relatively simple fix (albeit with one hiccup that caused us to pull it from
-deployment temporarily) and it solved this particular problem a month
-before we were able to ship the more general solution.
- 
-When we found a bug, it hinted at a hole in our test suite which I filled.
+Upon hearing that bad news, I immediately pulled this code out of production after writing a test that proved this problem existed on my feature branch but not in master. A few days later, I put together a quick fix that got my tests passing. My solution was to extract a helper method that decided how to handle authorization failures. The default behavior would be to redirect to the root page and display an error message as we did above, but during registrations, we would automatically initiate a Github authentication as we had done in the past:
 
-> HISTORY: Deployed 2013-07-26 and then reverted a few days later due to a minor bug affecting registrations. Redeployed on 2013-08-06, then merged three days later. 
+```ruby
+class ApplicationController < ApplicationController::Base
+  # ...
+  
+  def authenticate
+    return if current_authorization 
+   
+    store_location
+    redirect_on_auth_failure
+  end
+  
+  def redirect_on_auth_failure
+    flash[:notice] = 
+      "That page is protected. Please sign in or sign up to continue"
+      
+    redirect_to(root_path)
+ end
+end
+
+class RegistrationController < ApplicationController
+  # ...
+  
+  def redirect_on_auth_failure
+    redirect_to login_path 
+  end
+end 
+```
+
+This code, though not especially well designed, seemed to get the job done without too much trouble. It also served as a useful reminder that I should be on the lookout for holes in the test suite, which in retrospect should have been obvious given the awkward behavior of the original code. As they say, hindsight is 20/20!
+
+
+> HISTORY: Deployed 2013-07-26 and then reverted a few days later due to the registration bug mentioned above. Redeployed on 2013-08-06, then merged three days later. 
 >
 >[View complete diff](https://github.com/elm-city-craftworks/practicing-ruby-web/pull/145/files)
 
----
-
-## Step 3: Add article slugs
+## Step 2: Add article slugs
 
 Relatively painless change that we were able to deploy same day as we developed it.
 Adding all the slugs took much longer than that, and we didn't want to break /articles/id,
@@ -93,7 +128,7 @@ but it had a partial benefit right away.
 
 > HISTORY: FIXME. + Adding slugs was a manual process, so they didn't get fully populated until about a week after this feature shipped.
 
-## Step 4: Add subscriber share tokens
+## Step 3: Add subscriber share tokens
 
 
 [pull request](https://github.com/elm-city-craftworks/practicing-ruby-web/pull/158)
@@ -111,9 +146,11 @@ Somewhat ambitiously added some (wrong) code for conversation tokenizing here to
 
 > HISTORY: FIXME
 
-## Step 5: Redesign and improve broadcast mailer
+## Step 4: Redesign and improve broadcast mailer
 
 [pull request](https://github.com/elm-city-craftworks/practicing-ruby-web/pull/162)
+
+BroadcastMailer needs to become a lot more dumb, but we don't want to drag logic up into controller, so we create Broadcaster object. (basically a service object)
 
 Here we were bit by another Rails core oddity: The way we were using
 ActionMailer was wrong, and so ActionMailer::Base.deliveries was delivering
@@ -134,9 +171,11 @@ So we accepted the slowness temporarily while Jordan put the server upgrade on h
 
 > HISTORY: FIXME
 
-## Step 6: Support share tokens in broadcast mailer
+## Step 5: Support share tokens in broadcast mailer
 
  [pull request](https://github.com/elm-city-craftworks/practicing-ruby-web/pull/165)
+
+Test shim
  
 Originally I had planned to take care of both broadcast emails and conversation mail at the same time,
 but forgot that we still had not unrolled the conversation mailer.
@@ -149,7 +188,7 @@ Patch was straightforward otherwise.
 
 > HISTORY: FIXME
 
-## Step 7: Allow guest access to articles via share tokens
+## Step 6: Allow guest access to articles via share tokens
 
 [pull request](https://github.com/elm-city-craftworks/practicing-ruby-web/pull/173/files)
 
@@ -181,7 +220,7 @@ bad code is along our critical paths.
 
 > HISTORY: FIXME
 
-## Step 8: Get the app running on an upgraded VPS
+## Step 7: Get the app running on an upgraded VPS
 
  [pull request](https://github.com/elm-city-craftworks/practicing-ruby-web/pull/174)
 
@@ -193,7 +232,7 @@ not get to it before publishing.
 > HISTORY: FIXME
 
 
-## Step 9: Process broadcast mails using DelayedJob
+## Step 8: Process broadcast mails using DelayedJob
 
 [pull request](https://github.com/elm-city-craftworks/practicing-ruby-web/pull/164)
 
@@ -212,7 +251,7 @@ sendgrid)
 
 > HISTORY: FIXME
 
-## Step 10: Migrate to our new VPS
+## Step 9: Migrate to our new VPS
 
 Mostly a painless cut over (see pull request for steps involved)
 
@@ -225,6 +264,8 @@ https://github.com/elm-city-craftworks/practicing-ruby-web/pull/177/files
 
   
 ## CLOSING THOUGHTS
+
+IF TIME PERMITS, LOOK AT LEGACY CODE BOOK FOR PATTERN NAMES.
 
 Wishlist:
 
