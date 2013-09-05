@@ -1,4 +1,4 @@
-When you look at the photograph of highway construction shown below, what do you see?
+When you look at this photograph of highway construction, what do you see?
 
 ![](http://i.imgur.com/eej11xZ.jpg)
 
@@ -29,7 +29,7 @@ visiting it.
  
 Despite these flaws, subscribers did use Practicing Ruby's article sharing mechanism. They also made use of the feature in ways we didn't anticipate -- for example, it became the standard workaround for using Instapaper to read our content offline. As time went on, we used this feature for internal needs as well, whether it was to give away free samples, or to release old content to the public. To make a long story short, one of our most awkward features eventually also became one of the most important.
 
-We avoided changing this system for quite a long while because we always had something else to work on that seemed more important to us. But after enough time had passed, we decided to pay down our debts. In particular, we wanted to make the following changes to our sharing mechanism:
+We avoided changing this system for quite a long while because we always had something else to work on that seemed more urgent. But after enough time had passed, we decided to pay down our debts. In particular, we wanted to make the following changes:
 
 * We wanted to switch to subscriber-based share tokens rather than generating a new share token for each and every article. As long as a token was associated with an active subscriber, it could then be used to view any of our articles.
 
@@ -39,9 +39,9 @@ We avoided changing this system for quite a long while because we always had som
 /articles/improving-legacy-systems?u=dc2ab0f9bb
 ```
 
-* We wanted to make sure to be smart about authorization. Guests who visited a link with a valid share key would always see the "guest view" of that article, and logged in subscribers would always see the "subscriber view". If a key was invalid or missing, a guest would be explicitly told that the page was protected, rather than dropped into our registration process without warning.
+* We wanted to make sure to be smart about authorization. Guests who visited a link with a valid share key would always see the "guest view" of that article, and logged in subscribers would always see the "subscriber view". If a key was invalid or missing, the guest would be explicitly told that the page was protected, rather than dropped into our registration process without warning.
 
-* We wanted to make sure to make our links easy to share by copy-paste, from pretty much anywhere within our web interface, from the browser location bar, and also in our emails. This meant making sure we put your share token pretty much anywhere you might click on an article link.
+* We wanted to make sure to make our links easy to share by copy-paste, whether it was from anywhere within our web interface, from the browser location bar, or even in the emails we send to subscribers. This meant making sure we put your share token pretty much anywhere you might click on an article link.
 
 Laying out this set of requirements helped us figure out where the destination was, but we knew intuitively that the path to get there would be a long and winding road. The system we initially built for sharing articles did not take any of these concepts into account, and so we would need to find a way to shoehorn them in without breaking old behavior in any significant way. We also would need to find a way to do this *incrementally*, to avoid releasing a ton of changes to our system at once that could be difficult to debug and maintain. The rest of this article describes how we went on to do exactly that, one pull request at a time.
 
@@ -57,7 +57,7 @@ Many months down the line, we realized that people would occasionally share inte
 * Going through an email confirmation process
 * Getting prompted for credit card information
 
-Most would understandably abandon this process part of the way through. In the best case scenario, our application's behavior would be seen as very confusing, though I'm sure for many it felt downright rude and unpleasant. It's a shame that such a bad experience could emerge from what was actually good intentions both on our part and on whoever shared a link to our content in the first place. Think of what a different experience it might have been to simply have been redirected to our landing page where they could see the following message:
+Most would understandably abandon this process part of the way through. In the best case scenario, our application's behavior would be seen as very confusing, though I'm sure for many it felt downright rude and unpleasant. It's a shame that such a bad experience could emerge from what was actually good intentions both on our part and on whoever shared a link to our content in the first place. Think of what a different experience it might have been if the visitor had been redirected to our landing page where they could see the following message:
 
 ![](http://i.imgur.com/kA3ePJI.png)
 
@@ -122,7 +122,7 @@ This code, though not especially well designed, seemed to get the job done witho
 
 When we first started working on practicingruby.com, we didn't put much thought to what our URLs looked like. In the first few weeks, we were rushing to get features like syntax highlighting and commenting out the door while keeping up with the publication schedule, and so we didn't have much energy to think about the minor details.
 
-Even if it made sense at the time, this is one decision I came to regret. In particular, I really disliked the notion that the paths that subscribers saw (e.g. "/articles/101") were completely different than the ones we generated for public viewing (e.g. "/articles/shared/zmkztdzucsgv"). and that there was no way to associate the two. When you add in the fact that both of these URL schemes are completely opaque, it definitely stood out as a poor design decision on our part.
+Even if it made sense at the time, this is one decision I came to regret. In particular, I  disliked the notion that the paths that subscribers saw (e.g. "/articles/101") were completely different than the ones we generated for public viewing (e.g. "/articles/shared/zmkztdzucsgv"), with no direct way to associate the two. When you add in the fact that both of these URL schemes are opaque, it definitely stood out as a poor design decision on our part.
 
 Technically speaking, it would be possible to unify the two different schemes using subscriber tokens without worrying about the descriptiveness of the URLs, perhaps using paths like "/articles/101?u=dc20f9bb". However, since we would need to be messing around with article path generation as it was, it seemed like a good idea to make those paths much more attractive by adding slugs. The goal was to have a path like: "/articles/improving-legacy-systems?u=dc2ab0f9bb". 
 
@@ -160,7 +160,7 @@ Although it's not worth showing the code for it, I also added a redirect to the 
 
 ## Step 3: Add subscriber share tokens
 
-In theory it should have been nearly trivial to implement subscriber-based share tokens. After all, we were simply generating a random string for each subscriber and then appending it to the end of article URLs as a GET parameter (e.g. "u=u=dc20f9bb". In practice, there were many edge cases that would complicate our implementation.
+In theory it should have been nearly trivial to implement subscriber-based share tokens. After all, we were simply generating a random string for each subscriber and then appending it to the end of article URLs as a GET parameter (e.g. "u=dc20f9bb"). In practice, there were many edge cases that would complicate our implementation.
 
 The ideal situation would be to override the `article_path` and `article_url` methods to add the currently logged in user's share token to any article links throughout the application. However, we weren't able to find a single place within the Rails call chain where such a global override would make sense. It would easy enough to get this kind of behavior in both our views and controllers by putting the methods in a helper and then mixing that helper into our ApplicationController, but it wasn't easy to take the same approach in our tests and mailers. To make matters worse, some of the places we wanted to use these path helpers would have access to the ones rails provided by default, but would not include our overrides, and so we'd silently lose the behavior we wanted to add.
 
@@ -252,7 +252,7 @@ end
 
 Despite being a bit of a hack, this code served us well enough for a fairly long time. It even supported a basic "test mode" that allowed me to send a broadcast email to myself before sending it out everyone. However, the design would need to change greatly if we wanted to include share tokens in the article links we emailed to subscribers. We'd need to send out individual emails rather than sending batched messages, and we'd also need to implement some sort of basic mail merge functionality to handle article link generation.
 
-I don't want to get too bogged down in details here, but this changeset turned out to be far more complicated than I expected it to be. For starters, the way we were using `ActionMailer` in our original code was incorrect, and we were relying on undefined behavior without realizing it. Because the `BroadcastMailer` had been working fine for us in production and its (admittedly mediocre) tests were passing, we didn't notice the problem until we attempted to change its behavior. After attempting to introduce code that looked like this, I started to get all sorts of confusing test failures:
+I don't want to get too bogged down in details here, but this changeset turned out to be far more complicated than I expected. For starters, the way we were using `ActionMailer` in our original code was incorrect, and we were relying on undefined behavior without realizing it. Because the `BroadcastMailer` had been working fine for us in production and its (admittedly mediocre) tests were passing, we didn't notice the problem until we attempted to change its behavior. After attempting to introduce code that looked like this, I started to get all sorts of confusing test failures:
 
 ```ruby
 class BroadcastMailer < ActionMailer::Base
@@ -312,7 +312,7 @@ Here is an awesome article I wrote:
 http://practicingruby.com/articles/improving-legacy-systems?u=dc20f9bb
 ```
 
-As a proof of concept, I wrote a couple lines of code that handled the article link expansion, but didn't deal with share tokens just yet. It only took two extra lines in `BroadcastMailer#broadcast` to add this support:
+As a proof of concept, I wrote a bit of code that handled the article link expansion, but didn't handle share tokens yet. It only took two extra lines in `BroadcastMailer#broadcast` to add this support:
 
 ```ruby
 class BroadcastMailer < ActionMailer::Base
@@ -339,13 +339,13 @@ Previous to this changeset, the `BroadcastMailer` was responsible for sending ab
 
 ## Step 5: Test broadcast mailer's performance
 
-Before we could go any farther with our work on the broadcast mailer, we needed to check the performance implications of switching to non-batched emails. We didn't need to do a very scientific test -- we just needed to see how noticeable the slowdown was. Because our previous code ran without a noticeable delay, pretty much anything longer than a second or two would be concerning to us.
+Before we could go any farther with our work on the broadcast mailer, we needed to check the performance implications of switching to non-batched emails. We didn't need to do a very scientific test -- we just needed to see how severe the slowdown was. Because our previous code ran without a noticeable delay, pretty much anything longer than a second or two would be concerning to us.
 
-To conduct our test, we first populated our development environment with 2000 users (about 5x as many active users as we had on Practicing Ruby at the time). Then, we posted a realistic email in the broadcast mailer form, and kept an eye on the messages that were getting queued up via the Rails console. After 30 seconds or so we hadn't even queued up 500 jobs, so it became clear that performance very well could be a concern.
+To conduct our test, we first populated our development environment with 2000 users (about 5x as many active users as we had on Practicing Ruby at the time). Then, we posted a realistic email in the broadcast mailer form, and kept an eye on the messages that were getting queued up via the Rails console. After several seconds we hadn't even queued up 100 jobs, so it became clear that performance very well could be a concern.
 
-To double check our estimates, and to form a more realistic test, we temporarily disabled our DelayedJob worker on the server and then ran the broadcast mailer in our live environment. Although the mailer did finish up queuing its messages without the request timing out, it took nearly a minute to do so. Once that test wrapped up, we cleared out the queued up jobs so that none of our test emails would actually be sent to our subscribers when we fired our workers back up.
+To double check our estimates, and to form a more realistic test, we temporarily disabled our DelayedJob worker on the server and then ran the broadcast mailer in our live environment. Although the mailer did finish up queuing its messages without the request timing out, it took about half a minute to do so. With this information in hand, we cleared out the test jobs so that they wouldn't actually be delivered, and then spent a bit of time lost in thought.
 
-We learned several important things from this little experiment:
+Ultimately, we learned several important things from this little experiment:
 
 1. The mail building and queuing process was definitely slow enough to worry us.
 2. In the worst case scenario, I would be able to deal with a 30 second delay in delivering broadcasts, but we would need to fix this problem if we wanted to unbatch other emails of ours, such as comment notifications.
@@ -401,7 +401,7 @@ concern to us.
 
 We were cautiously optimistic that this small change might fix our issues, so
 we deployed the code to production and did another live test. Unfortunately,
-this lead us to a new error log, and so we had to go back to the drawing board. 
+this lead us to a new error condition, and so we had to go back to the drawing board. 
 Eventually we came across [this Github issue](https://github.com/collectiveidea/delayed_job/issues/350), which hinted (indirectly) that we might be running into one of the many issues with YAML parsing on Ruby 1.9.2.
 
 We could have attempted to do yet another workaround to avoid updating our
@@ -423,103 +423,151 @@ production environment, so I kept working against our old server while he tried 
 
 ## Step 7: Support share tokens in broadcast mailer
 
+Now that we had investigated the performance issues with the mailer and had a plan in place to fix them, it was time for me to finish what I had planned to work on in the first place: adding share tokens to article links in emails.
 
-In order to test our assumptions about speed, we ran a test in production with our queue turned off, so we could check how fast mail was being queued up. We used an exaggerated test (2000 recipients) and that was umm... far too slow. With the current number of recipients (~400) it is fast enough for an internal tool that only I use, but still extremely slow (10-20s, and risks failure on timeout).
+The changes to `BroadcastMailer` were fairly straightforward: pass a `User` rather than an email address into the `broadcast` method, and then use `ArticleLink` to generate a customized link based on the subscriber's share token: 
 
-We attempted to shoehorn in a call to DelayedJob, but that dragged us back down another rabbit hole that we put off before halting active development on the app... which we need to solve by upgrading to Ruby 2. But for us, that pretty much means a server upgrade.
+```ruby
+class BroadcastMailer < ActionMailer::Base
+  def self.recipients
+    User.where(:notify_updates => true).to_notify
+  end
 
-So we accepted the slowness temporarily while Jordan put the server upgrade on his TODO list, and broke those queueing commits off onto their own pull request with the hopes of applying them before we published this artic
+  def broadcast(message, subscriber)
+    article_finder = ->(e) { 
+      ArticleLink.new(Article[e]).url(subscriber.share_token) 
+    }
 
+    @body = Mustache.render(message[:body], :article => article_finder)
 
- [pull request](https://github.com/elm-city-craftworks/practicing-ruby-web/pull/165)
+    mail(:to => subscriber.contact_email,
+         :subject => message[:subject])
+  end
+end
+```
 
-Test shim
- 
-Originally I had planned to take care of both broadcast emails and conversation mail at the same time,
-but forgot that we still had not unrolled the conversation mailer.
+The only complication of rewiring `BroadcastMailer` this way is that it broke our test mailer functionality. Because the test mailer could send a message to any email address (whether there was an account associated with it or not), we wouldn't be able to look up a valid `User` record to pass to the `BroadcastMailer`. The code below shows my temporary solution to this API compatibility problem:
 
-We decided to add the broadcast tokenization even without the performance issues fixed, because it'd be something
-I could put up with once or twice if absolutely necessary.
-  
-Only minor hiccup was with the test mailer, but I was able to fix that with a fake user shim.
-Patch was straightforward otherwise.
+```ruby
+class Broadcaster
+   # ...
+   
+  def self.notify_testers(params)
+    subscriber = Struct.new(:contact_email, :share_token)
+                       .new(params[:to], "testtoken")
 
-> HISTORY: FIXME
+    BroadcastMailer.broadcast(params, subscriber).deliver
+  end
+end
+```
+
+Using a `Struct` object to generate an interface shim as I've done here is not the most elegant solution, but it gets the job done. A better solution would be to create a container object that could be used by both `notify_subscribers` and `notify_testers`, but I wasn't ready to make that design decision yet.
+
+With these changes in place, I was able to do some live testing to verify that we had managed to get share tokens into our article links. Now all that remained was to add the logic that would allow these share tokens to permit guest access to articles.
+
+> HISTORY: Deployed 2013-08-24, then merged on 2013-08-29.
+>
+> [View complete diff](https://github.com/elm-city-craftworks/practicing-ruby-web/pull/165)
 
 ## Step 8: Allow guest access to articles via share tokens
 
-[pull request](https://github.com/elm-city-craftworks/practicing-ruby-web/pull/173/files)
+With all the necessary underplumbing in place, I was finally ready to model the new sharing mechanism. The end goal was to support the following behavior:
 
-This is where the bulk of the "new behavior" actually got wired up.
-In particular, the following behavior changes happened:
+- Subscribers see the full article w. comments whenever they are logged in
+- With a valid token in the URL, guests see our "shared article" view.
+- Without a valid token, guests see the "protected page" error
+- Links that use a token from an expired account are disabled
+- Old-style share links redirect to the new-style subscriber token links
 
-- Logged in users will see full article w. comments as normal
-- With a valid token, guests will see the "shared article" view
-- Without a valid token, guests will see the "that page is protected" error
-- Expired subscriptions now invalidate share links
-- Admin checks are no longer done on drafts (but the articles are only visible to those with the link)
-- Login button on share pages no longer redirects to practicingruby.com landing page first
-- Old share links redirect to user token links
+The main challenge was that there wasn't an easy way to separate these concepts from each other, at least not in a meaningful way. However, we were able to reuse large chunks of existing code to do this, so most of the work was just tedious rewiring of controller actions while layering in a few more tests here and there.
 
-This is entirely too many changes to make at once, but there wasn't an easy way to separe 
-them meaningfully without creating inconsistent or awkward behavior. Although in hindsight
-there might be ways to separate at least some of these features, most had at least partially
-shared dependencies.
+The changes that needed to be made to support these behaviors were not that hard to make, but I did feel concerned about how complicated our `ArticlesController#show` action was getting. Including the relevant filters, here is what it looked like after all the changes were made (skim it, but don't bother trying to understand it!):
 
-I started this out as a spike, not expecting it to work, but then found a path forward 
-that wasn't *terrible* (even though it was far from pretty). Because reverting is cheap,
-I let this code run live for a couple days and caught a couple minor bugs that way (these
-caused weird behaviors, but nothing major)
+```ruby
+class ArticlesController < ApplicationController
+  before_filter :find_article, :only => [:show, :edit, :update, :share]
+  before_filter :update_url, :only => [:show]
+  before_filter :validate_token, :only => [:show]
 
-Because this code itself was a) built on a foundation that may need some cleanup once the
-dust settles and b) needed to be in place to enable some future work, I viewed it as
-a temporary bit of tech debt that we promised ourselves to pay off whenever the
-bad code is along our critical paths.
+  skip_before_filter :authenticate, :only => [:show, :shared, :samples]
+  skip_before_filter :authenticate_user, :only => [:show, :shared, :samples]
 
-> HISTORY: FIXME
+  def show
+    store_location
+    decorate_article
 
-## Step 9: Get the app running on an upgraded VPS
+    if current_user
+      mixpanel.track("Article Visit", :title => @article.subject,
+                                      :user_id => current_user.hashed_id)
 
- [pull request](https://github.com/elm-city-craftworks/practicing-ruby-web/pull/174)
+      @comments = CommentDecorator.decorate(@article.comments
+                                                    .order("created_at"))
+    else
+      shared_by = User.find_by_share_token(params[:u]).hashed_id
 
-Jordan amazingly got this up and running. But I had to assume he might
-not get to it before publishing.
+      mixpanel.track("Shared Article Visit", :title => @article.subject,
+                                            :shared_by => shared_by)
 
-(discuss more details)
+      render "shared"
+    end
+  end
 
-Mostly a painless cut over (see pull request for steps involved)
+  private
 
-* Minor github oauth configuration issue (caught by mixpanel)
-* Lack of Ruby 2.0 compatibility for Hominid (had to switch to MailChimp gem.
-Luckily we used a ports-and-adapters style here so the change was trivial!)
-https://github.com/elm-city-craftworks/practicing-ruby-web/pull/177/files
+  def find_article
+    @article = Article[params[:id]]
 
-> HISTORY: FIXME
+    render_http_error(404) unless @article
+  end
 
-  
-## CLOSING THOUGHTS
+  def update_url
+    slug_needs_updating = @article.slug.present? && params[:id] != @article.slug
+    missing_token = current_user && params[:u].blank?
 
-IF TIME PERMITS, LOOK AT LEGACY CODE BOOK FOR PATTERN NAMES.
+    redirect_to(article_path(@article)) if slug_needs_updating || missing_token
+  end
 
-Wishlist:
+  def validate_token
+    return if current_user.try(:active?)
 
-* Overhaul sharing UI and add documentation similar to Ramen's
-* Add tokenized comment emails 
-* Add an option for credit me (used to be on for all, now off for all)
-* Tweak shared article view (maybe add comment count + other stuff about PR?, maybe float bar?)
-  
+    unless params[:u].present? && 
+           User.find_by_share_token_and_status(params[:u], "active")
+      attempt_user_login # helper that calls authenticate + authenticate_user
+    end
+  end
+end
+```
 
-* Lots of old bad decisions (or non-decisions really) caught us... something easy to
-happen on a side project, or on a limited budget / slow moving project. Even though 
-PR is my main job, pr.com is very much a side project for Jordan and I.
+This is clearly not a portrait of healthy code! In fact, it looks suspiciously similiar to the code samples that "lost the plot" in Avdi Grimm's contributed article on [confident coding](https://practicingruby.com/articles/confident-ruby). That said, it's probably more fair to say that there wasn't much of a well defined plot when this code was written in the first place, and my attempts to modify it only muddied things further. 
 
-* Lack of familiarity with the framework, and lack of currentness in my
-experience bit me in many places. Even if I understood our current code,
-those issues got in the way of changing it.
+It was hard for me to determine whether or not I should attempt to refactor this code right away or wait until later. From a purely technical perspective, the answer was obvious that this code needed to be cleaned up. But looking at it from another angle, I wanted to make sure that the external behavior of the system was what I actually wanted before I invested more time into optimizing its implementation. I didn't have insight at this point in time to answer that question, so I decided to leave the code messy for the time being until I had a chance to see how well the new sharing mechanism performed in production. 
 
-* Was it worth it? For us, yes. We're not on a fixed budget or timeline,
-and I got to write this article. If I was billing $XXX/hr, I'm not sure
-if I'd work on this without wondering *what else* might be lower hanging fruit.
+> HISTORY: Deployed on 2013-08-26 and then merged on 2013-08-29.
+>
+> [View complete diff](https://github.com/elm-city-craftworks/practicing-ruby-web/pull/173)
 
+## Step 9: Get practicingruby.com running on our new VPS
+
+While I kept working on the sharing mechanism, Jordan was busy setting up a new production environment for us. We set up a temporary subdomain new.practicingruby.com for this purpose, and that allowed us to do some live testing while he got everything up and running.
+
+Technically speaking, we only need to upgrade our Ruby version in order to fix the problems we encountered with DelayedJob, so spinning up a new VPS instance purely for that purpose might sound a bit overkill at first glance. However, starting with a blank slate environment allowed us to upgrade the rest of our serverside dependencies at a relaxed pace, without worrying about potentially causing large amounts of site downtime. Spinning up the new environment in parallel before decommissioning the old one also meant that we could always switch back to our old environment if we encountered any problems during the migration to the new server.
+
+On 2013-08-30, we decided to migrate to the new environment. The first step was to pull in the delayed broadcast mailer code and do live tests similar to the ones we had done earlier. After we found that those went smoothly, we decided to do a complete end-to-end test by using the new system to deliver an announcement about the planned maintenance downtime. That worked without any issues, and so at that time we were ready to perform the cut over.
+
+We made sure to copy over all the data from our old environment immediately after putting it into maintenance mode, and then we updated our DNS entries to point practicingruby.com at the new server. After the DNS records propagated, we used a combination of watching our logs and our analytics dashboard (Mixpanel) to see how things were going. There were only two minor hiccups before everything got back to normal:
+
+* We had a small issue with our Oauth configuration on Github, but resolving it was trivial after we realized that it was not in fact a DNS-related problem, but an issue on our end.
+
+* We realized as soon as we spun up our cron jobs on the new server that our integration with Mailchimp's API had broken. The gem we were using was not Ruby 2.0 compatible, but we never realized this in development because we use it only in a tiny cleanup script that runs behind the scenes on the server. Thankfully because we had isolated this dependency from our application code, [changing it was very easy](https://github.com/elm-city-craftworks/practicing-ruby-web/pull/177/files).
+
+These two issues were the only problems we needed to debug under pressure throughout all the work we described in this article. Given how much we changed under the hood, I am quite proud of that fact.
+
+## Reflections
+
+The state of practicingruby.com immediately after our server migration was roughly comparable to that of the highway construction photograph that you saw at the beginning of this article: some improvements had been made, but there was still plenty of old cruft left around, and lots of work left to be done before things could be considered finished. My goal in writing this article was not to show a beautiful end result, but instead to illustrate a process that is seldom discussed.
+
+In the name of preserving realism, I dragged you through some of our oldest and worst code, and also showed you some newer code that isn't much nicer looking than our old stuff. Along the way, we used countless techniques that feel more like plumbing work than interesting programming work. Each step along the way, we used a different technique to glue one bit of code to another bit of code without breaking old behaviors, because there was no good one-size fits all solution to turn to. We got the job done, but we definitely got our hands dirty in the process.
+
+I feel fairly confident that some of the changes I showed in this article are ones that I will be thankful for in the long haul, while others I will come to regret. The trouble of course is knowing which will be which, and only time and experience can get me there. But hopefully by sharing my own experiences with you, you can learn something from my mistakes, too!
 
 > Special thanks goes to Jordan Byron (the maintainer of practicingruby.com) for collaborating with me on this article, and for helping Practicing Ruby run smoothly over the years.
