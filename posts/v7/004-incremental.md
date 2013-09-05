@@ -355,12 +355,26 @@ The first two points were not especially surprising to us, but the third concern
 
 ## Step 6: Process broadcast mails using DelayedJob
 
+Our first stab at backgrounding the work done by
+`Broadcaster.notify_subscribers`  was to simply change the call to
+`Broadcaster.delay.notify_subscribers`. 
+
+In theory, this small change should have done the
+trick: the method is conceptually nothing more than a "fire and forget"
+function that did not need to interact in any way with its caller. But after
+spending a long time staring at an incredibly confusing error log, we
+realized that it wasn't safe to assume that DelayedJob would cleanly serialize
+a Rails `params` hash. Constructing our own hash to pass into the
+`Broadcaster.notify_subscribers` method resolved those issues, and we ended up
+with the following code in `BroadcastsController`:
+
 ```ruby
 module Admin
   class BroadcastsController < ApplicationController
     def create
       # ...
 
+      # build our own hash to avoid DelayedJob serialization issues
       message = { :subject => params[:subject],
                   :body    => params[:body] } 
 
@@ -378,22 +392,34 @@ module Admin
 end
 ```
 
-[pull request](https://github.com/elm-city-craftworks/practicing-ruby-web/pull/164)
+After tweaking our test suite slightly to take this change into account, we
+were back to green fairly quickly. We experimented with the delayed broadcasts
+locally and found that it resolved our slowness issue in the UI. The worker
+would still take a little while to build all those mails and get them queued
+up, but since it was being done in the background it no longer was much of a
+concern to us.
 
-- Discuss delayed job, and how we tested in development by creating thousands of
-  users and realized it's definitely slow.
+We were cautiously optimistic that this small change might fix our issues, so
+we deployed the code to production and did another live test. Unfortunately,
+this lead us to a new error log, and so we had to go back to the drawing board. 
+Eventually we came across [this Github issue](https://github.com/collectiveidea/delayed_job/issues/350), which hinted (indirectly) that we might be running into one of the many issues with YAML parsing on Ruby 1.9.2.
 
-- Talk about how we ran into problems with DelayedJob due to 1.9.2 and
-  temporarily deployed the slow code.
+We could have attempted to do yet another workaround to avoid updating our
+Ruby version, but we knew that this was not the first, second, or even third time that we had been bitten by the fact that we were still running an ancient
+and poorly supported version of Ruby. In fact, we realized that wiping the
+slate clean and provisioning a whole new VPS might be the way to go, because
+that way we could upgrade all of our platform dependencies at once.
 
-- Once new server was up and running, tested this the same way as before,
-create a bunch of users and turn off the delayed job processing.
+So with that in mind, Jordan went off to work on getting us a new production
+environment set up, and we temporarily put this particular changeset on hold.
+There was still plenty of work for me to do that didn't rely on upgrading our
+production environment, so I kept working against our old server while he tried to spin up a new one.
 
-- After we imported *real* users, we tested again by using the new server
-to send out our maintenance emails. (necessary for "end to end" including
-sendgrid)
-
-> HISTORY: FIXME
+> HISTORY: Deployed for live testing on 2013-08-23 but then immediately pulled
+> from production upon failure. Redeployed to our new server on 2013-08-30,
+> then merged the following day.
+>
+> [View complete diff](https://github.com/elm-city-craftworks/practicing-ruby-web/pull/164)
 
 ## Step 7: Support share tokens in broadcast mailer
 
