@@ -40,7 +40,7 @@ version of the Snake arcade game, as shown below:
 ![](http://i.imgur.com/0DsKeoy.gif)
 
 In this article, we will build a stripped down 6502 simulator 
-in JRuby that is complete enough to play this game. If you haven't done much 
+in JRuby that is complete enough to run this game. If you haven't done much 
 low-level programming before, don't worry! Most of what follows is 
 just ordinary Ruby code. I will also be showing you a ton of examples 
 along the way, and those should help keep you on track. You might also
