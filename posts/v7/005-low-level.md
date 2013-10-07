@@ -543,10 +543,11 @@ module Vintage
 end
 ```
 
-It should be fairly obvious how this code works from its implementation alone,
-but it may help to see an example of how it is used. Here's how you would go
-about using it to display a single pixel on the screen, randomly varying its
-color until the spacebar (ASCII code 0x20) is pressed:
+You probably already have a good idea of how `MemoryMap` works from seeing
+its implementation, but it wouldn't hurt to see an example of how it is
+used before we move on. Here's how to display a single pixel on the 
+screen, randomly varying its color until the spacebar (ASCII code 0x20) 
+is pressed:
 
 ```ruby
 mem = Vintage::Storage.new
@@ -557,71 +558,465 @@ mem.ui = Vintage::Display.new
 (mem[0x0410] = mem[0xfe]) until mem[0xff] == 0x20 
 ```
 
-Seeing this seemingly magical code makes me feel a bit of cognitive dissonance: from 
-the Ruby perspective it's cringe-worthy, but the cleverness of
-extending such a low-level environment's functionality without modifying
-its standard instruction set also cannot be ignored.
+It's worth noting that this is the only code in the entire simulator that
+directly depends on a connection to some sort of user interface, and the
+protocol consists of just two methods: `ui.update(x, y, color)` and
+`ui.last_keypress`. In our case, we use a JRuby-based GUI, but anything
+else could be substituted as long as it implemented these two methods.
+
+At this point, our storage model is pretty much complete. We now can 
+turn our attention to various number crunching features.
 
 ## Registers and Flags
 
+In order to get Snake6502 to run, we need all six of
+the programmable registers that the processor provides. We've handled two of
+them already (the stack pointer and the program counter), so we just have four
+more to implement: A, X, Y, and P. A few design constraints will help make this
+work go a whole lot faster:
+
+* Most of the operations that can be done on A are done the same way on X and Y,
+so we can implement some generic functions that operate on all three of them.
+
+* We can implement the status register (P) as a collection of individual
+attributes, rather than seven 1-bit flags packs into a single byte.
+
+* Because Snake6502 only relies on the (c)arry, (n)egative, and (z)ero flags
+from the status register, we can skip implementing the other four status flags 
+and still have a playable game.
+
+With those limitations in mind, let's work through some specs to understand
+how this model ought to behave. For starters, we'll be building a `Vintage::CPU` 
+that implements three registers and three flags, initializing them all to 
+zero by default:
+
+```ruby
+describe "CPU" do
+  let(:cpu) { Vintage::CPU.new }
+
+  let(:registers) { [:a, :x, :y] }
+  let(:flags)     { [:c, :n, :z] }
+  
+  it "initializes registers and flags to zero" do
+    (registers + flags).each { |e| cpu[e].must_equal(0) }
+  end
+
+   #...
+end
+```
+
+It will be possible to directly set registers via the `#[]=` method, because
+the behavior will be the same for all three registers:
+
+```ruby
+it "allows directly setting registers" do
+  registers.each do |e|
+    value  = rand(0xff)
+
+    cpu[e] = value
+    cpu[e].must_equal(value)
+  end
+end
+```
+
+However, because flags don't have the same update semantics as registers, we 
+will not allow directly setting them via `#[]=`:
+
+```ruby
+it "does not allow directly setting flags" do
+  flags.each do |e|
+    value  = rand(0xff)
+
+    err = -> { cpu[e] = value }.must_raise(ArgumentError)
+    err.message.must_equal "#{e.inspect} is not a register"
+  end
+end
+```
+
+The carry flag (c) can toggled via the `set_carry` and `clear_carry` 
+methods. We'll need this later for getting the `CPU`  into
+a clean state whenever we do addition and subtraction 
+operations:
+
+```ruby
+it "allows setting the c flag via set_carry and clear_carry" do
+  cpu.set_carry
+  expect_flags(:c => 1)
+
+  cpu.clear_carry
+  expect_flags(:c => 0)
+end
+```
+
+Some other instructions will require us to set the carry flag
+based on arbitrary conditions, so we'll need support for that as well:
+
+```ruby
+it "allows conditionally setting the c flag via carry_if" do
+  # true condition
+  x = 3
+  cpu.carry_if(x > 1)
+
+  expect_flags(:c => 1)
+
+  # false condition
+  x = 0
+  cpu.carry_if(x > 1)
+
+  expect_flags(:c => 0)
+end
+```
+
+The N and Z flags are set based on whatever result the `CPU` last processed:
+
+```ruby
+it "sets z=1 when a result is zero, sets z=0 otherwise" do
+  cpu.result(0)
+  expect_flags(:z => 1)
+
+  cpu.result(0xcc)
+  expect_flags(:z => 0)
+end
+
+it "sets n=1 when result is 0x80 or higher, n=0 otherwise" do
+  cpu.result(rand(0x80..0xff))
+  expect_flags(:n => 1)
+
+  cpu.result(rand(0x00..0x7f))
+  expect_flags(:n => 0)
+end
+```
+
+The `result` method also returns a number truncated to fit in a single byte,
+because pretty much every place we could store a number in this system
+expects 8-bit integers:
+
+```ruby
+it "truncates results to fit in a single byte" do
+  cpu.result(0x1337).must_equal(0x37)
+end  
+```
+
+To help keep the `CPU` in a consistent state and to simplify the work
+involved in many of the 6502 instructions, we automatically call `cpu.result`
+whenever a register is set via `CPU#[]=`. The tests below show the 
+the effects of that behavior:
+
+```ruby
+  it "implicitly calls result() when registers are set" do
+    registers.each do |e|
+      cpu[e] = 0x100
+      
+      cpu[e].must_equal(0)
+      expect_flags(:z => 1, :n => 0)
+
+      cpu[e] -= 1
+      
+      cpu[e].must_equal(0xff)
+      expect_flags(:z => 0, :n => 1)
+    end
+  end
+```
+
+Here's an implementation that satisfies all of the tests we've seen so far:
+
+```ruby
+module Vintage
+  class CPU
+    def initialize
+      @registers = { :a => 0, :x => 0, :y => 0 }
+      @flags     = { :z => 0, :c => 0, :n => 0 }
+    end
+
+    def [](key)
+      @registers[key] || @flags.fetch(key)
+    end
+
+    def []=(key, value)
+      unless @registers.key?(key)
+        raise ArgumentError, "#{key.inspect} is not a register" 
+      end
+
+      @registers[key] = result(value)
+    end
+
+    def set_carry
+      @flags[:c] = 1
+    end
+
+    def clear_carry
+      @flags[:c] = 0
+    end
+
+    def carry_if(test)
+      test ? set_carry : clear_carry
+    end
+
+    def result(number)
+      number &= 0xff
+
+      @flags[:z] = (number == 0 ? 1 : 0)
+      @flags[:n] = number[7]
+
+      number
+    end
+  end
+end
+```
+  
+Putting it all together, the role of the `CPU` class is mostly just to do some
+basic numerical housekeeping that will make implementing 6502 instructions
+easier. Consider for example, the `CMP` and `BEQ` operations, which can
+be used together to form a primitive sort of `if` statement. We saw these two
+operations used together in the earlier example of keyboard input handling:
+
+```
+$064f    c9 77     CMP #$77     # check if the key was "w" (ASCII code 0x77)
+$0651    f0 0d     BEQ $0660    # if so, jump forward to $0660 
+```
+
+Using a combination of the `CPU` and `Storage` objects we've already built, we'd
+be able to define the `CMP` and `BEQ` operations as shown below:
+
+```ruby
+CMP do 
+  cpu.carry_if(cpu[:a] >= mem[e])
+
+  cpu.result( cpu[:a] - mem[e] )
+end
+
+BEQ { mem.branch(cpu[:z] == 1, e) }
+```
+
+Even if we ignore the `cpu.carry_if` call, we know from what we've seen
+already that if `CPU#result` is called with a zero value, it will set the Z flag
+to 1. We also know that when `Storage#branch` is called with a true value, it
+will jump to the specified address, otherwise it will do nothing at all. Putting
+those two facts together with the Snake6502 shown above tells us that if the
+value in the A register is `0x77`, execution will jump to `$0600`.
+
+At this point, we're starting to see how 6502 instructions can be
+mapped onto the objects we've already built, and that means we're 
+close to the finish line.  Before we get there, we only have two obstacles
+to clear: implementing addressing modes to handle operands, and building
+a program runner that knows how to map raw 6502 code to the operation 
+definitions shown above.
+
 ## Addressing Modes
 
-## 6502 Simulation (finally!)
+> **NOTE:** The explanation that follows barely scrapes the surface of
+this topic. If you want to really understand 6502 addressing modes, you should check
+out the [relevant section](http://skilldrick.github.io/easy6502/#addressing)
+in the Easy6502 tutorial.
 
+In the very first exercise where we disassembled the first few instructions
+of Snake6502, we discovered the presence of several addressing modes
+that cause operands to be interpreted in various different ways. To get
+the game running, we will need to handle a total of eight different 
+addressing modes.
+
+This is a lot of different ways to generate an address, and its intimidating 
+to realize we're only implementing an incomplete subset of what the 6502 processor 
+provides. However, its important to keep in mind that the only data structure 
+we have to work with is a simple mapping from 16-bit integers to 8-bit 
+integers. Among other things, clever indexing can give us the functionality we'd
+expect from variables, references, and arrays -- all the stuff that doesn't have
+a direct representation in machine code.
+
+I'm going to show the definitions for all of the addressing modes used by
+Snake6502 below, which probably won't make much sense at first glance. But try
+to see if you can figure out what some of this code doing:
+
+```ruby
+module Vintage
+  module Operand
+    def self.read(mem, mode, x, y)
+      case mode
+      when "#" # Implicit 
+        nil
+      when "@" # Relative
+        offset = mem.next
+
+        mem.pc + (offset <= 0x80 ? offset : -(0xff - offset + 1)) 
+      when "IM" # Immediate
+        mem.pc.tap { mem.next }
+      when "ZP" # Zero Page
+        mem.next
+      when "ZX" # Zero Page, X
+        mem.next + x
+      when  "AB" # Absolute
+        mem.int16([mem.next, mem.next])
+      when "IX" # Indexed Indirect
+        e = mem.next
+
+        mem.int16([mem[e + x], mem[e + x + 1]])
+      when "IY" # Indirect Indexed
+        e = mem.next
+
+        mem.int16([mem[e], mem[e+1]]) + y
+      else
+        raise NotImplementedError, mode.inspect
+      end
+    end
+  end
+end
+```
+
+Now let's walk through them one-by-one. You can refer to the source code above as needed
+to make sense of the following examples.
+
+1) The implicit addressing mode is meant for instructions that either don't operate 
+on a memory address at all, or can infer the address internally. An example
+we've already seen is the `RTS` operations that is used to return from a subroutine --
+it gets its data from the stack rather than from an operand, making it a single
+byte instruction. 
+
+2) The relative addressing mode is used by branches only. Consider
+the following example:
+
+```
+$0651    f0 0d     BEQ $0660    # if Z=1, jump to $0660 
+```
+
+By the time the `$0d` operand is read, the program counter will be set to
+`$0653`. If you add these two numbers together, you get the address to jump to
+if Z=1: `$0660`.
+
+3) Immediate addressing is used when you want to have an instruction work on the
+operand itself. To do so, we return the operand's address, then increment the 
+program counter as normal. In the example below, the computed address (`e`) 
+is `0x0650`, and `mem[e] == 0x77`:
+
+```
+$064f    c9 77     CMP #$77
+```
+
+4) Zero page addressing is straightforward, it is simply refers to any address
+between `$00` and `$ff`. These are convenient for storing program data in, and
+are faster to access because they do not require combining two bytes into a 16
+bit integer. We've already seen copious use of this address mode throughout
+the examples in this article, particularly when working with keyboard input
+(`$ff`) and random number generation (`$fe`).
+
+5) Zero page, X indexing is used for iterating over some simple sequences in
+memory. For example, Snake6502 stores the position of each part of the snakes
+body in byte pairs starting at memory location `$10`. Using this addressing
+mode, it is possible to walk over the array by simply incrementing the X
+register as you go.
+
+6) We've also seen plenty of examples of absolute addressing, especially when
+looking at `JSR` operations. The only complication involved in processing
+these addresses is that two bytes need to be read and then assembled into
+a 16bit integer. But since we've had to do that in several places already,
+it should be easy enough to understand.
+
+7) Indexed indirect addressing gives us a way to dynamically compute an address
+from other addresses that we've stored in memory. That sounds really confusing,
+but the following example should help clear it up. The code below is responsible
+for moving the snake by painting a white pixel at its updated head position, and
+painting a black pixel at its old tail position:
+
+```
+$0720    a2 00       LDX #$00
+$0722    a9 01       LDA #$01
+$0724    81 10       STA ($10,X) 
+$0726    a6 03       LDX $03
+$0728    a9 00       LDA #$00
+$072a    81 10       STA ($10,X) 
+```
+
+The first three lines are hardcoded to look at memory locations `$10` and `$11` 
+to form an address in the pixel array that refers to the new head of the 
+snake. The next three lines do something similar for the tail of the snake,
+but with a twist: because the length of the snake is dynamic, it needs to
+be looked up from memory. This value is stored in memory location `$03`.
+So to unpack the whole thing, `STA ($10, X)` will take the address `$10`, add to
+it the number of bytes in the whole snake array, and then look up the address
+stored in the last position of that array. That address points to the snake's
+tail in the pixel array, which ends up getting set to black by this instruction.
+
+8) Indirect indexed addressing gives us yet another way to walk over multibyte
+structures. In nake6502, this addressing mode is only used for drawing the
+apple on the screen. Its position is stored in a 16-bit value stored 
+in `$00` and `$01`, and the following code is used to set its color to a 
+random value:
+
+```
+$0719    a0 00       LDY #$00
+$071b    a5 fe       LDA $fe
+$071d    91 00       STA ($00),Y
+```
+
+There are bound to be more interesting uses of these addressing modes, but we
+we've certainly covered enough ground for now! Don't worry if you didn't
+understand this section that well, it took me many times reading the Easy6502
+tutorial and the source code for Snake6502 before I figured these out myself.
+
+## 6502 Simulator (finally!)
+
+We are now finally at the point where all the hard stuff is done, and all that
+remains is to wire up the simulator itself. In other words, it's time for
+the fun part of the project.
+
+The input for the simulator will be a binary file containing the
+assembled program code for Snake6502. The bytes in that file not meant to
+be read as printable characters, but they can be inspected using a hex editor:
+
+```
+$ hexdump examples/snake.rom
+0000000 20 06 06 20 38 06 20 0d 06 20 2a 06 60 a9 02 85
+0000010 02 a9 04 85 03 a9 11 85 10 a9 10 85 12 a9 0f 85
+0000020 14 a9 04 85 11 85 13 85 15 60 a5 fe 85 00 a5 fe
+0000030 29 03 18 69 02 85 01 60 20 4d 06 20 8d 06 20 c3
+0000040 06 20 19 07 20 20 07 20 2d 07 4c 38 06 a5 ff c9
+0000050 77 f0 0d c9 64 f0 14 c9 73 f0 1b c9 61 f0 22 60
+0000060 a9 04 24 02 d0 26 a9 01 85 02 60 a9 08 24 02 d0
+0000070 1b a9 02 85 02 60 a9 01 24 02 d0 10 a9 04 85 02
+0000080 60 a9 02 24 02 d0 05 a9 08 85 02 60 60 20 94 06
+0000090 20 a8 06 60 a5 00 c5 10 d0 0d a5 01 c5 11 d0 07
+00000a0 e6 03 e6 03 20 2a 06 60 a2 02 b5 10 c5 10 d0 06
+00000b0 b5 11 c5 11 f0 09 e8 e8 e4 03 f0 06 4c aa 06 4c
+00000c0 35 07 60 a6 03 ca 8a b5 10 95 12 ca 10 f9 a5 02
+00000d0 4a b0 09 4a b0 19 4a b0 1f 4a b0 2f a5 10 38 e9
+00000e0 20 85 10 90 01 60 c6 11 a9 01 c5 11 f0 28 60 e6
+00000f0 10 a9 1f 24 10 f0 1f 60 a5 10 18 69 20 85 10 b0
+0000100 01 60 e6 11 a9 06 c5 11 f0 0c 60 c6 10 a5 10 29
+0000110 1f c9 1f f0 01 60 4c 35 07 a0 00 a5 fe 91 00 60
+0000120 a2 00 a9 01 81 10 a6 03 a9 00 81 10 60 a2 00 ea
+0000130 ea ca d0 fb 60
+0000135
+```
+
+The challenge that is left to be completed is to process
+the opcodes and operands in this file and turn them into
+a running program. To do that, we will make use of a CSV file 
+that lists the operation name and addressing mode for each opcode 
+found in file:
+
+```
 00,BRK,#
 10,BPL,@
 18,CLC,#
 20,JSR,AB
-24,BIT,ZP
-29,AND,IM
-38,SEC,#
-48,PHA,#
-4A,LSR,#
-4C,JMP,AB
-60,RTS,#
-65,ADC,ZP
-68,PLA,#
-69,ADC,IM
-81,STA,IX
-85,STA,ZP
-8A,TXA,#
-8D,STA,AB
-8E,STX,AB
-90,BCC,@
-91,STA,IY
-95,STA,ZX
-99,STA,AY
-A0,LDY,IM
-A2,LDX,IM
-A5,LDA,ZP
-A6,LDX,ZP
-A9,LDA,IM
-AA,TAX,#
-B0,BCS,@
-B5,LDA,ZX
-C0,CPY,IM
-C5,CMP,ZP
-C6,DEC,ZP
-C8,INY,#
-C9,CMP,IM
-CA,DEX,#
-D0,BNE,@
-E0,CPX,IM
-E4,CPX,ZP
+# ... rest of instructions go here ...
 E6,INC,ZP
 E8,INX,#
 E9,SBC,IM
-EA,NOP,#
 F0,BEQ,@
 ```
 
-Instructions:
+Once we know the addressing mode for a given operation, we can read its
+operand and turn it into an address (denoted by `e`). And once we have *that*, 
+we can execute the commands that are defined in following DSL:
 
-```
+```ruby
+# NOTE: This file contains definitions for every instruction used 
+# by Snake6502. Most of the functionality here is a direct result
+# of simple calls to Vintage::Storage and Vintage::CPU instances.
+
 NOP { }
 BRK { raise StopIteration }
 
-## Storage
 
 LDA { cpu[:a] = mem[e] }
 LDX { cpu[:x] = mem[e] }
@@ -699,387 +1094,13 @@ SBC do
 end
 ```
 
-
-## Modeling the CPU class
-
-In order to get Snake6502 to run, we will need to implement all six of
-the programmable registers that the processor provides. However, we can use
-a bit of creative license in how we implement them. In particular, the following
-constraints greatly simplify our work:
-
-* We can separate the computational registers (A, X, Y) from the storage-related
-registers (PC, SP) -- allowing them to be modeled independently from each other.
-
-* We can implement the status register (P) as a collection of individual
-attributes, rather than seven 1-bit flags packs into a single byte.
-
-* Because Snake6502 only relies on the (c)arry, (n)egative, and (z)ero flags,
-we can skip implementing the other four status flags and still have a 
-playable game.
-
-With those limitations in mind, let's work through some specs to understand
-how this model ought to behave. For starters, the `Vintage::CPU` class will 
-implement three registers and three flags, initializing them all to 
-zero by default:
+We can treat both the opcode lookup CSV and the instructions definitions DSL 
+as configuration files, to be loaded into the configuration object 
+shown below:
 
 ```ruby
-describe "CPU" do
-  let(:cpu) { Vintage::CPU.new }
+require "csv"
 
-  let(:registers) { [:a, :x, :y] }
-  let(:flags)     { [:c, :n, :z] }
-  
-  it "initializes registers and flags to zero" do
-    (registers + flags).each { |e| cpu[e].must_equal(0) }
-  end
-
-   #...
-end
-```
-
-It will be possible to directly set registers via the `#[]=` method, because
-the behavior will be the same for all three registers:
-
-```ruby
-it "allows directly setting registers" do
-  registers.each do |e|
-    value  = rand(0xff)
-
-    cpu[e] = value
-    cpu[e].must_equal(value)
-  end
-end
-```
-
-However, because flags don't have the same update semantics as registers, we 
-will not allow directly setting them via `#[]=`:
-
-```ruby
-it "does not allow directly setting flags" do
-  flags.each do |e|
-    value  = rand(0xff)
-
-    err = -> { cpu[e] = value }.must_raise(ArgumentError)
-    err.message.must_equal "#{e.inspect} is not a register"
-  end
-end
-```
-
-The carry flag (c) can toggled via the `set_carry` and `clear_carry` methods:
-
-```ruby
-it "allows setting the c flag via set_carry and clear_carry" do
-  cpu.set_carry
-  expect_flags(:c => 1)
-
-  cpu.clear_carry
-  expect_flags(:c => 0)
-end
-```
-
-The carry flag (c) can also be set conditionally, using the `carry_if` method:
-
-```ruby
-it "allows conditionally setting the c flag via carry_if" do
-  # true condition
-  x = 3
-  cpu.carry_if(x > 1)
-
-  expect_flags(:c => 1)
-
-  # false condition
-  x = 0
-  cpu.carry_if(x > 1)
-
-  expect_flags(:c => 0)
-end
-```
-
-
-```ruby
-it "sets z=1 when a result is zero, sets z=0 otherwise" do
-  cpu.result(0)
-  expect_flags(:z => 1)
-
-  cpu.result(0xcc)
-  expect_flags(:z => 0)
-end
-
-it "sets n=1 when result is 0x80 or higher, n=0 otherwise" do
-  cpu.result(rand(0x80..0xff))
-  expect_flags(:n => 1)
-
-  cpu.result(rand(0x00..0x7f))
-  expect_flags(:n => 0)
-end
-
-it "truncates results to fit in a single byte" do
-  cpu.result(0x1337).must_equal(0x37)
-end
-
-it "implicitly calls result() when registers are set" do
-  registers.each do |e|
-    cpu[e] = 0x100
-    
-    cpu[e].must_equal(0)
-    expect_flags(:z => 1, :n => 0)
-
-    cpu[e] -= 1
-    
-    cpu[e].must_equal(0xff)
-    expect_flags(:z => 0, :n => 1)
-  end
-end
-```
-
-
-```ruby
-module Vintage
-  class CPU
-    def initialize
-      @registers = { :a => 0, :x => 0, :y => 0 }
-      @flags     = { :z => 0, :c => 0, :n => 0 }
-    end
-
-    def [](key)
-      @registers[key] || @flags.fetch(key)
-    end
-
-    def []=(key, value)
-      raise ArgumentError unless @registers.key?(key)
-
-      @registers[key] = result(value)
-    end
-
-    def set_carry
-      @flags[:c] = 1
-    end
-
-    def clear_carry
-      @flags[:c] = 0
-    end
-
-    def carry_if
-      yield ? set_carry : clear_carry
-    end
-
-    def result(number)
-      number &= 0xff
-
-      @flags[:z] = (number == 0 ? 1 : 0)
-      @flags[:n] = number[7]
-
-      number
-    end
-  end
-end
-```
-
-## Storage
-
-REPL TOUR!
-
-```ruby
-module Vintage
-  class Storage
-    PROGRAM_OFFSET = 0x0600
-    STACK_OFFSET   = 0x0100
-
-    def initialize
-      @memory = Hash.new(0)
-      @pos    = PROGRAM_OFFSET
-      @sp     = 255
-    end
-
-    def load(bytecode)
-      index = PROGRAM_OFFSET
-
-      bytecode.each_with_index { |c,i| @memory[index+i] = c }
-    end
-
-    def [](address)
-      @memory[address]
-    end
-
-    def []=(address, value)
-      @memory[address] = value
-    end
-
-    def next(n=1)
-      data = n.times.map { |i| @memory[@pos + i] }
-      @pos += n
-
-      n == 1 ? data.first : data
-    end
-
-    def jump(address)
-      @pos = address
-    end
-
-    def branch(test, offset)
-      return unless test
-
-      if offset <= 0x80
-        @pos += offset
-      else
-        @pos -= (0xff - offset + 1)
-      end
-    end
-
-    def jsr(address)
-      low, high = bytes(@pos)
-
-      push(low)
-      push(high)
-
-      jump(address)
-    end
-
-    def rts
-      h = pull
-      l = pull
-
-      @pos = int16([l, h])
-    end
-
-    def push(value)
-      @memory[STACK_OFFSET + @sp] = value
-      @sp -= 1
-    end
-
-    def pull
-      @sp += 1
-
-      @memory[STACK_OFFSET + @sp]
-    end
-
-    def int16(bytes)
-      bytes.pack("c*").unpack("v").first
-    end
-
-    def bytes(num)
-      [num].pack("v").unpack("c*")
-    end
-  end
-end
-```
-
-## Display
-
-REPL TOUR!
-
-(Summarize)
-
-## MemoryMap
-
-REPL TOUR!
-
-```ruby
-module Vintage
-  module MemoryMap
-    RANDOMIZER  = 0xfe
-    KEY_PRESS   = 0xff
-    PIXEL_ARRAY = (0x0200..0x05ff)
-
-    attr_accessor :ui
-
-    def [](address)
-      case address
-      when RANDOMIZER
-        rand(0xff)
-      when KEY_PRESS
-        ui.last_keypress
-      else
-        super
-      end
-    end
-
-    def []=(k, v)
-      super
-
-      if PIXEL_ARRAY.include?(k)
-        ui.update(k % 32, (k - 0x0200) / 32, v % 16)
-      end
-    end
-  end
-end
-```
-
-## Reference
-
-REPL TOUR!
-
-```ruby
-module Vintage
-  class Reference
-    def initialize(cpu, mem, mode)
-      @mem  = mem
-      @mode = mode
-
-      @address = computed_address(cpu)
-    end
-
-    def address
-      raise NotImplementedError if ["#", "IM"].include?(@mode)
-
-      @address
-    end
-    
-    def value
-      raise NotImplementedError if ["#", "@"].include?(@mode)
-      return @address           if @mode == "IM"
-
-
-      @mem[@address]
-    end
-
-    def value=(e) 
-      raise NotImplementedError if ["IM", "#", "@"].include?(@mode)
-
-      @mem[@address] = e
-    end
-
-    private
-
-    def computed_address(cpu)
-      case @mode
-      when "IM", "ZP", "@"
-        @mem.next
-      when "ZX"
-        (@mem.next + cpu[:x]) % 256
-      when "IX"
-        m = @mem.next
-
-        l = @mem[m + cpu[:x]]
-        h = @mem[m + cpu[:x] + 1]
-
-       @mem.int16([l, h])
-      when "IY"
-        m = @mem.next
-
-        l = @mem[m]
-        h = @mem[m + 1]
-
-        @mem.int16([l,h]) + cpu[:y]
-      when "AB"
-        @mem.int16(@mem.next(2))
-      when "AY"
-        @mem.int16(@mem.next(2)) + cpu[:y]
-      when "#"
-        # do nothing
-      else
-        raise NotImplementedError, @mode.inspect
-      end
-    end
-  end
-end
-```
-
-## Config
-
-REPL TOUR!
-
-```ruby
 module Vintage
   class Config
     CONFIG_DIR = "#{File.dirname(__FILE__)}/../../config"
@@ -1115,17 +1136,16 @@ module Vintage
 end
 ```
 
-## Simulator
-
-REPL TOUR!
+Then finally, we can tie everything together with a `Simulator` object that
+instantiates all the objects we need, and kicks off a program execution loop:
 
 ```ruby
-require "csv"
-
 module Vintage
   class Simulator
+    EvaluationContext = Struct.new(:mem, :cpu, :e)
+      
     def self.run(file, ui)
-      config = Vintage::Config.new("6502")
+      config = Vintage::Config.new
       cpu    = Vintage::CPU.new
       mem    = Vintage::Storage.new
 
@@ -1134,86 +1154,38 @@ module Vintage
       
       mem.load(File.binread(file).bytes)
 
-      sim = new(mem, cpu, config)
+      loop do
+        code = mem.next
 
-      loop { sim.step } 
-    end
+        op, mode = config.codes[code]
+        if name
+          e = Operand.read(mem, mode, cpu[:x], cpu[:y])
 
-    def initialize(mem, cpu, config)
-      @mem    = mem
-      @cpu    = cpu
-      @config = config
-    end
-
-    attr_reader :mem, :cpu, :ref
-
-    def step
-      name, mode = @config.codes[mem.next]
-
-      if name
-        @ref = Reference.new(cpu, mem, mode)
-
-        instance_exec(&@config.definitions[name])
-      else
-        raise LoadError, "No operator matches code: #{'%.2x' % code}"
+          EvaluationContext.new(mem, cpu, e)
+                           .instance_exec(&config.definitions[op])
+        else
+          raise LoadError, "No operation matches code: #{'%.2x' % code}"
+        end
       end
     end
   end
 end
 ```
 
-### DSL / Code mappings
+At this point, you're ready to play Snake! Or if you've been following closely
+along with this article all the way to the end, you're probably more likely to
+have a cup of coffee or take a nap from information overload. Either way,
+congratulations for making it all the way through this long and winding
+issue of Practicing Ruby!
 
-If we take a few of the games instructions and annotate them with
-their equivalent assembly code and some comments, things immediately
-become a whole lot more understandable.
+## Further Reading
 
-Keyboard checking subroutine:
+This article and the [Vintage simulator](http://github.com/sandal/vintage) is built on top of a ton of other
+people's ideas and learning resources. Here are some of the works I referred to
+while researching this topic:
 
-```
-$064d    a5 ff     LDA $ff      # read the last key pressed on the keyboard
-$064f    c9 77     CMP #$77     # check if the key was "w" (ASCII code 0x77)
-$0651    f0 0d     BEQ $0660    # if so, jump forward to $0660 
-$0653    c9 64     CMP #$64     # check if the key was "d" (ASCII code 0x64)
-$0655    f0 14     BEQ $066b    # if so, jump forward to $066b
-$0657    c9 73     CMP #$73     # check if the key was "s" (ASCII code 0x73)
-$0659    f0 1b     BEQ $0676    # if so, jump forward to $0676
-$065b    c9 61     CMP #$61     # check if the key was "a" (ASCII code 0x61)
-$065d    f0 22     BEQ $0681    # if so, jump forward to $0681
-```
-
-Apple generation subroutine:
-```
-$062a    a5 fe     LDA $fe
-$062c    85 00     STA $00
-$062e    a5 fe     LDA $fe
-$0630    29 03     AND #$03
-$0632    18        CLC 
-$0633    69 02     ADC #$02
-$0635    85 01     STA $01
-```
-
-Apple drawing subroutine:
-
-```
-$0719    a0 00     LDY #$00
-$071b    a5 fe     LDA $fe
-$071d    91 00     STA ($00),Y
-```
-
-
-Collision detection subroutine:
-
-```
-$0694    a5 00     LDA $00
-$0696    c5 10     CMP $10
-$0698    d0 0d     BNE $06a7
-$069a    a5 01     LDA $01
-$069c    c5 11     CMP $11
-$069e    d0 07     BNE $06a7
-$06a0    e6 03     INC $03
-$06a2    e6 03     INC $03
-$06a4    20 2a 06  JSR $062a
-```
-
-
+* [Easy 6502](http://skilldrick.github.io/easy6502/) by Nick Morgan
+* [Mos Technology 6502](http://en.wikipedia.org/wiki/MOS_Technology_6502) @ Wikipedia
+* [Rockwell 6502 Programmer's Manual](http://homepage.ntlworld.com/cyborgsystems/CS_Main/6502/6502.htm)  by Bluechip
+* [NMos 6502 opcodes](http://www.6502.org/tutorials/6502opcodes.html) by John Pickens
+* [r6502](https://github.com/joelanders/r6502) by Joe Landers
