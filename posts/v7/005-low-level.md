@@ -192,10 +192,10 @@ describe "Storage" do
 end
 ```
 
-But because we also have the concept of a 'current location' in memory,
-there is a lot more we can do with this simple structure. Let's
-walk through the remaining tests for `Vintage::Storage` to see
-what else it implements.
+But because the program counter keeps track of a 'current location' 
+in memory at any point in time, there is a lot more we can do with 
+this simple structure. Let's walk through the remaining tests 
+for `Vintage::Storage` to see what else it implements.
 
 **Program loading**
 
