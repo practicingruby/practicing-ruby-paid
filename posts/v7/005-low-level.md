@@ -171,7 +171,7 @@ computations, the 6502 processor relies on its memory for pretty much
 everything. Program code, data, and the system stack all reside in 
 the same 16-bit addressing space. What's more, virtually all flow
 control is handled by manipulating a single index (the program counter)
-that indicates the next instruction to be executed by the processor.
+that indicates memory address of the next instruction to be executed by the processor.
 
 This "all in one bucket" approach is a double-edged sword. It makes it harder to
 write safe programs, but the tradeoff is that the storage model itself is very
