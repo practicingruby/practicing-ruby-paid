@@ -159,15 +159,15 @@ LDA { cpu[:a] = mem[e]  }
 STA { mem[e]  = cpu[:a] }
 ```
 
-This realization also tells us that our core memory module will not need to take
+This realization also tells us that the memory module will not need to take
 addressing modes into account as long as they're precomputed elsewhere. With
 that in mind, let's get started building a storage model for our simulator.
 We'll deal with the hairy problem of addressing modes later.
 
-## Core memory
+## Memory
 
 Except for a few registers that are used to store intermediate
-computations, the 6502 processor relies on its core memory for pretty much
+computations, the 6502 processor relies on its memory for pretty much
 everything. Program code, data, and the system stack all reside in 
 the same 16-bit addressing space. What's more, virtually all flow
 control is handled by manipulating a single index (the program counter)
