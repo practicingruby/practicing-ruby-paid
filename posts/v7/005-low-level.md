@@ -169,9 +169,9 @@ We'll deal with the hairy problem of addressing modes later.
 Except for a few registers that are used to store intermediate
 computations, the 6502 processor relies on its memory for pretty much
 everything. Program code, data, and the system stack all reside in 
-the same 16-bit addressing space. What's more, virtually all flow
-control is handled by manipulating a single index (the program counter)
-that indicates memory address of the next instruction to be executed by the processor.
+the same 16-bit addressing space. Even flow control is entirely
+dependent on memory: the program counter itself is nothing more
+than an address that is used to look up the next instruction to run.
 
 This "all in one bucket" approach is a double-edged sword. It makes it harder to
 write safe programs, but the tradeoff is that the storage model itself is very
