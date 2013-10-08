@@ -201,7 +201,7 @@ for `Vintage::Storage` to see what else it implements.
 
 When a program is loaded into memory, there is nothing special about the 
 way it is stored, it's just like any other data. In a real 6502 processer,
-the "Program Counter" register is used to store the address of the 
+a register is used to store the address of the 
 next instruction to be run, and that address is used to read an opcode
 from memory. In our simulator, we can let the `Storage` class keep track 
 of this number for us, incrementing it whenever we call 
