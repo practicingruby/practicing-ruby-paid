@@ -238,8 +238,8 @@ end
 
 **Flow control + branching**
 
-Very rudimental flow control is supported by simply setting the 
-program counter to a particular address, which allows the 
+Very rudimentary flow control is supported by setting the 
+program counter to a particular address, which causes the 
 processor to `jump` to the instruction at that address:
 
 ```ruby
