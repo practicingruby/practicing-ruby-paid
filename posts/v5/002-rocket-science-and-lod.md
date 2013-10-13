@@ -181,7 +181,7 @@ simulation. The video below shows me interacting with it over IRC:
 
 <div align="center">
 <iframe width="800" height="600"
-src="http://www.youtube.com/embed/Yqofx6MbYFU?vq=480&rel=0" frameborder="0" allowfullscreen></iframe>
+src="//www.youtube.com/embed/Yqofx6MbYFU?vq=480&rel=0" frameborder="0" allowfullscreen></iframe>
 </div>
 
 In the video, the communications delay is set at only a couple of seconds, but it

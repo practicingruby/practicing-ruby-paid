@@ -56,7 +56,7 @@ in [Clojure][clojure]. Check out the video below to see what it looks like in ac
 
 <div align="center">
 <iframe width="720" height="480"
-src="http://www.youtube.com/embed/shm7QcJMvig?rel=0" frameborder="0" allowfullscreen></iframe>
+src="//www.youtube.com/embed/shm7QcJMvig?rel=0" frameborder="0" allowfullscreen></iframe>
 </div>
 
 I knew right away that this was exactly the kind of simulation I wanted to
@@ -85,7 +85,7 @@ idea of the algorithm:
 
 <div align="center">
 <iframe width="720" height="480"
-src="http://www.youtube.com/embed/p_XmuRHs57g?rel=0" frameborder="0" allowfullscreen></iframe>
+src="//www.youtube.com/embed/p_XmuRHs57g?rel=0" frameborder="0" allowfullscreen></iframe>
 </div>
 
 It was fairly easy to get to this point, but then it became extremely hard to 

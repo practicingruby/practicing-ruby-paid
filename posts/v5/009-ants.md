@@ -8,7 +8,7 @@ food sources:
 
 <div align="center">
 <iframe width="720" height="480"
-src="http://www.youtube.com/embed/f2IX1Y5o6pc?rel=0" frameborder="0" allowfullscreen></iframe>
+src="//www.youtube.com/embed/f2IX1Y5o6pc?rel=0" frameborder="0" allowfullscreen></iframe>
 </div>
 
 While this search effort may seem highly organized, it is the
