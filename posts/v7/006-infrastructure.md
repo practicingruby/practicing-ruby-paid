@@ -3,6 +3,17 @@ Ruby 2.0, and JRuby? (Or some other smallish example)
 
 Discuss Practicing Ruby's dependencies (in development and in production)
 
+  - Ubuntu
+  - NodeJS
+  - Ruby (via Chruby)
+  - Python
+  - Nginx (with SSL) + Unicorn
+  - PostgreSQL
+  - Delayed Job
+  - God
+  - Whenever
+  - Service Deps: Mailchimp, Mixpanel, Github, Stripe, Sendgrid
+ 
 Show how to automate Practicing Ruby's stack. (Maybe not comprehensive, only
 point out where different things are used)
 
