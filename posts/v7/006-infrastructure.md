@@ -58,6 +58,9 @@ Chef also handles workflow management things, such as ensuring that failed
 recipes can be retried, and is capable of picking up where it left off 
 upon failure.
 
+(EXPAND ON ALL THE RECIPES WE USE, AND ON HOW EACH SUBSYSTYEM WORKS
+-- REREAD MATHIAS AND ALSO THE OPSCODE DOCS)
+
 ## Vagrant-omnibus
 
 Unsure what this is used for, discuss w. Mathias.
