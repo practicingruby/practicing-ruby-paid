@@ -109,6 +109,11 @@ Discuss Practicing Ruby's dependencies (in development and in production)
 Show how to automate Practicing Ruby's stack. (Maybe not comprehensive, only
 point out where different things are used)
 
+Note how it was interesting that setting up Chef required us to be *much* more
+specific about our infrastructure, everything was previously no better than
+"works-for-me". Also shows where our brittle pieces were (i.e. initializers and
+a generally brittle dev environment)
+
 Discuss the costs and benefits of working with Chef/Vagrant
 (and the limitations of our current approach)
 
