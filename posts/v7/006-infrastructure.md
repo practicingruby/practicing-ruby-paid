@@ -56,7 +56,14 @@ reusing various bits of functionality.
 
 Chef also handles workflow management things, such as ensuring that failed
 recipes can be retried, and is capable of picking up where it left off 
-upon failure.
+upon failure. This makes the feedback loop a little bit faster
+while developing a cookbook, because you don't usually need to do 
+a whole build from scratch when you encounter an error. 
+
+Chef is a special purpose environment, and its not assumed that its users will
+be strong Ruby programmers.
+
+(note duplication like `default["a"]["b"]["c"]` as convention)
 
 (EXPAND ON ALL THE RECIPES WE USE, AND ON HOW EACH SUBSYSTYEM WORKS
 -- REREAD MATHIAS AND ALSO THE OPSCODE DOCS)
@@ -101,7 +108,7 @@ Discuss Practicing Ruby's dependencies (in development and in production)
   - Python
   - Nginx (with SSL) + Unicorn
   - PostgreSQL
-  - Delayed Job
+  - Delayed Job (Email delivery, cache warming, etc.)
   - God
   - Whenever
   - Service Deps: Mailchimp, Mixpanel, Github, Stripe, Sendgrid
@@ -112,7 +119,9 @@ point out where different things are used)
 Note how it was interesting that setting up Chef required us to be *much* more
 specific about our infrastructure, everything was previously no better than
 "works-for-me". Also shows where our brittle pieces were (i.e. initializers and
-a generally brittle dev environment)
+a generally brittle dev environment). In our conversations, we kept coming back
+to these kinds of things, which is eventually what lead us to add dotenv,
+foreman, mailcatcher, etc.
 
 Discuss the costs and benefits of working with Chef/Vagrant
 (and the limitations of our current approach)
