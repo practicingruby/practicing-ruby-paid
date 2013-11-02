@@ -2,20 +2,16 @@
 
 ## Introduce the concept of automated infrastructure
 
-## Demonstrate how Vagrant is used
+## Getting a base system up and running 
 
-Infrastructure automation starts with "bare metal" resources, which can be
-anything from a physical machine, to a cloud provider, to a virtual machine. The
-basic idea is that you start with a barebones OS installation so that very
-little is assumed about your infrastracture, and everything can be 
-explicitly specified.
+The production environment for practicingruby.com is a 768 MB VPS running Ubuntu
+Linux 12.04.3 ("Precise Pangolin"). Using a combination of [Vagrant][] 
+and [VirtualBox][], it is easy to replicate a similar environment under
+virtualization that can run pretty much anywhere.
 
-For the purposes of this article, we'll use a virtual machine because its the
-easiest system to get up and running with. Vagrant makes working with
-VirtualBox-based virtual machines extremely easy, and will even download a base
-image for you if you don't already have one set up on your machine. You simply
-drop a `Vagrantfile` into a project and set a few configuration attributes
-to get up and running:
+With those two tools installed, all that is needed is a `Vagrantfile` that
+specifies which VM image to use for the base operating system, along with a
+few configuration options:
 
 ```ruby
 VAGRANTFILE_API_VERSION="2"
@@ -26,8 +22,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   config.vm.box_url = "http://cloud-images.ubuntu.com/vagrant/precise/current/"+
                       "precise-server-cloudimg-amd64-vagrant-disk1.box"
 
-  config.vm.network "private_network", ip: "10.10.10.10"
-
+  # Mirror specs of production environment
   config.vm.provider "virtualbox" do |v|
     v.customize ["modifyvm", :id, "--memory", 768]
     v.customize ["modifyvm", :id, "--cpus", 1]
@@ -35,19 +30,31 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 end
 ```
 
-Upon running `vagrant up`, a VirtualBox-based image will be downloaded and
-configured to have 768 MB of memory and a single CPU. It will be accessible
-network-accessible at `10.10.10.10`, and you can even SSH into the box
-by simply typing `vagrant ssh`.
+Running `vagrant up` in the same directory as this file will download the base
+OS image if it isn't already present on your machine, and then fire up a
+VirtualBox VM running Ubuntu Linux. Without the need to do any special
+configuration, you can run `vagrant ssh` to log into the box as soon as 
+it boots up.
 
 Once inside the virtual machine, you'll find that the folder containing the
 `Vagrantfile` on your host machine has automatically been mapped to `/vagrant`.
-This facilitates passing files back and forth between your system and the
+This facilitates passing files back and forth between your host system and the
 virtualized environment.
 
-(show a practical example)
+At this point, we have our base system in place, and we're ready
+to begin working on some infrastructure automation code. Rather than jumping
+into the whole process of setting up Practicing Ruby web, we'll start with a
+more simple example to help you get a feel for things. (REWORD!)
 
-## Demonstrate a minimal cookbook that builds Ruby, updates rubygems, and installs bundler (without Berkshelf?)
+[Vagrant]: http://www.vagrantup.com/
+[VirtualBox]: https://www.virtualbox.org
+
+## Setting up a minimal Ruby environment
+
+* Ubuntu 12.04 ships with Ruby 1.8.7, but we need Ruby 2.0.0
+* Install Ruby 2.0.0 via Ruby-build
+* Upgrade Rubygems to latest
+* Install bundler
 
 ## Walk through the full PR environment
 
