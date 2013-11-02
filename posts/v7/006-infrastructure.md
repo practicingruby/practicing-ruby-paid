@@ -1,3 +1,23 @@
+
+
+## Introduce the concept of automated infrastructure
+
+## Demonstrate how Vagrant is used
+
+## Demonstrate a minimal cookbook that builds Ruby, updates rubygems, and installs bundler (without Berkshelf?)
+
+## Walk through the full PR environment
+
+## Discuss Capistrono deployment, ssh config, hosts setting, etc. 
+
+## Walk through use cases / caveats
+
+## Wrapup
+
+----
+
+## Intro (probably rewrite to frame the story differently / more concretely)
+
 In an ideal world, setting up any software system would not require any
 complicated work at all. You'd just run a script, go grab yourself a coffee, and
 then by the time you got back you'd have a working system up and running. Down
