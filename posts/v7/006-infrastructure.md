@@ -4,6 +4,49 @@
 
 ## Demonstrate how Vagrant is used
 
+Infrastructure automation starts with "bare metal" resources, which can be
+anything from a physical machine, to a cloud provider, to a virtual machine. The
+basic idea is that you start with a barebones OS installation so that very
+little is assumed about your infrastracture, and everything can be 
+explicitly specified.
+
+For the purposes of this article, we'll use a virtual machine because its the
+easiest system to get up and running with. Vagrant makes working with
+VirtualBox-based virtual machines extremely easy, and will even download a base
+image for you if you don't already have one set up on your machine. You simply
+drop a `Vagrantfile` into a project and set a few configuration attributes
+to get up and running:
+
+```ruby
+VAGRANTFILE_API_VERSION="2"
+
+Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
+  config.vm.box = "precise64"
+
+  config.vm.box_url = "http://cloud-images.ubuntu.com/vagrant/precise/current/"+
+                      "precise-server-cloudimg-amd64-vagrant-disk1.box"
+
+  config.vm.network "private_network", ip: "10.10.10.10"
+
+  config.vm.provider "virtualbox" do |v|
+    v.customize ["modifyvm", :id, "--memory", 768]
+    v.customize ["modifyvm", :id, "--cpus", 1]
+  end
+end
+```
+
+Upon running `vagrant up`, a VirtualBox-based image will be downloaded and
+configured to have 768 MB of memory and a single CPU. It will be accessible
+network-accessible at `10.10.10.10`, and you can even SSH into the box
+by simply typing `vagrant ssh`.
+
+Once inside the virtual machine, you'll find that the folder containing the
+`Vagrantfile` on your host machine has automatically been mapped to `/vagrant`.
+This facilitates passing files back and forth between your system and the
+virtualized environment.
+
+(show a practical example)
+
 ## Demonstrate a minimal cookbook that builds Ruby, updates rubygems, and installs bundler (without Berkshelf?)
 
 ## Walk through the full PR environment
@@ -11,6 +54,8 @@
 ## Discuss Capistrono deployment, ssh config, hosts setting, etc. 
 
 ## Walk through use cases / caveats
+
+## Dev improvements: developer mode, mailcatcher, dotenv, foreman
 
 ## Wrapup
 
