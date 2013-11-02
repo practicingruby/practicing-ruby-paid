@@ -58,6 +58,8 @@ more simple example to help you get a feel for things. (REWORD!)
 
 ## Walk through the full PR environment
 
+* Describe that what we're building is production-ish,
+but not a literal copy (and WHY).
 * List out each recipe
 * Show full recipes for new concepts, abridge wherever possible
 
