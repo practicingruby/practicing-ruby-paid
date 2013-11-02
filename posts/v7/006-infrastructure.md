@@ -58,6 +58,9 @@ more simple example to help you get a feel for things. (REWORD!)
 
 ## Walk through the full PR environment
 
+* List out each recipe
+* Show full recipes for new concepts, abridge wherever possible
+
 ## Discuss Capistrono deployment, ssh config, hosts setting, etc. 
 
 ## Walk through use cases / caveats
