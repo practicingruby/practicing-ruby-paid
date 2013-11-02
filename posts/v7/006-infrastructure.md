@@ -1,3 +1,197 @@
+In an ideal world, setting up any software system would not require any
+complicated work at all. You'd just run a script, go grab yourself a coffee, and
+then by the time you got back you'd have a working system up and running. Down
+the line when your infrastructure changes, someone would tweak
+that script, and then you'd repeat the same process to quickly migrate to an
+updated system. In theory, that's how a well-managed software system ought to
+work.
+
+In practice, many projects don't come anywhere close to that ideal. Development
+environments can be extremely painful to set up without lengthy conversations with
+existing maintainers, and production environments are often maintained by a
+single person who can easily become the bottleneck whenever something goes
+wrong. Even if we have an easy deployment workflow, we often know little about
+the magic that runs behind the scenes to get our code up and running in
+production unless we wrote the deploy script ourselves.
+
+We let things get bad like this because the vast majority of our
+painful experiences happen incrementally. A new dependency with a complex setup
+might get added mid-way through a project, and everyone will feel irritated for
+a day until things get sorted out. As soon as everyone has their systems back
+in working order, the pain goes away and is promptly forgotten about . But as this process is repeated over and over again, it becomes more and more difficult to provision a system from scratch, particularly if not much documentation was written at each step along the way. This is how information silos develop, and its also how we
+end up way over our heads in even relatively simple software projects.
+
+In recent years, awareness of these sort of problems has given rise to a
+DevOps-oriented mindset in some projects and organizations. Although DevOps
+covers a lot of different concepts, one cornerstone is that robust 
+infrastructure automation is key to getting us out of this particular tarpit.
+If we can treat our infrastructure as we do our code, we're able to version it,
+incrementally improve it, share reusable bits of process with each other, and
+most importantly explictly specify all the moving parts that make up our systems.
+
+In this article, I will show you how Mathias Lafeldt built a Chef
+cookbook that takes a bare Ubuntu system and configures all the necessary
+infrastructure to run Practicing Ruby's web application -- suitable for running
+under virtualization via Vagrant, or in the cloud on Amazon EC2. This example is
+particularly interesting because we never considered using a systems automation
+framework when we built this web app. Building a cookbook years after the system
+was already in production shows us that these techniques can be applied to existing systems and not just greenfield applications.
+
+### What is the workflow like when developing a chef cookbook?
+
+To automate an application's infrastructure, you build a cookbook made up of
+recipes that install, configure and manage all of the dependencies your
+application relies on.
+
+Cookbooks are typically built on top of lower-level resources, some of
+which are provided by Chef itself, and others are provided by third-party
+cookbooks that were written by other Chef users.
+
+Recipes are configurable via Chef's attribute system, and also can use ERB
+templates to generate whatever configuration files a system needs.
+
+When you provision a system, recipes only run if they haven't already
+successfully completed, and Chef will pick up where it left off whenever there
+is a falure.
+
+http://mlafeldt.github.io/blog/2012/09/learning-chef/
+http://docs.opscode.com/essentials_cookbook_recipes.html
+http://docs.opscode.com/resource.html
+
+Things like external dependencies, supported platforms, included recipes, etc.
+are specified in `metadata.rb`.
+
+## What are the main differences between automated infrastructure and manually configured systems?
+
+On a manually configured system, you typically will run commands and edit files
+to install and configure software once. You might write some documentation, but
+there is no way to verify it without keying everything in manually on a new
+system. You may also script some parts of the process, but those scripts will
+not necessarily be particularly fault tolerant, and failures can leave the
+system in an inconsistent state. Unless you are very familiar with the platform
+you're administering, finding all the relevant configuration files and figuring
+out what programs need to be running can be challenging. If the system is
+suddenly wiped out or you need to provision a new one, doing so can be quite
+challenging
+
+In an automated infrastructure, the running system is essentially the end result
+of a code-based process that is explicitly specified. Because automated
+infrastructure relies on nothing more than source code for cookbooks and bare
+metal resources (such as a base Ubuntu server installation), the system itself
+is not administered directly but managed through a configuration management
+system (i.e. Chef). If something goes wrong or a new system needs to be
+provisioned, it is very easy to do this in a relaible way, since the whole
+system is designed to be formally specified from scratch.
+
+There is of course overhead in managing all the automations (and getting their
+prerequisites set up), but the gain is a much more robust and repeatable
+process. Other costs of automation include the learning curve: you need to know
+a bit about the systems you are configuring to use cookbooks, but you also need
+to know about how cookbooks work, too (they're leaky abstractions). There is
+also the "build-borrow-or-steal" issue common to all open-source, in which you
+may need to evaluate several cookbooks before finding one that meets your needs,
+and in the worst case you may need to write one yourself. But this is no
+different than reading information spread around the web when it comes to manual
+configurations.
+
+## What are typical use cases / benefits for infrastructure automation
+
+Tons of them!
+
+* Provisioning and scaling production systems
+* Building turn-key development environments for complex applications
+  (simple ones may not be worth the overhead)
+* Experimenting with platform and network configurations under virtualization
+  and with no risk of breaking "real" systems
+* Building end-to-end testing environments
+* Managing the complexity of decoupling a system into many independent services.
+* Reducing institutionalized knowledge while improving process reuse / standardization.
+* Making systems easier to evolve / change over time.
+
+### Practicing Ruby's infrastructure
+
+* Ruby
+* Python (for syntax highlighting)
+* Javascript (for Rails)
+* Build-essential (C compiler, headers, etc)
+* 
+
+---
+
+
+Establish tedium/brittleness of manual system provisioning
+We're building a slightly modified version of a production environment
+suitable for experimenting with various system configuration and debugging
+*most* production issues.
+
+Common uses:
+- production systems deployable directly from Chef
+- turnkey development environments
+- architectural testbeds
+
+(we're *sort of* in the third category)
+
+Chef/Vagrant offer similar promises and costs as something like Rails,
+lets you focus on much higher level problems, but involves learning
+a whole new environment and plying by its rules.
+
+Having *a* formal system in place seems like its valuable on its own even
+without considering the specific benefits that system offers. Because it forces
+you to be explicit, invites questions about efficiency/best practices, and gives
+a standard set of concepts for communicating with others.
+
+I have not been that involved with Practicing Ruby's system administration, so
+it was fun for me to finally see the whole stack specified.
+
+--------------------------------------------------------------------
+
+What is the quickest win I can give the reader?
+
+"After installing a couple packages (VirtualBox and Vagrant), it is possible to
+get an entire Ubuntu system from zero to having everything you need to run
+practicing-ruby-web by typing just the following commands"
+
+
+I don't assume the reader is familiar with Chef/Vagrant except
+maybe having a vague idea that it's a system automation platform.
+
+I don't want to offer a tutorial as much as a conceptual
+understanding of what "infrastructure as code" can look like,
+in the context of a semi-realistic example.
+
+By the end of the article, I want the reader to know how
+the various parts (Virtualbox, Vagrant, Vagrant-omnibus, 
+Chef recipes, attributes, templates, and Berkshelf) all fit together.
+
+I want them to notice the similarities and differences between
+typical Ruby programming (tools + practices) and Chef programming.
+
+I want the reader to be able to understand most of the Practicing Ruby cookbook,
+at least well enough to:
+
+1) Provision a running copy of the app themselves
+2) Use the code as an example for provisioning their own systems to 
+experiment with.
+
+I don't expect that someone will be able to immediately take the knowledge from
+this article and go out to do serious devops work. But I do want them to get far
+enough to be able to experiment while reading documentation, resources, etc.
+
+
+---------------------------------------------------------------
+
+Outside-in approach:
+
+1. Vagrantfile
+2. Berksfile / metadata.rb
+3. Attributes / chef.json
+4. Recipes
+5. Templates
+
+
+
+---------------------------------------------------------------
+
 ## VirtualBox: 
 
 A free virtualization system, which lets you run
@@ -69,6 +263,9 @@ be strong Ruby programmers.
 -- REREAD MATHIAS AND ALSO THE OPSCODE DOCS)
 
 ## Vagrant-omnibus
+
+
+
 
 Unsure what this is used for, discuss w. Mathias.
 Is it basically a version manager / installer for Chef (i.e. RVM for chef?)
