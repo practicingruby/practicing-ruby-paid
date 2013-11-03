@@ -14,22 +14,6 @@ few configuration options:
 ```ruby
 VAGRANTFILE_API_VERSION="2"
 
-## Introduce the concept of automated infrastructure
-
-## Getting a base system up and running 
-
-The production environment for practicingruby.com is a 768 MB VPS running Ubuntu
-Linux 12.04.3 ("Precise Pangolin"). Using a combination of [Vagrant][] 
-and [VirtualBox][], it is easy to replicate a similar environment under
-virtualization that can run pretty much anywhere.
-
-With those two tools installed, all that is needed is a `Vagrantfile` that
-specifies which VM image to use for the base operating system, along with a
-few configuration options:
-
-```ruby
-VAGRANTFILE_API_VERSION="2"
-
 Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   config.vm.box = "precise64"
 
@@ -63,7 +47,7 @@ more simple example to help you get a feel for things. (REWORD!)
 [Vagrant]: http://www.vagrantup.com/
 [VirtualBox]: https://www.virtualbox.org
 
-## Setting up a minimal Ruby environment
+## A recipe for cooking up a minimal Ruby environment
 
 Of the various open-source infrastructure automation tools, Chef is among the
 most widely supported systems available. It is a good option for Ruby
@@ -75,7 +59,7 @@ The fundamental unit of organization in Chef is the recipe. A recipe defines
 various resources which are used for managing some aspect of a system's
 infrastructure. Even if you've never seen a Chef recipe before, you should
 be able to get a basic idea of how they are used by looking at the 
-following code:
+following simplified example:
 
 ```ruby
 include_recipe "ruby_build"
@@ -99,22 +83,44 @@ When executed, this recipe does all of the following things:
 3. Updates Rubygems to the latest version.
 4. Installs the `bundler` gem.
 
-(explain the cost/benefit of using a DSL vs. a script here. Also
-mention the hardcoded version #)
+In other words, what we have here is an automated means of setting up a
+barebones Ruby environment. The recipe itself isn't that much more or less
+code than what it would take to run the equivalent shell commands manually, 
+but it is written at a much higher level of abstraction. As a result, the
+Chef code can bake in robust error handling, consistency checks,
+dependency management, and other useful features that would be cumbersome
+to implement manually in a shell script.
 
-While the equivalent shell script that could be used to accomplish the same
-results would likely be just as easy to write, the Chef code is a lot more
-robust. Behind the scenes, Chef automatically keeps track of whether actions
-have succeeded or failed and lets you pick up where you left off whenever 
-there is an error. It also knows whether or not a given action needs to be taken
-or not, based on what has changed since the last time the recipe ran. Those
-benefits are clear even in this very simple example, but as recipes get more
-complex, the more advanced features of Chef become even more valuable.
+The difference between the two approaches may seem marginal at first glance,
+but even in this very basic example, we can see a tangible benefit of using 
+Chef. If you were to attempt to manually install `ruby_build` on an Ubuntu 
+system, you would also need to install the `git-core`, `libssl-dev`, 
+and `zlib1g-dev` packages. To know that, you'd either need to find out by
+trial and error or dig through the wiki page for `ruby_build` to find a 
+note about these dependencies. The cookbook we used to install `ruby_build`
+took care of installing these packages for us, giving us one less thing 
+to think about when configuring our systems, and one less stumbling block
+to trip over. 
 
+## Section here about boilerplate?
 
-In this recipe, the `ruby_build_ruby` resource and `gem_package` resource are
-provided by the `ruby_build` recipe, and the `execute` resource is a 
-core Chef feature.
+Of course, this added power doesn't come for free. Like any
+framework, Chef requires you to wire up a bit of boilerplate code before 
+you can make use of it. For example, each cookbook is expected to have a
+`metadata.rb` file that specifies which recipes it includes, what platforms it
+supports, what external cookbooks it depends on, and various other bits of
+information. Here's a stripped down example of what that file looks like:
+
+```ruby
+name              "demo"
+version           "1.0.0"
+recipe            "demo::default", "Installs a minimal Ruby environment"
+
+supports "ubuntu", ">= 12.04"
+
+depends "ruby_build"
+```
+
 
 
 
@@ -131,16 +137,6 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     chef.json = { "run_list" =>  ["recipe[demo::default]"] }
   end
 end
-```
-
-```ruby
-name              "demo"
-version           "1.0.0"
-recipe            "demo::default", "Installs a minimal Ruby environment"
-
-supports "ubuntu", ">= 12.04"
-
-depends "ruby_build"
 ```
 
 
