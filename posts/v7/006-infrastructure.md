@@ -1,4 +1,18 @@
+## Introduce the concept of automated infrastructure
 
+## Getting a base system up and running 
+
+The production environment for practicingruby.com is a 768 MB VPS running Ubuntu
+Linux 12.04.3 ("Precise Pangolin"). Using a combination of [Vagrant][] 
+and [VirtualBox][], it is easy to replicate a similar environment under
+virtualization that can run pretty much anywhere.
+
+With those two tools installed, all that is needed is a `Vagrantfile` that
+specifies which VM image to use for the base operating system, along with a
+few configuration options:
+
+```ruby
+VAGRANTFILE_API_VERSION="2"
 
 ## Introduce the concept of automated infrastructure
 
@@ -55,6 +69,40 @@ more simple example to help you get a feel for things. (REWORD!)
 * Install Ruby 2.0.0 via Ruby-build
 * Upgrade Rubygems to latest
 * Install bundler
+
+Of the various open-source infrastructure automation tools, Chef is among the
+most widely supported systems available. It is a good option for Ruby
+programmers, because its entire DSL is written in Ruby and many of its
+conventions overlap with standard Ruby practices.
+
+```ruby
+# Install ruby-build
+include_recipe "ruby_build"
+
+# Build and install Ruby version using ruby-build. By installing it to
+# /usr/local, we ensure it is the new global Ruby version from now on.
+ruby_build_ruby node["demo"]["ruby"]["version"] do
+  prefix_path "/usr/local"
+end
+
+# Update to the latest RubyGems version
+execute "update-rubygems" do
+  command "gem update --system"
+  not_if  "gem list | grep -q rubygems-update"
+end
+
+# Install Bundler
+gem_package "bundler"
+```
+
+In this recipe, the `ruby_build_ruby` resource and `gem_package` resource are
+provided by the `ruby_build` recipe, and the `execute` resource is a 
+core Chef feature.
+
+
+```ruby
+default["demo"]["ruby"]["version"] = "2.0.0-p247"
+```
 
 ```ruby
 Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
@@ -81,89 +129,8 @@ supports "ubuntu", ">= 12.04"
 depends "ruby_build"
 ```
 
-```ruby
-default["demo"]["ruby"]["version"] = "2.0.0-p247"
-```
-
-```ruby
-# Install ruby-build
-include_recipe "ruby_build"
-
-# Build and install Ruby version using ruby-build. By installing it to
-# /usr/local, we ensure it is the new global Ruby version from now on.
-ruby_build_ruby node["demo"]["ruby"]["version"] do
-  prefix_path "/usr/local"
-  action      :install
-end
-
-# Update to the latest RubyGems version
-execute "update-rubygems" do
-  command "gem update --system"
-  action  :run
-  not_if  "gem list | grep -q rubygems-update"
-end
-
-# Install Bundler
-gem_package "bundler"
-```
 
 
-
-## Introduce the concept of automated infrastructure
-
-## Getting a base system up and running 
-
-The production environment for practicingruby.com is a 768 MB VPS running Ubuntu
-Linux 12.04.3 ("Precise Pangolin"). Using a combination of [Vagrant][] 
-and [VirtualBox][], it is easy to replicate a similar environment under
-virtualization that can run pretty much anywhere.
-
-With those two tools installed, all that is needed is a `Vagrantfile` that
-specifies which VM image to use for the base operating system, along with a
-few configuration options:
-
-```ruby
-VAGRANTFILE_API_VERSION="2"
-
-Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
-  config.vm.box = "precise64"
-
-  config.vm.box_url = "http://cloud-images.ubuntu.com/vagrant/precise/current/"+
-                      "precise-server-cloudimg-amd64-vagrant-disk1.box"
-
-  # Mirror specs of production environment
-  config.vm.provider "virtualbox" do |v|
-    v.customize ["modifyvm", :id, "--memory", 768]
-    v.customize ["modifyvm", :id, "--cpus", 1]
-  end
-end
-```
-
-Running `vagrant up` in the same directory as this file will download the base
-OS image if it isn't already present on your machine, and then fire up a
-VirtualBox VM running Ubuntu Linux. Without the need to do any special
-configuration, you can run `vagrant ssh` to log into the box as soon as 
-it boots up.
-
-Once inside the virtual machine, you'll find that the folder containing the
-`Vagrantfile` on your host machine has automatically been mapped to `/vagrant`.
-This facilitates passing files back and forth between your host system and the
-virtualized environment.
-
-At this point, we have our base system in place, and we're ready
-to begin working on some infrastructure automation code. Rather than jumping
-into the whole process of setting up Practicing Ruby web, we'll start with a
-more simple example to help you get a feel for things. (REWORD!)
-
-[Vagrant]: http://www.vagrantup.com/
-[VirtualBox]: https://www.virtualbox.org
-
-## Setting up a minimal Ruby environment
-
-* Ubuntu 12.04 ships with Ruby 1.8.7, but we need Ruby 2.0.0
-* Install Ruby 2.0.0 via Ruby-build
-* Upgrade Rubygems to latest
-* Install bundler
 
 ## Walk through the full PR environment
 
