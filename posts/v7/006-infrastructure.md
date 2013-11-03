@@ -65,44 +65,58 @@ more simple example to help you get a feel for things. (REWORD!)
 
 ## Setting up a minimal Ruby environment
 
-* Ubuntu 12.04 ships with Ruby 1.8.7, but we need Ruby 2.0.0
-* Install Ruby 2.0.0 via Ruby-build
-* Upgrade Rubygems to latest
-* Install bundler
-
 Of the various open-source infrastructure automation tools, Chef is among the
 most widely supported systems available. It is a good option for Ruby
 programmers, because its entire DSL is written in Ruby and many of its
-conventions overlap with standard Ruby practices.
+conventions overlap with standard Ruby practices. For those reasons,
+we decided to make use of Chef for our infrastructure automation work (reword!).
+
+The fundamental unit of organization in Chef is the recipe. A recipe defines
+various resources which are used for managing some aspect of a system's
+infrastructure. Even if you've never seen a Chef recipe before, you should
+be able to get a basic idea of how they are used by looking at the 
+following code:
 
 ```ruby
-# Install ruby-build
 include_recipe "ruby_build"
 
-# Build and install Ruby version using ruby-build. By installing it to
-# /usr/local, we ensure it is the new global Ruby version from now on.
-ruby_build_ruby node["demo"]["ruby"]["version"] do
+ruby_build_ruby "2.0.0-p247" do
   prefix_path "/usr/local"
 end
 
-# Update to the latest RubyGems version
 execute "update-rubygems" do
   command "gem update --system"
   not_if  "gem list | grep -q rubygems-update"
 end
 
-# Install Bundler
 gem_package "bundler"
 ```
+
+When executed, this recipe does all of the following things:
+
+1. Installs the `ruby-build` command line tool.
+2. Uses `ruby-build` to compile and install Ruby 2.0 to `/usr/local`.
+3. Updates Rubygems to the latest version.
+4. Installs the `bundler` gem.
+
+(explain the cost/benefit of using a DSL vs. a script here. Also
+mention the hardcoded version #)
+
+While the equivalent shell script that could be used to accomplish the same
+results would likely be just as easy to write, the Chef code is a lot more
+robust. Behind the scenes, Chef automatically keeps track of whether actions
+have succeeded or failed and lets you pick up where you left off whenever 
+there is an error. It also knows whether or not a given action needs to be taken
+or not, based on what has changed since the last time the recipe ran. Those
+benefits are clear even in this very simple example, but as recipes get more
+complex, the more advanced features of Chef become even more valuable.
+
 
 In this recipe, the `ruby_build_ruby` resource and `gem_package` resource are
 provided by the `ruby_build` recipe, and the `execute` resource is a 
 core Chef feature.
 
 
-```ruby
-default["demo"]["ruby"]["version"] = "2.0.0-p247"
-```
 
 ```ruby
 Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
