@@ -47,7 +47,7 @@ more simple example to help you get a feel for things. (REWORD!)
 [Vagrant]: http://www.vagrantup.com/
 [VirtualBox]: https://www.virtualbox.org
 
-## A recipe for cooking up a minimal Ruby environment
+## Cooking up a minimal Ruby environment
 
 Of the various open-source infrastructure automation tools, Chef is among the
 most widely supported systems available. It is a good option for Ruby
@@ -59,7 +59,7 @@ The fundamental unit of organization in Chef is the recipe. A recipe defines
 various resources which are used for managing some aspect of a system's
 infrastructure. Even if you've never seen a Chef recipe before, you should
 be able to get a basic idea of how they are used by looking at the 
-following simplified example:
+following example:
 
 ```ruby
 include_recipe "ruby_build"
@@ -102,47 +102,25 @@ took care of installing these packages for us, giving us one less thing
 to think about when configuring our systems, and one less stumbling block
 to trip over. 
 
-## Section here about boilerplate?
+But as is typical with any very high level system, there are some costs
+associated with getting Chef's underplumbing in place. In particular, the
+following chores are part of getting up and running with Chef and Vagrant:
 
-Of course, this added power doesn't come for free. Like any
-framework, Chef requires you to wire up a bit of boilerplate code before 
-you can make use of it. For example, each cookbook is expected to have a
-`metadata.rb` file that specifies which recipes it includes, what platforms it
-supports, what external cookbooks it depends on, and various other bits of
-information. Here's a stripped down example of what that file looks like:
+* Vagrant needs to be configured to use Chef as its provisioner. 
+* Chef needs to be installed into the Vagrant box.
+* External cookbooks need to be downloaded and installed.
+* Various bits of metadata about the cookbook need to be specified.
 
-```ruby
-name              "demo"
-version           "1.0.0"
-recipe            "demo::default", "Installs a minimal Ruby environment"
+In a very similar fashion to packaging up a Ruby gem or configuring a Rails
+application for the first time, these chores are tedious but the workflow is
+similar across projects, and the work only needs to be done once per project.
+For that reason, its not terribly important for you to understand every
+last detail about configuring Chef and Vagrant right now. But if you
+feel like it would be cheating to skip over the boilerplate, check out this
+[sample cookbook](https://github.com/elm-city-craftworks/practicing-ruby-examples/tree/master/v7/006/minimal-cookbook-demo)
+and try to make some sense of it before moving on.
 
-supports "ubuntu", ">= 12.04"
-
-depends "ruby_build"
-```
-
-
-
-
-```ruby
-Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
-  # ...
-
-  config.omnibus.chef_version = "11.6.2"
-
-  config.vm.provision :chef_solo do |chef|
-    chef.cookbooks_path = "vendor/cookbooks"
- 
-    # Specify the recipe to run
-    chef.json = { "run_list" =>  ["recipe[demo::default]"] }
-  end
-end
-```
-
-
-
-
-## Walk through the full PR environment
+## Provising a complete Rails environment
 
 * List out each recipe
 * Show full recipes for new concepts, abridge wherever possible
