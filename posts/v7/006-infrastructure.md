@@ -120,10 +120,40 @@ feel like it would be cheating to skip over the boilerplate, check out this
 [sample cookbook](https://github.com/elm-city-craftworks/practicing-ruby-examples/tree/master/v7/006/minimal-cookbook-demo)
 and try to make some sense of it before moving on.
 
-## Provising a complete Rails environment
+## Provisioning an environment for practicingruby.com
 
-* List out each recipe
-* Show full recipes for new concepts, abridge wherever possible
+Practicing Ruby's web app is built on top of a conservative software stack that
+should be familiar to most Rails developers: Ubuntu Linux, Nginx, Unicorn, PostgreSQL, 
+God, DelayedJob, Capistrano, Ruby 2.0, and Rails 3.2. There's nothing
+particularly exciting about these choices, but they get the job done.
+
+We've never had a strong urge to reduce Practicing Ruby's system
+administration overhead, because the slow pace of our development and relatively 
+low complexity of the application itself have never caused us enough pain to 
+justify learning a whole new way of doing things. But when Mathias
+volunteered to build a Chef cookbook for us, we were excited to
+take him up on the offer. As Mathias began his work, Jordan and I quickly 
+realized two things:
+
+1) That I knew next-to-nothing about Practicing Ruby's production environment.
+Pretty much everything below the Rails layer was pure magic to me, because I
+never needed to touch it. This made me very dependent on Jordan for our
+sysadmin work, but because we almost never experienced infrastructure-level
+failures it wasn't much of a concern for us.
+
+2) The configuration data in our system was scattered all over the place.
+Jordan could easily answer questions about how things were set up when asked for
+a specific piece of information, but we didn't have anything even closely resembling 
+a roadmap of where everything was and how it all came together. This made building 
+a fresh system from scratch very difficult if you didn't have specialized 
+knowledge about our setup.
+
+These insights are not especially profound, but I still count them as the first
+benefit we got from attempting to automate our infrastructure. The two problems
+listed above tend to feed into each other, and easily arise in circumstances
+where one person becomes an information silo to save another from having to
+spend time learning something. If writing a Chef cookbook could help us break
+down those walls, that would be a win in itself.
 
 ## Discuss Capistrono deployment, ssh config, hosts setting, etc. 
 
@@ -132,6 +162,7 @@ and try to make some sense of it before moving on.
 ## Dev improvements: developer mode, mailcatcher, dotenv, foreman
 
 ## Wrapup
+
 
 ----
 
@@ -237,15 +268,6 @@ configurations.
 
 Tons of them!
 
-* Provisioning and scaling production systems
-* Building turn-key development environments for complex applications
-  (simple ones may not be worth the overhead)
-* Experimenting with platform and network configurations under virtualization
-  and with no risk of breaking "real" systems
-* Building end-to-end testing environments
-* Managing the complexity of decoupling a system into many independent services.
-* Reducing institutionalized knowledge while improving process reuse / standardization.
-* Making systems easier to evolve / change over time.
 
 ### Practicing Ruby's infrastructure
 
