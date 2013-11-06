@@ -1,15 +1,55 @@
-## Introduce the concept of automated infrastructure
+The traditional approach to system administration work is a fundamentally 
+brittle and error-prone process. The core problem is 
+that managing a system by hand is roughly equivalent to hot-patching a 
+running program rather than working with its source code. This makes it
+very difficult to fix problems when they occur, and also makes it much
+more challenging to maintain an accurate mental model of how
+the system will behave with each new change.
+
+The risks of doing system administration work manually can certainly be
+mitigated somewhat through a combination of good documentation, common
+conventions, regular system backups, and sufficient knowledge of the
+problem domain. Even without those luxuries, the effects of system-level
+failures are not always catastrophic: a few minutes of 
+production downtime because of a misconfigured server setup, or a few 
+hours of downtime for a single developer because of a botched system 
+upgrade would probably not be considered the end of the world in most
+scenarios. For many programmers, the pain caused by system administation
+work is simply not significant enough to force them to search for
+greener pastures.
+
+Based on this line of reasoning, it's tempting to assume that there
+wouldn't be much benefit in automating your infrastructure management 
+process until you experience enough pain to justify it. However,
+treating "infrastructure as code" isn't just about reducing the
+cost of failures or cutting down the time you spend on tedious 
+chores -- it's also about making your systems more understandable, 
+flexible, and portable. These are all the kinds of things we strive for
+in our code, so it makes sense to treat our infrastructure with the
+same level of care.
+
+In this article, we will work through two Chef cookbooks:
+one that sets up a very basic Ruby installation, and another that 
+configures all the necessary infrastructure to run Practicing Ruby's 
+web application. If you work through both of these examples,
+you can expect to gain a basic understanding of what infrastructure
+automation is all about, and you'll also be well on your way
+to writing your first Chef cookbook.
 
 ## Getting a base system up and running 
 
-The production environment for practicingruby.com is a 768 MB VPS running Ubuntu
-Linux 12.04.3 ("Precise Pangolin"). Using a combination of [Vagrant][] 
-and [VirtualBox][], it is easy to replicate a similar environment under
-virtualization that can run pretty much anywhere.
+(Explain that Chef itself doesn't care where its cookbooks are running.
+can range from massive cloud systems, to physical hardware, to
+virtual machines -- Vagrant is meant for developers to use while
+developing cookbooks, and also for turnkey application development)
+
+
+Using a combination of [Vagrant][] 
+and [VirtualBox][], it is easy to set up a base system under virtualization 
+that can run pretty much anywhere.
 
 With those two tools installed, all that is needed is a `Vagrantfile` that
-specifies which VM image to use for the base operating system, along with a
-few configuration options:
+specifies which VM image to use for the base operating system:
 
 ```ruby
 VAGRANTFILE_API_VERSION="2"
@@ -19,20 +59,14 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
   config.vm.box_url = "http://cloud-images.ubuntu.com/vagrant/precise/current/"+
                       "precise-server-cloudimg-amd64-vagrant-disk1.box"
-
-  # Mirror specs of production environment
-  config.vm.provider "virtualbox" do |v|
-    v.customize ["modifyvm", :id, "--memory", 768]
-    v.customize ["modifyvm", :id, "--cpus", 1]
-  end
 end
 ```
 
-Running `vagrant up` in the same directory as this file will download the base
+Running `vagrant up` in the same directory as this file will download the
 OS image if it isn't already present on your machine, and then fire up a
 VirtualBox VM running Ubuntu Linux. Without the need to do any special
-configuration, you can run `vagrant ssh` to log into the box as soon as 
-it boots up.
+configuration, you can run `vagrant ssh` to log into the box as soon
+as it boots up.
 
 Once inside the virtual machine, you'll find that the folder containing the
 `Vagrantfile` on your host machine has automatically been mapped to `/vagrant`.
@@ -40,20 +74,14 @@ This facilitates passing files back and forth between your host system and the
 virtualized environment.
 
 At this point, we have our base system in place, and we're ready
-to begin working on some infrastructure automation code. Rather than jumping
-into the whole process of setting up Practicing Ruby web, we'll start with a
-more simple example to help you get a feel for things. (REWORD!)
+to begin working on some infrastructure automation code.
 
 [Vagrant]: http://www.vagrantup.com/
 [VirtualBox]: https://www.virtualbox.org
 
 ## Cooking up a minimal Ruby environment
 
-Of the various open-source infrastructure automation tools, Chef is among the
-most widely supported systems available. It is a good option for Ruby
-programmers, because its entire DSL is written in Ruby and many of its
-conventions overlap with standard Ruby practices. For those reasons,
-we decided to make use of Chef for our infrastructure automation work (reword!).
+(transition here)
 
 The fundamental unit of organization in Chef is the recipe. A recipe defines
 various resources which are used for managing some aspect of a system's
@@ -93,11 +121,11 @@ to implement manually in a shell script.
 
 The difference between the two approaches may seem marginal at first glance,
 but even in this very basic example, we can see a tangible benefit of using 
-Chef. If you were to attempt to manually install `ruby_build` on an Ubuntu 
+Chef. If you were to attempt to manually install `ruby-build` on an Ubuntu 
 system, you would also need to install the `git-core`, `libssl-dev`, 
 and `zlib1g-dev` packages. To know that, you'd either need to find out by
-trial and error or dig through the wiki page for `ruby_build` to find a 
-note about these dependencies. The cookbook we used to install `ruby_build`
+trial and error or dig through the wiki page for `ruby-build` to find a 
+note about these dependencies. The cookbook we used to install `ruby-build`
 took care of installing these packages for us, giving us one less thing 
 to think about when configuring our systems, and one less stumbling block
 to trip over. 
@@ -107,7 +135,7 @@ associated with getting Chef's underplumbing in place. In particular, the
 following chores are part of getting up and running with Chef and Vagrant:
 
 * Vagrant needs to be configured to use Chef as its provisioner. 
-* Chef needs to be installed into the Vagrant box.
+* Depending on the VM image you use, Chef may need to be installed into the Vagrant box.
 * External cookbooks need to be downloaded and installed.
 * Various bits of metadata about the cookbook need to be specified.
 
