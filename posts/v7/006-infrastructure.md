@@ -28,66 +28,23 @@ flexible, and portable. These are all the kinds of things we strive for
 in our code, so it makes sense to treat our infrastructure with the
 same level of care.
 
-In this article, we will work through two Chef cookbooks:
-one that sets up a very basic Ruby installation, and another that 
-configures all the necessary infrastructure to run Practicing Ruby's 
-web application. If you work through both of these examples,
-you can expect to gain a basic understanding of what infrastructure
-automation is all about, and you'll also be well on your way
-to writing your first Chef cookbook.
-
-## Getting a base system up and running 
-
-(Explain that Chef itself doesn't care where its cookbooks are running.
-can range from massive cloud systems, to physical hardware, to
-virtual machines -- Vagrant is meant for developers to use while
-developing cookbooks, and also for turnkey application development)
-
-
-Using a combination of [Vagrant][] 
-and [VirtualBox][], it is easy to set up a base system under virtualization 
-that can run pretty much anywhere.
-
-With those two tools installed, all that is needed is a `Vagrantfile` that
-specifies which VM image to use for the base operating system:
-
-```ruby
-VAGRANTFILE_API_VERSION="2"
-
-Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
-  config.vm.box = "precise64"
-
-  config.vm.box_url = "http://cloud-images.ubuntu.com/vagrant/precise/current/"+
-                      "precise-server-cloudimg-amd64-vagrant-disk1.box"
-end
-```
-
-Running `vagrant up` in the same directory as this file will download the
-OS image if it isn't already present on your machine, and then fire up a
-VirtualBox VM running Ubuntu Linux. Without the need to do any special
-configuration, you can run `vagrant ssh` to log into the box as soon
-as it boots up.
-
-Once inside the virtual machine, you'll find that the folder containing the
-`Vagrantfile` on your host machine has automatically been mapped to `/vagrant`.
-This facilitates passing files back and forth between your host system and the
-virtualized environment.
-
-At this point, we have our base system in place, and we're ready
-to begin working on some infrastructure automation code.
-
-[Vagrant]: http://www.vagrantup.com/
-[VirtualBox]: https://www.virtualbox.org
+In this article, we will make use of the Chef platform
+to work our way through two small infrastructure automation projects: one that 
+handles a basic Ruby installation, and another that sets up all the necessary 
+underplumbing to run Practicing Ruby's web application. By the time
+you're done reading, you won't be a Chef expert, but you will be
+well on your way towards doing some infrastructure automation work in 
+your own projects.
 
 ## Cooking up a minimal Ruby environment
 
-(transition here)
+TODO: Add a note mentioning that ruby_build is an external cookbook,
+and maybe expand this section with a bit more detail.
 
 The fundamental unit of organization in Chef is the recipe. A recipe defines
 various resources which are used for managing some aspect of a system's
-infrastructure. Even if you've never seen a Chef recipe before, you should
-be able to get a basic idea of how they are used by looking at the 
-following example:
+infrastructure. For example, the following code could be used to set up
+a very basic Ruby environment on a system:
 
 ```ruby
 include_recipe "ruby_build"
@@ -111,16 +68,13 @@ When executed, this recipe does all of the following things:
 3. Updates Rubygems to the latest version.
 4. Installs the `bundler` gem.
 
-In other words, what we have here is an automated means of setting up a
-barebones Ruby environment. The recipe itself isn't that much more or less
-code than what it would take to run the equivalent shell commands manually, 
-but it is written at a much higher level of abstraction. As a result, the
-Chef code can bake in robust error handling, consistency checks,
-dependency management, and other useful features that would be cumbersome
-to implement manually in a shell script.
+The main difference between this recipe and a shell script to accomplish
+the same task is that it is written at a much higher level of abstraction. 
+This makes it possible for the Chef platform to provide robust error handling, 
+consistency checks, dependency management, and other useful features that 
+would be cumbersome to implement manually in a shell script.
 
-The difference between the two approaches may seem marginal at first glance,
-but even in this very basic example, we can see a tangible benefit of using 
+Even in this very basic example, we can see a tangible benefit of using 
 Chef. If you were to attempt to manually install `ruby-build` on an Ubuntu 
 system, you would also need to install the `git-core`, `libssl-dev`, 
 and `zlib1g-dev` packages. To know that, you'd either need to find out by
@@ -130,30 +84,391 @@ took care of installing these packages for us, giving us one less thing
 to think about when configuring our systems, and one less stumbling block
 to trip over. 
 
-But as is typical with any very high level system, there are some costs
-associated with getting Chef's underplumbing in place. In particular, the
-following chores are part of getting up and running with Chef and Vagrant:
+But wherever there is a benefit, there are also costs. Unlike a shell
+script which can be directly executed without any complicated setup,
+Chef recipes need to be packaged up in "cookbooks" before they can do
+anything useful, and some additional underplumbing is also needed
+to manage the cookbooks themselves. Let's take a moment now
+to briefly explore what it takes to get all those building 
+blocks into place.
 
-* Vagrant needs to be configured to use Chef as its provisioner. 
-* Depending on the VM image you use, Chef may need to be installed into the Vagrant box.
-* External cookbooks need to be downloaded and installed.
-* Various bits of metadata about the cookbook need to be specified.
+## Setting up Chef Solo and Vagrant for cookbook development
 
-In a very similar fashion to packaging up a Ruby gem or configuring a Rails
-application for the first time, these chores are tedious but the workflow is
-similar across projects, and the work only needs to be done once per project.
-For that reason, its not terribly important for you to understand every
-last detail about configuring Chef and Vagrant right now. But if you
-feel like it would be cheating to skip over the boilerplate, check out this
-[sample cookbook](https://github.com/elm-city-craftworks/practicing-ruby-examples/tree/master/v7/006/minimal-cookbook-demo)
-and try to make some sense of it before moving on.
+In many settings, Chef uses a client/server
+model in which configuration data and cookbooks are stored on a server 
+and then a client program is used to run recipes on whatever systems
+that need to be automated. This is powerful, but also a bit complicated.
+To simplify things a bit, we can make use of Chef Solo, a version of
+Chef that is capable of running recipes in a standalone mode.
+
+Recipes need to be executed in an isolated environment in order to 
+meaningfully verify their behavior. This could be physical hardware
+with a barebones operating system installed on it, or a cloud-based
+server of some sort. However, provisioning those sorts of systems
+while developing and testing recipes would be very tedious. Instead,
+it makes sense to work with virtual machines running locally, 
+and that's where Vagrant comes in handy.
+
+Vagrant makes it very easy run Chef recipes within a VirtualBox VM. The basic
+idea is that you provide a `Vagrantfile` in your project that tells Vagrant
+which VM image you want to use, and how to go about provisioning it. The
+configuration shown below configures a system to use Ubuntu 12.04 (Precise
+Pangolin) and Chef Solo 11.6.2:
+
+
+```ruby
+VAGRANTFILE_API_VERSION="2"
+
+Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
+  config.vm.box = "precise64"
+
+  config.vm.box_url = "http://cloud-images.ubuntu.com/vagrant/precise/current/"+
+                      "precise-server-cloudimg-amd64-vagrant-disk1.box"
+
+  # NOTE: You will need to install the vagrant-omnibus plugin for this to work
+  config.omnibus.chef_version = "11.6.2"
+
+  config.vm.provision :chef_solo do |chef|
+    chef.cookbooks_path = "vendor/cookbooks"
+    chef.add_recipe "demo::default"
+  end
+end
+```
+
+This `Vagrantfile` gets us most of the way there, but in order to make use of it
+we need to do two more things: package our own recipe up in cookbook format, and
+set up a way to download our external dependencies. To see how these remaining two 
+chores get dealt with, take a look at the README and overall file structure for this [sample cookbook](https://github.com/elm-city-craftworks/minimal-cookbook-demo). If you've ever packaged up a Ruby gem before, 
+you will notice some similarities in the conventions that Chef uses, even though its 
+toolchain is a bit different than what is used in standard Ruby projects.
+
+With all the boilerplate in place and the cookbooks installed, booting up the 
+system and provisioning it for the first time is as easy as 
+typing `vagrant up`. Once that is done, the virtualized system
+can be directly accessed via `vagrant ssh`, which makes it
+easy to test whether things worked as you expected they would.
+For example, to verify that this particular recipe worked correctly,
+we could run the following commands:
+
+```
+$ vagrant ssh
+Welcome to Ubuntu 12.04.3 LTS (GNU/Linux 3.2.0-55-generic x86_64) ...
+
+vagrant@vagrant-ubuntu-precise-64:~$ ruby -v
+ruby 2.0.0p247 (2013-06-27 revision 41674) [x86_64-linux]
+
+vagrant@vagrant-ubuntu-precise-64:~$ gem -v
+2.1.10
+
+vagrant@vagrant-ubuntu-precise-64:~$ bundle -v
+Bundler version 1.3.
+```
+
+If you're curious about how this all works, you should be able to
+reproduce the same results within your own virtual machine by
+cloning the [minimal-cookbook-demo](https://github.com/elm-city-craftworks/minimal-cookbook-demo) 
+repository and following the instructions in the README. The basic skeleton
+provided there can also serve as a starting point for your 
+own experiments, but keep in mind that it's meant to serve
+as a learning example rather than a demonstration of Chef best practices.
+
+Hopefully by this point you have a basic understanding of what Chef and Vagrant
+are used for, and what the basic structure of a recipe looks like. We'll now
+work our way through a much more detailed example to see how these ideas
+can be put into practice.
+
+[Vagrant]: http://www.vagrantup.com/
+[VirtualBox]: https://www.virtualbox.org
 
 ## Provisioning an environment for practicingruby.com
+
+* Subrecipes
+* Attributes
 
 Practicing Ruby's web app is built on top of a conservative software stack that
 should be familiar to most Rails developers: Ubuntu Linux, Nginx, Unicorn, PostgreSQL, 
 God, DelayedJob, Capistrano, Ruby 2.0, and Rails 3.2. There's nothing
-particularly exciting about these choices, but they get the job done.
+particularly exciting about these choices, but they get the job done. TODO
+Reorder
+
+
+```ruby
+include_recipe "apt::default"
+
+# Include all the pieces
+include_recipe "practicingruby::_deploy_user" 
+include_recipe "practicingruby::_ruby"
+include_recipe "practicingruby::_postgresql"
+include_recipe "practicingruby::_nginx"
+include_recipe "practicingruby::_unicorn"
+include_recipe "practicingruby::_god"
+include_recipe "practicingruby::_mailcatcher"
+include_recipe "practicingruby::_rails"
+```
+
+`user_account`, sudo resources. Introduce concept of attributes
+Consider merging w. app (rails) recipe
+
+```ruby
+# Create deploy user
+user_account node["practicingruby"]["deploy"]["username"] do
+  ssh_keys     node["practicingruby"]["deploy"]["ssh_keys"]
+  ssh_keygen   false
+end
+
+# Configure sudo privileges
+sudo node["practicingruby"]["deploy"]["username"] do
+  user     node["practicingruby"]["deploy"]["username"]
+  commands node["practicingruby"]["deploy"]["sudo_commands"]
+  nopasswd true
+end
+```
+
+Replace below with a diff
+
+```diff
+include_recipe "ruby_build"
+
+- ruby_build_ruby "2.0.0-p247" do
++ ruby_build_ruby node["practicingruby"]["ruby"]["version"] do
+  prefix_path "/usr/local"
+end
+
+execute "update-rubygems" do
+  command "gem update --system"
+  not_if  "gem list | grep -q rubygems-update"
+end
+
+gem_package "bundler"
+```
+
+`postgresql_database` resource. discuss what server / client do?
+
+```ruby
+# Install PostgreSQL server and client
+include_recipe "postgresql::server"
+include_recipe "postgresql::client"
+
+# Make postgresql_database resource available
+include_recipe "database::postgresql"
+
+# Create database for Rails app
+db = node["practicingruby"]["database"]
+postgresql_database db["name"] do
+  connection(
+    :host     => db["host"],
+    :port     => node["postgresql"]["config"]["port"],
+    :username => db["username"],
+    :password => db["password"],
+  )
+end
+```
+
+Find out why we deviate from Nginx defaults (jordan)
+
+directory, bash, template, `nginx_site` resource
+
+Find out difference between bash and execute
+
+Introduce templates
+
+```ruby
+#
+# Cookbook Name:: practicingruby
+# Recipe:: nginx
+#
+# Installs and configures Nginx
+#
+
+# Override default Nginx attributes
+node.set["nginx"]["worker_processes"]     = 4
+node.set["nginx"]["worker_connections"]   = 768
+node.set["nginx"]["default_site_enabled"] = false
+
+# Install Nginx and set up nginx.conf
+include_recipe "nginx::default"
+
+# Create directory to store SSL files
+ssl_dir = ::File.join(node["nginx"]["dir"], "ssl")
+directory ssl_dir do
+  owner  "root"
+  group  "root"
+  mode   "0600"
+end
+
+# Generate SSL private key and use it to issue self-signed certificate for
+# currently configured domain name
+domain_name = node["practicingruby"]["rails"]["host"]
+bash "generate-ssl-files" do
+  user  "root"
+  cwd   ssl_dir
+  flags "-e"
+  code <<-EOS
+    DOMAIN=#{domain_name}
+    openssl genrsa -out $DOMAIN.key 4096
+    openssl req -new -batch -subj "/CN=$DOMAIN" -key $DOMAIN.key -out $DOMAIN.csr
+    openssl x509 -req -days 365 -in $DOMAIN.csr -signkey $DOMAIN.key -out $DOMAIN.crt
+    rm $DOMAIN.csr
+  EOS
+  notifies :reload, "service[nginx]"
+  not_if { ::File.exists?(::File.join(ssl_dir, domain_name + ".crt")) }
+end
+
+# Create practicingruby site config
+template "#{node["nginx"]["dir"]}/sites-available/practicingruby" do
+  source "nginx_site.erb"
+  owner  "root"
+  group  "root"
+  mode   "0644"
+  variables(:domain_name => domain_name)
+end
+
+# Enable practicingruby site
+nginx_site "practicingruby" do
+  enable true
+end
+
+```
+
+template, service resource. Learn more about service resource.
+Why don't we see it in Postgres? Is it taken care of behind
+the scenes for us?  Discuss upstart, too.
+
+```ruby
+#
+# Cookbook Name:: practicingruby
+# Recipe:: unicorn
+#
+# Installs upstart script for Unicorn
+#
+
+template "/etc/init/unicorn.conf" do
+  source "unicorn.upstart.erb"
+  owner  "root"
+  group  "root"
+  mode   "0644"
+  variables(
+    :deploy_user => node["practicingruby"]["deploy"]["username"],
+    :deploy_dir  => ::File.join(node["practicingruby"]["deploy"]["home_dir"], "current")
+  )
+end
+
+# Unicorn is usually started by Capistrano and we only have to make sure that
+# it is also started when booting.
+service "unicorn" do
+  provider Chef::Provider::Service::Upstart
+  supports :status => true, :restart => true
+  action :enable
+end
+```
+
+Why do recipes need to be repeated like below? Is it to explicitly resolve
+dependencies? See template#notifies and what it does. 
+
+`gem_package`, directory, 
+`cookbook_file` (it's just a way to copy a file in place), `service`
+
+
+```ruby
+# Install Ruby first
+include_recipe "practicingruby::_ruby"
+
+# Install god gem
+gem_package "god"
+
+# Create config directory
+directory "/etc/god" do
+  owner  "root"
+  group  "root"
+  mode   "0755"
+end
+
+# Create config file
+template "/etc/god/master.conf" do
+  source   "god.conf.erb"
+  owner    "root"
+  group    "root"
+  mode     "0644"
+  notifies :restart, "service[god]"
+  variables(
+    :god_file => "#{node["practicingruby"]["deploy"]["home_dir"]}/current/config/delayed_job.god"
+  )
+end
+
+# Install startup script
+cookbook_file "/etc/init/god.conf" do
+  source "god.upstart"
+  owner  "root"
+  group  "root"
+  mode   "0644"
+end
+
+# Start god
+service "god" do
+  provider Chef::Provider::Service::Upstart
+  supports :status => true, :restart => true
+  action   [:enable, :start]
+end
+```
+
+Only uses basic incudes and execute.
+
+```ruby
+# Install Ruby first
+include_recipe "practicingruby::_ruby"
+
+# Install MailCatcher
+include_recipe "mailcatcher::default"
+
+# Start MailCatcher as mailcatcher::default doesn't do it for us
+bash "start-mailcatcher" do
+  code     "true"
+  notifies :start, "service[mailcatcher]"
+  not_if   "pgrep mailcatcher"
+end
+```
+
+package, directory, template (Note that rails misnomer, it's really just a
+deploy setup -- consider merge!), discuss the use of .env
+
+```ruby
+
+# Install JavaScript runtime for Rails app
+package "nodejs"
+
+# Install Pygments for syntax highlighting
+package "python-pygments"
+
+# Create deploy user first
+include_recipe "practicingruby::_deploy_user"
+
+# Create shared directory that will be used by Capistrano
+shared_dir = ::File.join(node["practicingruby"]["deploy"]["home_dir"], "shared")
+directory shared_dir do
+  owner  node["practicingruby"]["deploy"]["username"]
+  group  node["practicingruby"]["deploy"]["username"]
+  mode   "2775"
+end
+
+# Create environment configuration
+template ::File.join(shared_dir, ".env") do
+  source "env.sh.erb"
+  owner  node["practicingruby"]["deploy"]["username"]
+  group  node["practicingruby"]["deploy"]["username"]
+  mode   "0644"
+  variables(:rails => node["practicingruby"]["rails"])
+end
+
+# Create database configuration
+template ::File.join(shared_dir, "database.yml") do
+  owner  node["practicingruby"]["deploy"]["username"]
+  group  node["practicingruby"]["deploy"]["username"]
+  mode   "0644"
+  variables(:db => node["practicingruby"]["database"])
+end
+```
+
+---
 
 We've never had a strong urge to reduce Practicing Ruby's system
 administration overhead, because the slow pace of our development and relatively 
@@ -182,6 +497,8 @@ listed above tend to feed into each other, and easily arise in circumstances
 where one person becomes an information silo to save another from having to
 spend time learning something. If writing a Chef cookbook could help us break
 down those walls, that would be a win in itself.
+
+
 
 ## Discuss Capistrono deployment, ssh config, hosts setting, etc. 
 
