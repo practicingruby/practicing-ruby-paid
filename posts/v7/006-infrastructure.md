@@ -39,7 +39,8 @@ your own projects.
 ## Cooking up a minimal Ruby environment
 
 TODO: Add a note mentioning that ruby_build is an external cookbook,
-and maybe expand this section with a bit more detail.
+and maybe expand this section with a bit more detail. Also explain what
+the goals are a little bit.
 
 The fundamental unit of organization in Chef is the recipe. A recipe defines
 various resources which are used for managing some aspect of a system's
@@ -93,6 +94,8 @@ to briefly explore what it takes to get all those building
 blocks into place.
 
 ## Setting up Chef Solo and Vagrant for cookbook development
+
+(consider combining section w. above)
 
 In many settings, Chef uses a client/server
 model in which configuration data and cookbooks are stored on a server 
@@ -182,25 +185,47 @@ can be put into practice.
 
 ## Provisioning an environment for practicingruby.com
 
-* Subrecipes
-* Attributes
-* PG node attribute -- may need to consult mathias about this.
-* node.set ... not `node#[]=`?
-* Templates / Variables
-* Services + actions
-* Upstart
-* Files
-* Packages
-* Idempotence (this is where `not_if` guards come in)
-* Why ::File
-
-
 Practicing Ruby's web app is built on top of a conservative software stack that
 should be familiar to most Rails developers: Ubuntu Linux, Nginx, Unicorn, PostgreSQL, 
 God, DelayedJob, Capistrano, Ruby 2.0, and Rails 3.2. There's nothing
-particularly exciting about these choices, but they get the job done. TODO
-Reorder
+particularly exciting about these choices, but they get the job done.
 
+Manually provisioning this sort of system can be a daunting task for someone who
+hasn't done much server configuration work before: lots of packages need to be
+installed, lots of configuration files need to be edited, and various little
+command-line chores need to be completed before everything snaps into place.
+Those who have a bit more familiarity with configuring Rails production
+environments would have a much easier time getting everything working,
+but it would still take a few hours of effort in the best case scenario. More
+realistically, the process would be slow-going unless someone had deep
+knowledge of our particular system setup.
+
+The promise of infrastructure automation is that it can eliminate these
+problems by decoupling the work involved in provisioning a new system
+from the process of deciding how that system ought to be 
+configured. This seperation of concerns benefits both developers and
+system administrators: it cuts down on the amount of knowledge 
+that is necessary to simply get an application up and running while
+simultaneously forcing every last detail of a system's setup to
+be specified in source code.
+
+A direct result of these ideas is that a Chef cookbook can be considered 
+to be a black box by application developers while simultaneously serving 
+as a clear blueprint for system administrators. Throughout the rest
+of this article, we will be looking at the various tools that Chef
+provides to help us create those blueprints, all in the context of
+the [practicing-ruby-cookbook](https://github.com/elm-city-craftworks/practicing-ruby-cookbook).
+(REWORD!)
+
+## Recipes
+
+The cookbook we looked at earlier had a single recipe that laid out
+all the resources it managed in a single file. This makes sense for
+very simple tasks, but automating an entire system configuration
+is obviously a whole lot more complicated. For that reason,
+it makes sense to break up a recipe into many sub-recipes,
+leaving you with a main recipe that simply specifies 
+the main parts:
 
 ```ruby
 include_recipe "apt::default"
@@ -215,6 +240,33 @@ include_recipe "practicingruby::_god"
 include_recipe "practicingruby::_mailcatcher"
 include_recipe "practicingruby::_rails"
 ```
+
+
+
+* Subrecipes
+* Attributes
+* PG node attribute -- may need to consult mathias about this.
+* node.set ... not `node#[]=`?
+* Templates / Variables
+* Services + actions
+* Upstart
+* Files
+* Packages
+* Idempotence (this is where `not_if` guards come in)
+* Why ::File
+
+
+Setting up this software stack involves tweaking configuration files, managing
+services, installing various software packages, and
+making use of some command line tools.
+
+
+-----------------------
+
+
+
+
+
 
 `user_account`, sudo resources. Introduce concept of attributes
 Consider merging w. app (rails) recipe
