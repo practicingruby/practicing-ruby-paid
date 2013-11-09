@@ -184,6 +184,16 @@ can be put into practice.
 
 * Subrecipes
 * Attributes
+* PG node attribute -- may need to consult mathias about this.
+* node.set ... not `node#[]=`?
+* Templates / Variables
+* Services + actions
+* Upstart
+* Files
+* Packages
+* Idempotence (this is where `not_if` guards come in)
+* Why ::File
+
 
 Practicing Ruby's web app is built on top of a conservative software stack that
 should be familiar to most Rails developers: Ubuntu Linux, Nginx, Unicorn, PostgreSQL, 
@@ -224,7 +234,7 @@ sudo node["practicingruby"]["deploy"]["username"] do
 end
 ```
 
-Replace below with a diff
+Only tiny tweak
 
 ```diff
 include_recipe "ruby_build"
@@ -273,12 +283,6 @@ Find out difference between bash and execute
 Introduce templates
 
 ```ruby
-#
-# Cookbook Name:: practicingruby
-# Recipe:: nginx
-#
-# Installs and configures Nginx
-#
 
 # Override default Nginx attributes
 node.set["nginx"]["worker_processes"]     = 4
@@ -335,12 +339,6 @@ Why don't we see it in Postgres? Is it taken care of behind
 the scenes for us?  Discuss upstart, too.
 
 ```ruby
-#
-# Cookbook Name:: practicingruby
-# Recipe:: unicorn
-#
-# Installs upstart script for Unicorn
-#
 
 template "/etc/init/unicorn.conf" do
   source "unicorn.upstart.erb"
