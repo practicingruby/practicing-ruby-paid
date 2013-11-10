@@ -27,32 +27,81 @@ Recipes are self contained! (Somewhat)
 
 ## Setting up Ruby
 
-http://fnichol.github.io/chef-ruby_build/
-https://github.com/sstephenson/ruby-build
-
+Let's start our exploration of Practicing Ruby's cookbook by taking a look
+at how it handles its Ruby installation. The particular recipe we use is 
+shown below:
 
 ```ruby
-# Install ruby-build
 include_recipe "ruby_build"
 
-# Build and install Ruby version using ruby-build. 
-ruby_build_ruby node["practicingruby"]["ruby"]["version"]
+ruby_version = node["practicingruby"]["ruby"]["version"]
 
-# Update to the latest RubyGems version
+ruby_build_ruby(ruby_version) { prefix_path "/usr/local" }
+
 bash "update-rubygems" do
   code   "gem update --system"
   not_if "gem list | grep -q rubygems-update"
 end
 
-# Install Bundler
 gem_package "bundler"
 ```
 
-Other recipes that are resource-only:
+At the high level, this recipe is responsible for handling the following tasks: 
 
-* `deploy_user`
-* `postgresql`
-* `mail_catcher` (Maybe? it also uses notifications... and a dubious "true" call)
+* Installing the `ruby-build` command line tool.
+* Using `ruby-build` to compile and install Ruby to `/usr/local`.
+* Updating Rubygems to the latest version.
+* Installing the bundler gem.
+
+```ruby
+include_recipe "ruby_build"
+```
+
+discuss side effect of including this recipe... install is run
+and `ruby_build_ruby` becomes available.
+
+```ruby
+ruby_version = node["practicingruby"]["ruby"]["version"]
+
+ruby_build_ruby(ruby_version) { prefix_path "/usr/local" }
+```
+
+note why `/usr/local`, discuss attributes
+
+```ruby
+bash "update-rubygems" do
+  code   "gem update --system"
+  not_if "gem list | grep -q rubygems-update"
+end
+```
+
+note idempotence
+
+```
+gem_package "bundler"
+```
+
+(note that we luck out here because of using /usr/local), a non-standard Ruby
+installation would require you to specify the path the the gem executable.)
+
+http://fnichol.github.io/chef-ruby_build/
+https://github.com/sstephenson/ruby-build
+
+
+
+The main difference between this recipe and a shell script to accomplish the same task is that it is written at a much higher level of abstraction. This makes it possible for the Chef platform to provide robust error handling, consistency checks, dependency management, and other useful features that would be cumbersome to implement manually in a shell script.
+
+Even in this very basic example, we can see a tangible benefit of using Chef. If you were to attempt to manually install ruby-build on an Ubuntu system, you would also need to install the git-core, libssl-dev, and zlib1g-dev packages. To know that, you'd either need to find out by trial and error or dig through the wiki page for ruby-build to find a note about these dependencies. The cookbook we used to install ruby-build took care of installing these packages for us, giving us one less thing to think about when configuring our systems, and one less stumbling block to trip over.
+
+But wherever there is a benefit, there are also costs. Unlike a shell script which can be directly executed without any complicated setup, Chef recipes need to be packaged up in "cookbooks" before they can do anything useful, and some additional underplumbing is also needed to manage the cookbooks themselves. Let's take a moment now to briefly explore what it takes to get all those building blocks into place.
+
+
+**External resources**
+
+**Shell resource**
+
+**Attributes**
+
 
 ## Setting up process monitoring
 
@@ -71,7 +120,7 @@ directory "/etc/god" do
 end
 
 # Create config file
-cookbook_file "/etc/god/master.conf" do
+file "/etc/god/master.conf" do
   owner    "root"
   group    "root"
   mode     "0644"
@@ -99,13 +148,7 @@ service "god" do
 end
 ```
 
-^ Enable service to startup at boot, and also start it now.
-
-Other recipes that use the same features:
-
-*
-*
-
+**Working with files**
 
 ```ruby
 # The config file will be deployed by Capistrano.
@@ -113,6 +156,7 @@ config_file = "<%= @god_file %>"
 God.load(config_file) if File.file?(config_file)
 ```
 
+**Managing services**
 
 ```
 description "God is a monitoring framework written in Ruby"
@@ -124,9 +168,45 @@ pre-start exec god -c /etc/god/master.conf
 post-stop exec god terminate
 ```
 
+
+Enable service to startup at boot, and also start it now.
+
+
+> UPSTART: I mainly did it for three reasons:
+
+> * Consistency: Upstart is the standard init daemon under Ubuntu. As
+the MailCatcher cookbook also utilizes Upstart, I thought I'd use it
+for Unicorn too. That worked out well, so I decided to rewrite God's
+init script as well. Now all our startup scripts make use of the same
+mechanism.
+
+> * Simplicity: This diff says it all:
+https://github.com/elm-city-craftworks/practicing-ruby-cookbook/pull/11/files
+Once you know how Upstart works, it's just way more easy to use than
+LSB init scripts. For example, I didn't like how we had to define
+runlevels before:
+https://github.com/elm-city-craftworks/practicing-ruby-cookbook/pull/6/files
+
+> * Learning/Experience: I've always wanted to write startup scripts
+using something different than plain old shell scripts. 
+
+
 ## Nginx setup
 
 http://www.opscode.com/blog/2013/02/05/chef-11-in-depth-attributes-changes/
+
+> The first two lines are most certainly copied directly from the Unicorn nginx config file I used. Turning off the default site does exactly that, turns off nginx’s default “Welcome to nginx” page which is on by default.
+
+> The nginx cookbook manages nginx.conf for us. I only had to
+change the number of worker processes and worker connections to mirror
+what's used in production (i.e. the nginx.conf Jordan sent me).
+
+> However, the cookbook cannot manage site configurations via
+attributes; it can merely enable or disable them. That's why our site
+config is first written via `template` and then enabled via the
+cookbook's `nginx_site` helper.
+
+
 
 ```ruby
 # Override default Nginx attributes
@@ -178,7 +258,15 @@ nginx_site "practicingruby" do
 end
 ```
 
-Any recipes with features NOT used by this one or any previous ones?
+**Advanced shell usage**
+
+**Using Templates**
+
+Note nginx.conf vs. site
+
+
+## Everything else
+
 
 
 [puppet]: http://puppetlabs.com
