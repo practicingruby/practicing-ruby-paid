@@ -48,17 +48,27 @@ gem_package "bundler"
 
 At the high level, this recipe is responsible for handling the following tasks: 
 
-* Installing the `ruby-build` command line tool.
-* Using `ruby-build` to compile and install Ruby to `/usr/local`.
-* Updating Rubygems to the latest version.
-* Installing the bundler gem.
+1. Installing the `ruby-build` command line tool.
+2. Using `ruby-build` to compile and install Ruby to `/usr/local`.
+3. Updating Rubygems to the latest version.
+4. Installing the bundler gem.
+
+Under the hood, a lot more is going on. Let's break the recipe down into its
+parts and see what is actually being done. (reword)
+
+1) The [ruby_build](http://fnichol.github.io/chef-ruby_build/) cookbook is
+used to install the `ruby-build` command-line tool:
 
 ```ruby
 include_recipe "ruby_build"
 ```
 
-discuss side effect of including this recipe... install is run
-and `ruby_build_ruby` becomes available.
+Including this recipe into our own gives us access to `ruby_build_ruby` command,
+and also handles installing a bunch of low-level packages that are required to 
+compile Ruby on an Ubuntu system.
+
+2) The `ruby_build_ruby` command is used to install a particular version of
+Ruby into `/usr/local`.
 
 ```ruby
 ruby_version = node["practicingruby"]["ruby"]["version"]
@@ -66,7 +76,23 @@ ruby_version = node["practicingruby"]["ruby"]["version"]
 ruby_build_ruby(ruby_version) { prefix_path "/usr/local" }
 ```
 
-note why `/usr/local`, discuss attributes
+In our recipe, the version of Ruby we want to install is not specified
+explicitly, but instead set elsewhere using Chef's attribute system.
+If you look at our default attributes file, you'll find an entry that
+looks like this:
+
+```ruby
+default["practicingruby"]["ruby"]["version"] = "2.0.0-p247"
+```
+
+Chef has a very flexible and very complicated system for managing these
+attributes, but its main purpose is the same as any configuration system:
+to keep source code as generic as possible by not hard-coding
+application-specific values. In our cookbook, we stick to very
+simple uses of attributes, so we won't get bogged down in the
+details of all the different ways they can be used in Chef.
+
+3) Rubygems is updated to the latest version.
 
 ```ruby
 bash "update-rubygems" do
@@ -75,33 +101,12 @@ bash "update-rubygems" do
 end
 ```
 
-note idempotence
+4) The bundler gem is installed.
 
-```
+```ruby
 gem_package "bundler"
 ```
-
-(note that we luck out here because of using /usr/local), a non-standard Ruby
-installation would require you to specify the path the the gem executable.)
-
-http://fnichol.github.io/chef-ruby_build/
-https://github.com/sstephenson/ruby-build
-
-
-
-The main difference between this recipe and a shell script to accomplish the same task is that it is written at a much higher level of abstraction. This makes it possible for the Chef platform to provide robust error handling, consistency checks, dependency management, and other useful features that would be cumbersome to implement manually in a shell script.
-
-Even in this very basic example, we can see a tangible benefit of using Chef. If you were to attempt to manually install ruby-build on an Ubuntu system, you would also need to install the git-core, libssl-dev, and zlib1g-dev packages. To know that, you'd either need to find out by trial and error or dig through the wiki page for ruby-build to find a note about these dependencies. The cookbook we used to install ruby-build took care of installing these packages for us, giving us one less thing to think about when configuring our systems, and one less stumbling block to trip over.
-
-But wherever there is a benefit, there are also costs. Unlike a shell script which can be directly executed without any complicated setup, Chef recipes need to be packaged up in "cookbooks" before they can do anything useful, and some additional underplumbing is also needed to manage the cookbooks themselves. Let's take a moment now to briefly explore what it takes to get all those building blocks into place.
-
-
-**External resources**
-
-**Shell resource**
-
-**Attributes**
-
+Recipes are self contained! (Somewhat)
 
 ## Setting up process monitoring
 
@@ -270,3 +275,7 @@ Note nginx.conf vs. site
 
 
 [puppet]: http://puppetlabs.com
+
+
+
+
