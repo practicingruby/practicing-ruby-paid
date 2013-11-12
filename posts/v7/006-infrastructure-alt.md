@@ -179,7 +179,7 @@ of a few of the benefits of treating "infrastructure as code". As we
 continue to work through more complicated examples, those benefits
 will become even more obvious.
 
-## Setting up God for process monitoring
+## A recipe for setting up process monitoring 
 
 Now that we've tackled a simple example of a Chef recipe, let's work through 
 a more interesting one. The following code is what we use for installing
@@ -287,7 +287,7 @@ less work, but we'd lose some of the benefits that Chef is providing here.
 In particular, it's worth noticing that file permissions and ownership
 are explicitly specified in the recipe, that the actual location
 of the file is configurable, and that Chef will send a notification
-to restart God whenever this file gets created. All of these things
+to restart God whenever this file changes. All of these things
 are the sort of minor details that are easily forgotten when
 manually managing configuration files on servers.
 
@@ -310,7 +310,7 @@ end
 The `cookbook_file` command used here is similar to the `file` command, but has a
 specialized purpose: To copy files from a cookbook's `files` directory to
 some location on the system being automated. In this case, we're
-using the `files/god.upstart` cookbook file as our source, and it
+using the `files/default/god.upstart` cookbook file as our source, and it
 looks like this:
 
 ```
@@ -324,7 +324,7 @@ post-stop exec god terminate
 ```
 
 Here we can see exactly what commands are going to be used to start and 
-shutdown God, as well as the runlevels that it will be started at
+shutdown God, as well as the runlevels that it will be started and
 stopped on. We can also see that the `/etc/god/master.conf` file we
 created earlier will be loaded by God whenever it starts up.
 
@@ -352,33 +352,21 @@ and set up system services. That knowledge alone will take you far,
 but let's look at one more recipe to discover a few more 
 advanced features before we wrap things up.
 
-## Nginx setup
+## A recipe for setting up an Nginx web server 
 
-http://www.opscode.com/blog/2013/02/05/chef-11-in-depth-attributes-changes/
-
-> The first two lines are most certainly copied directly from the Unicorn nginx config file I used. Turning off the default site does exactly that, turns off nginx’s default “Welcome to nginx” page which is on by default.
-
-> The nginx cookbook manages nginx.conf for us. I only had to
-change the number of worker processes and worker connections to mirror
-what's used in production (i.e. the nginx.conf Jordan sent me).
-
-> However, the cookbook cannot manage site configurations via
-attributes; it can merely enable or disable them. That's why our site
-config is first written via `template` and then enabled via the
-cookbook's `nginx_site` helper.
-
-
+The recipe we use for configuring Nginx is the most complicated one in
+Practicing Ruby's cookbook, but it mostly just combines and expands upon the
+concepts we've already discussed in this article. Try to see what you can
+understand of it without reading the explanations that follow, but don't
+worry if every last detail isn't immediately clear to you:
 
 ```ruby
-# Override default Nginx attributes
 node.set["nginx"]["worker_processes"]     = 4
 node.set["nginx"]["worker_connections"]   = 768
 node.set["nginx"]["default_site_enabled"] = false
 
-# Install Nginx and set up nginx.conf
 include_recipe "nginx::default"
 
-# Create directory to store SSL files
 ssl_dir = ::File.join(node["nginx"]["dir"], "ssl")
 directory ssl_dir do
   owner "root"
@@ -386,8 +374,6 @@ directory ssl_dir do
   mode  "0600"
 end
 
-# Generate SSL private key and use it to issue self-signed certificate for
-# currently configured domain name
 domain_name = node["practicingruby"]["rails"]["host"]
 bash "generate-ssl-files" do
   user  "root"
@@ -404,7 +390,6 @@ bash "generate-ssl-files" do
   not_if   { ::File.exists?(::File.join(ssl_dir, domain_name + ".crt")) }
 end
 
-# Create practicingruby site config
 template "#{node["nginx"]["dir"]}/sites-available/practicingruby" do
   source "nginx_site.erb"
   owner  "root"
@@ -419,19 +404,60 @@ nginx_site "practicingruby" do
 end
 ```
 
+When you put all the pieces together, this recipe is responsible for the
+following tasks:
+
+1. Overriding some default Nginx configuration values.
+2. Installing Nginx and managing it as a service.
+3. Generating a self-signed SSL certificate based on a configurable domain name.
+4. Using a template to generate a site-specific configuration file.
+5. Enabling Nginx to serve up our Rails application.
+
+In this recipe even moreso than the others we've looked at, a lot of the details
+are handled behind the scenes. Let's dig a bit deeper to see what's really
+going on.
+
 **Installing and configuring Nginx**
 
+We rely on the [nginx cookbook](https://github.com/opscode-cookbooks/nginx) 
+to do most of the hard work of setting up our web server for us. Apart
+from overriding a few default attributes, we only need to include the
+`nginx:default` recipe into our own code to install the relevant software p
+ackages, generate an `nginx.conf` file, and to provide all the necessary
+init scripts to manage Nginx as a service. The following four lines
+of code take care of all of that four us:
+
 ```ruby
-# Override default Nginx attributes
 node.set["nginx"]["worker_processes"]     = 4
 node.set["nginx"]["worker_connections"]   = 768
 node.set["nginx"]["default_site_enabled"] = false
 
-# Install Nginx and set up nginx.conf
 include_recipe "nginx::default"
 ```
 
+The interesting thing to notice here is that unlike the typical server
+configuration file, only the things we explicitly changed are visible here.
+All the rest of the defaults are set automatically for us, and we don't
+need to be concerned with their values until the time comes when we decide we
+need to change them. By hiding all the details that do not matter to us,
+Chef recipes tend to be much more more intention revealing than
+the typical server configuration file.
+
 **Generating SSL keys**
+
+In a real production environment, we would probably copy SSL credentials
+into place rather than generating them on the fly. However, since
+this particular cookbook is meant to be used as an experimental testbed
+rather than an exact clone of our live system, we decided to
+do things this way to make the system a little bit more 
+developer-friendly.
+
+The basic idea behind the following code is that we want to generate an SSL
+certificate for whatever domain name you'd like, so that it is still
+possible to serve up the application over SSL within a virtualized 
+environment. But since that is somewhat of an obscure use case, you
+may want to try to see what interesting Chef features are being used
+rather than focusing on the particular shell code being executed:
 
 ```ruby
 ssl_dir = ::File.join(node["nginx"]["dir"], "ssl")
@@ -459,6 +485,9 @@ bash "generate-ssl-files" do
   not_if   { ::File.exists?(::File.join(ssl_dir, domain_name + ".crt")) }
 end
 ```
+
+* discuss flags, notification, user
+* discuss use of `::File`
 
 **Configuring Nginx to serve up Practicing Ruby**
 
@@ -476,12 +505,25 @@ nginx_site "practicingruby" do
 end
 ```
 
-## Everything else
+Despite generating nginx.conf for us, the nginx cookbook does expect us to
+provide our own site configurations. The full file is much longer, but
+here's a snippet showing how we can use ERb within our templates:
+
+```erb
+server {
+  listen 80;
+  server_name <%= "#{@domain_name} www.#{@domain_name}" %>;
+  rewrite ^ https://$server_name$request_uri? permanent;
+}
+```
+
+## Additional recipes to study
+
+(maybe also mention the dependent cookbooks)
+
+## Epilogue: What are the costs of infrastructure automation?
 
 
+## Further Reading
 
 [puppet]: http://puppetlabs.com
-
-
-
-
