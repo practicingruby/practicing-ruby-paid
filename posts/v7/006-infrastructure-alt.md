@@ -1,3 +1,9 @@
+> This issue of Practicing Ruby was a collaboration with Mathias Lafeldt
+([@mlafeldt](https://twitter.com/mlafeldt)), an Infrastructure
+Developer living in Hamburg, Germany. If Mathias had to choose the one
+Internet meme that best describes his work, it would certainly be
+_Automate all the things!_ 
+
 For at least as long as Ruby has been popular among web developers, it has also
 been recognized as a useful tool for system administration work. Although it was
 first used as a clean alternative to Perl for adhoc scripting, Ruby quickly
@@ -31,7 +37,7 @@ commands on the console, and swearing loudly whenever I broke something. For
 things that really matter or tasks that seemed too tough for me to do on my own,
 I'd find someone else to take care of it for me.
 
-The fundamental problems was that I had always focused on the fact that my
+The fundamental problem was that I had always focused on the fact that my
 system-administration related pain wasn't enough for me to worry about learning 
 a whole new of doing things. In making that assumption, I missed the fact that
 infrastructure automation has other benefits beyond eliminating the costs
@@ -413,7 +419,7 @@ following tasks:
 4. Using a template to generate a site-specific configuration file.
 5. Enabling Nginx to serve up our Rails application.
 
-In this recipe even moreso than the others we've looked at, a lot of the details
+In this recipe even more than the others we've looked at, a lot of the details
 are handled behind the scenes. Let's dig a bit deeper to see what's really
 going on.
 
@@ -453,9 +459,9 @@ do things this way to make the system a little bit more
 developer-friendly.
 
 The basic idea behind the following code is that we want to generate an SSL
-certificate for whatever domain name you'd like, so that it is still
-possible to serve up the application over SSL within a virtualized 
-environment. But since that is somewhat of an obscure use case, you
+certificate and private key for whatever domain name you'd like, so that 
+it is still possible to serve up the application over SSL within a virtualized 
+staging environment. But since that is somewhat of an obscure use case, you
 may want to try to see what interesting Chef features are being used
 rather than focusing on the particular shell code being executed:
 
@@ -467,8 +473,6 @@ directory ssl_dir do
   mode  "0600"
 end
 
-# Generate SSL private key and use it to issue self-signed certificate for
-# currently configured domain name
 domain_name = node["practicingruby"]["rails"]["host"]
 bash "generate-ssl-files" do
   user  "root"
@@ -486,10 +490,39 @@ bash "generate-ssl-files" do
 end
 ```
 
-* discuss flags, notification, user
-* discuss use of `::File`
+As you read through this code, you may have noticed that `::File` is used
+instead of `File`, which looks a bit awkward. The problem here is that
+chef defines its own `File` class that ends up having a naming collision with
+Ruby's core class. So to safely make use of Ruby's `File` class, we need to
+explicitly do our constant lookup from the top-level namespace. This is just a
+small side effect of how Chef's recipe DSL is implemented, but it is
+worth noting to clear up any confusion.
+
+With that distraction out of the way, we can skip right over the `directory`
+code which we've seen in earlier recipes, and turn our attention to the `bash`
+command and its options. This example is far more interesting than the one we
+used to update Rubygems earlier, because in addition to specifying a command to
+execute and a `not_if` guard clause, it also does all of the following things:
+
+* Specifies that the command ought to be run as `root`
+* Switches the working directory to the SSL directory we created within our Nginx dir.
+* Sets the `-e` flag, which will abort the script if any command fails to run successfully.
+* Uses a service notification to tell NGinx to reload its configuration files
+
+From this we see that executing shell code via a Chef recipe isn't quite the
+same thing as simply running some commands in a console. The entire surrounding
+context is also specified and verified, making it a whole lot more likely
+that things will work the way you expect them to. If these benefits were
+harder to see in the Ruby installation recipe, they should be easier to
+recognize now.
 
 **Configuring Nginx to serve up Practicing Ruby**
+
+Although the [nginx cookbook](https://github.com/opscode-cookbooks/nginx) takes care 
+of setting up our `nginx.conf` file for us, it does not manage site 
+configurations for us. We need to take care of that ourselves and
+tweak some settings dynamically, so that means telling our
+recipe to make use of a template:
 
 ```ruby
 template "#{node["nginx"]["dir"]}/sites-available/practicingruby" do
@@ -499,15 +532,12 @@ template "#{node["nginx"]["dir"]}/sites-available/practicingruby" do
   mode   "0644"
   variables(:domain_name => domain_name)
 end
-
-nginx_site "practicingruby" do
-  enable true
-end
 ```
 
-Despite generating nginx.conf for us, the nginx cookbook does expect us to
-provide our own site configurations. The full file is much longer, but
-here's a snippet showing how we can use ERb within our templates:
+The [full template](https://github.com/elm-city-craftworks/practicing-ruby-cookbook/blob/master/templates/default/nginx_site.erb)
+is a rather long file full of the typical NGinx boilerplate, but the small
+excerpt below shows how it is customized using ERB to insert some dynamic
+content:
 
 ```erb
 server {
@@ -517,13 +547,30 @@ server {
 }
 ```
 
-## Additional recipes to study
+Once the configuration file is generated and stored in the right place, we
+enable it using the following command:
 
-(maybe also mention the dependent cookbooks)
+```ruby
+nginx_site "practicingruby" do
+  enable true
+end
+```
+
+Under the hood, the [nxensite](https://github.com/Dreyer/nxensite) script is used 
+to do the actual work of enabling the site, but that implementation detail is 
+deliberately kept hidden from view.
+
+At this point, we have studied enough features of Chef to establish a basic
+literacy that will facilitate reading a wide range of recipes with only
+a little bit of effort. At the very least, you now have enough
+knowledge to make sense of every recipe in Practicing Ruby's cookbook.
+
+## A cookbook for building a (mostly) complete Rails environment 
+
 
 ## Epilogue: What are the costs of infrastructure automation?
 
 
-## Further Reading
+## Recommendations for further reading
 
 [puppet]: http://puppetlabs.com
