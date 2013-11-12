@@ -4,6 +4,33 @@ Developer living in Hamburg, Germany. If Mathias had to choose the one
 Internet meme that best describes his work, it would certainly be
 _Automate all the things!_ 
 
+---
+
+> - relevant software p ackages
+> + relevant software packages
+> 
+> - tend to be much more more intention
+> + tend to be much more intention
+> 
+> - The problem here is that chef defines
+> + The problem here is that Chef defines
+> 
+> - NGinx
+> + Nginx
+> 
+> [The bash recourse] Specifies that the command ought to be run as root
+> 
+> The bash resource actually runs the code as root by default. The
+> documentation says that "user" is the user name or user ID that should
+> be changed before running a command. Default value: nil.
+> 
+> As Chef is run by with sudo, the user is root by default. I still
+> think that being explicit is OK here. If you disagree, we can remove
+> the line.
+> 
+
+---
+
 For at least as long as Ruby has been popular among web developers, it has also
 been recognized as a useful tool for system administration work. Although it was
 first used as a clean alternative to Perl for adhoc scripting, Ruby quickly
@@ -567,10 +594,115 @@ knowledge to make sense of every recipe in Practicing Ruby's cookbook.
 
 ## A cookbook for building a (mostly) complete Rails environment 
 
+The goal of this article was to give you a sense of what kinds of building
+blocks that Chef recipes are made up of so that you could see various
+infrastructure automation concepts in practice. If you feel like you've
+made it that far, you may now be interested in looking at how a complete
+automation project is sewn together.
+
+The full Practicing Ruby cookbook contains a total of eight recipes,
+three of which we've already covered in this article. The five recipes
+we did not discuss in this article are responsible for handling the
+following chores:
+
+* Creating and managing a deployment user account to be used by Capistrano.
+* Installing postgresql and configuring a database for use with our Rails app.
+* Configuring Unicorn and managing it as an Upstart service.
+* Setting up some folders and files needed to deploy our Rails app.
+* Installing and managing MailCatcher as a service, to make email testing easier.
+
+If you are curious about how these recipes work, go ahead and read them! Many
+are thin wrappers around external cookbook dependencies, and none of them use
+any Chef features that we haven't already discussed. Attempting to
+make sense of how these recipes work would be a great way to test your 
+understanding of what we covered in this article.
+
+If you want to take things a step farther, you can actually try to provision a
+production-like environment for Practicing Ruby on your own system. The
+cookbook's [README file](https://github.com/elm-city-craftworks/practicing-ruby-cookbook)
+is fairly detailed, and we have things set up to work within a
+virtual machine that can run in isolation without having a negative impact
+on your own development environment. We also simplify a few things to make
+setup easier, such as swapping out Github authentication for Omniauth Developer
+mode, making most service integrations optional, and other little things that
+make it possible to try things out without having to do a bunch of 
+configuration work.
+
+I absolutely recommend trying to run our cookbook on your own to learn a whole
+lot more about Chef, but fair warning: to do so you will need to become familiar
+with the complex network of underplumbing that we intentionally avoided
+discussing in this article. It's not too hard to work your way through, but
+expect some turbulence along the way.
 
 ## Epilogue: What are the costs of infrastructure automation?
 
+The process of learning from the examples Mathias provided me with, and the act
+of writing this article really convinced me that I had greatly underestimated
+the potential benefits that infrastructure automation has to offer. However, it
+is important to be very clear on one point: there's no such thing as a 
+free lunch.
+
+At my current stage of understanding, I feel the same about Chef as I do about
+Rails: impressed by its vast capabilities, convinced of its utility, and shocked
+by its complexity. There are a tremendous amount of moving parts that you need
+to understand before it becomes useful, and many layers of subsystems that need
+to be wired up before you can actually get any of your recipes to run.
+
+Another concern is that "infrastructure as code" comes with the drawbacks
+associated with code and not just the benefits. Third-party cookbooks vary in
+quality and sometimes need to be patched or hacked to get them to work the way
+you want, and some abstractions are leaky and leave you doing some tedious work 
+at a lower level than you'd want. Dependency management is also complicated --
+and using extenral cookbooks means introducing at least one more fragile package 
+installer into your life.
+
+In the case of Chef in particular, it is also a bit strange that although its
+interface is mostly ordinary Ruby code, it has developed in a somewhat parallel
+universe where the user is assumed to know a lot about system administration,
+and very little about Ruby. This leads to some design choices that aren't
+necessarily bad, but are at least surprising to an experienced Ruby developer.
+
+And as for infrastructure automation as a whole, well... it doesn't fully free
+you from knowing quite a few details about the systems you are trying to manage.
+It does allow you to express ideas at a higher level, but you still need to
+be able to peel back the veneer and dive into some low level system
+administration concepts whenever something doesn't work the way you expect it
+would or doesn't support the feature you want to use via its high level
+interface. In that sense, an automated system will not necessarily reduce
+learning costs, it just has you doing a different kind of learning.
+
+Despite all these concerns, I have to say that this is one skillset that I wish
+I had learned more about years ago, and I fully intend to look for opportunities
+to apply these ideas in my own project. I hope after reading this article,
+you will try to do the same, and then share your stories about your experiences!
 
 ## Recommendations for further reading
 
-[puppet]: http://puppetlabs.com
+Despite having a very complex ecosystem, the infrastructure automation world
+(and especially the Chef community) have a ton of useful documentation that is
+freely available and easy to get started with. Here are a few resources to try
+out if you want to continue exploring this topic on your own:
+
+* [Opscode Chef documentation](http://docs.opscode.com): The official Chef documentation; comprehensive and really well organized. 
+
+* [Opscode public cookbooks](https://github.com/opscode-cookbooks): You can learn a lot by reading some of the most widely-used cookbooks in the Chef community. For complex examples, definitely check out [apache2](https://github.com/opscode-cookbooks/apache2) and [mysql](https://github.com/opscode-cookbooks/mysql).
+
+* [#learnchef](https://learnchef.opscode.com/): A collection of tutorials and screencasts designed to help you learn Chef.
+
+* [Common Idioms in Chef Recipes](http://www.opscode.com/blog/2013/09/04/demystifying-common-idioms-in-chef-recipes/): Explaination of (possibly surprising) idioms that sometimes appear in recipe code.
+
+* [Vagrant documentation](http://docs.vagrantup.com/v2/): The offical documentation for Vagrant, a tool that handles using Chef with virtual machines.
+
+* [Provisioning with Vagrant](http://docs.vagrantup.com/v2/provisioning/index.html): Explains the basics of provisioning with Vagrant as well as its different provisioners like [Chef Solo](http://docs.vagrantup.com/v2/provisioning/chef_solo.html).
+
+* [Learning Chef](http://mlafeldt.github.io/blog/2012/09/learning-chef): A friendly introduction to the topic by Mathias.
+
+* [System Provisioning with Vagrant](http://mlafeldt.github.io/blog/2012/08/system-provisioning-with-vagrant/): Another good post by Mathias
+
+If you've got some experience with infrastructure automation and have found
+other tutorials or articles that you like which aren't listed here, please leave
+a comment. Mathias will also be watching the comments for this article, so
+don't be afraid to ask any general questions you have about infrastructure
+automation or Chef, too.
+
+Thanks for making it all the way to the end of this article, and happy automating!
