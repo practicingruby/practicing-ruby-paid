@@ -425,7 +425,7 @@ from overriding a few default attributes, we only need to include the
 `nginx:default` recipe into our own code to install the relevant software 
 packages, generate an `nginx.conf` file, and to provide all the necessary
 init scripts to manage Nginx as a service. The following four lines
-of code take care of all of that four us:
+of code take care of all of that for us:
 
 ```ruby
 node.set["nginx"]["worker_processes"]     = 4
