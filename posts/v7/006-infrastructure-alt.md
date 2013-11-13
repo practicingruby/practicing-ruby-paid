@@ -37,7 +37,8 @@ commands on the console, and swearing loudly whenever I broke something. For
 things that really matter or tasks that seemed too tough for me to do on my own,
 I'd find someone else to take care of it for me.
 
-The fundamental problem was that my system-administration related pain wasn't severe enough to motivate me to learn a whole new of doing things. Because
+The fundamental problem was that my system-administration related pain wasn't 
+severe enough to motivate me to learn a whole new way of doing things. Because
 I never got curious enough about the topic, I didn't realize that infrastructure 
 automation has other benefits beyond eliminating the costs
 of doing repetitive and error-prone manual configuration work. In particular,
