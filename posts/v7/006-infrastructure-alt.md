@@ -634,7 +634,7 @@ learning costs, it just has you doing a different kind of learning.
 
 Despite all these concerns, I have to say that this is one skillset that I wish
 I had picked up years ago, and I fully intend to look for opportunities
-to apply these ideas in my own project. I hope after reading this article,
+to apply these ideas in my own projects. I hope after reading this article,
 you will try to do the same, and then share your stories about your experiences.
 
 ## Recommendations for further reading
