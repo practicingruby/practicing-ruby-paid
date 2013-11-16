@@ -4,6 +4,11 @@ http://en.wikipedia.org/wiki/Hunt_the_Wumpus
 
 http://scv.bu.edu/miscellaneous/Games/wumpus.html
 
+Dodecahedron generation:
+http://stackoverflow.com/questions/1280586/hunt-the-wumpus-room-connection/1280611#1280611
+
+
+
 
 Objects -
   Wumpus - a beast that eats anyone that enters its room.
