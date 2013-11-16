@@ -1,3 +1,26 @@
+Back story is a perfect but bored world looking for entertainment. The solution
+is obvious: they must hunt the wumpus!
+
+Perhaps use a TDD style similar to enum article. Also show game runs as you go.
+
+Start with very simple requirements and add complexity gradually:
+
+- Wumpus in a linear cave, kills hunter on contact
+- Hunter gets arrows (limit one room range)
+- Stench is added
+- Topology is made into dodecahedron
+- Crooked arrows added (explicitly specify room numbers, if wrong path, random selection)
+- Wumpus movement added (arrows and room entering)
+- Pits added
+- Wind added
+- Bats added (they move to wherever they drop you)
+- Rustling added
+
+Bonus:
+
+- Visual UI
+- Asymettrical connection topology (ala BSDGames wump)
+
 http://www.atariarchives.org/bcc1/showpage.php?page=247
 
 http://en.wikipedia.org/wiki/Hunt_the_Wumpus
@@ -7,8 +30,8 @@ http://scv.bu.edu/miscellaneous/Games/wumpus.html
 Dodecahedron generation:
 http://stackoverflow.com/questions/1280586/hunt-the-wumpus-room-connection/1280611#1280611
 
-
-
+Good visualization:
+http://flockhart.virtualave.net/ajax/wumpus.html
 
 Objects -
   Wumpus - a beast that eats anyone that enters its room.
