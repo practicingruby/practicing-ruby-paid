@@ -29,7 +29,7 @@ work that was quite so serious, but I still did a few interesting jobs in my day
 
 All of this sounded like pure fantasy to Ruth, who had always assumed that 
 software was something that machines took care of building
-themselves. The thought that any human could be trusted directly control 
+themselves. The thought that any human could be trusted to directly control 
 a computer was shocking on its own, but imagining her musty old Grandpa Joe doing
 that sort of work made her giggle in disbelief. "You? A programmer? That's
 funny, Grandpa Joe."
