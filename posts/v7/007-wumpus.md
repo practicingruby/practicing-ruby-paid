@@ -1,5 +1,94 @@
-Back story is a perfect but bored world looking for entertainment. The solution
-is obvious: they must hunt the wumpus!
+Ruth set herself down on her grandfather's living room floor, surrendering to
+the rising tide of boredom that had been tugging at her since the moment she
+first arrived at his apartment. In the kitchen, Grandpa Joe sipped coffee and
+stared off into nowhere. He was trying to remember the last time he and Ruth 
+had done something fun together, but he felt like he was just grasping at 
+straws. He had become a dull old man, and he knew it.
+
+Not able to stand the silence any longer, Ruth yelled down the hallway to her
+daydreaming elder. "Were you always this boring? Or is it the result of a
+hundred years of practice?", she asked in a way that blended sarcasm with
+sincerity. He didn't say anything in response, but her cajoling did
+prompt him to join her in the living room, where he sat down on the sofa and
+then quickly got back to staring at nothing at all while his mind continued 
+to ruminate. The sad look on his face was enough to make Ruth feel guilty for
+teasing him. "It was just a joke Grandpa, please don't take it so seriously",
+she said with a bit of regret.
+
+He looked at her with tired eyes, then asked her a question that seemed
+a bit odd: "Do you know that I used to write software for a living?"
+
+"What's that got to do with anything?", Ruth asked as she moved across
+the room to sit down next to her grandfather. For the first time in what 
+felt like years, she felt genuinely interested in what the old man had to say.
+
+"Yes, back when I was your mother's age, many people wrote software. We wrote the
+code for nearly everything: from the kind of stuff that keeps planes in the sky,
+to the software that managed people's banks accounts. I was never involved in
+work that was quite so serious, but I still did a few interesting jobs in my day."
+
+All of this sounded like pure fantasy to Ruth, who had always assumed that 
+software was something that machines took care of building
+themselves. The thought that any human could be trusted directly control 
+a computer was shocking on its own, but imagining her musty old Grandpa Joe doing
+that sort of work made her giggle in disbelief. "You? A programmer? That's
+funny, Grandpa Joe."
+
+"It's the truth, Ruth. Long before there were AI systems to do programming work
+for us, people did it. And some of us were even good at it. Some people enjoyed
+programming so much, they even did it for fun." 
+
+Grandpa Joe was getting impatient now, momentarily forgetting that this part 
+of history was conveniently left out of modern primary school education. The 
+machine-controlled world had little to gain in inspiring people to 
+try to take back some of the power that humans once had over computers,
+so the topic was simply never taught to the younger generations. It wasn't
+exactly prohibited to learn about programming, but the machines did their best 
+to make sure people would never feel the need to do so.
+
+"You must have grown up in terrible times, Grandpa Joe. The idea that
+programming a machine could be 'fun' sounds silly to me. Depending on the task,
+it must have been either painfully boring or dreadfully dangerous."
+
+Ruth frowned, slightly unsure about the words that had just come out of her
+mouth. How in the world could working with machines be fun? They usually just
+frustrated her with their cold indifference and utter incomprehensibility.
+Machines took care of the work that humans were too slow or stupid to do, but
+they weren't exactly known for their personality.
+
+Without warning, the old man leaped into the air as if he had been struck 
+by lightning. He could hardly contain his excitement as he sprung to life
+with a sudden urgency. "I've got it Ruth! I know what we can do today!"
+
+The old man ran to a closet and pulled out an old dusty card that vaguely resembled
+the lesson cards used by rapid learning machines. It was obviously homemade,
+but he held it with such pride and care that Ruth couldn't be help but wonder
+what its contents were.
+
+"I made this years ago, but I nearly forgot about it. Please take it down
+to the library and use the learning machine to study its lessons. It should be
+able to teach you everything you need to know about computers and programming
+to do something fun with me today."
+
+Ruth had used rapid learning machines plenty of times before, but all of the
+lessons she had studied had been machine-made. The thought of using a man-made
+lesson card made her a little nervous, but she knew that there were enough safety
+controls that the worst thing that could happen is that she'd waste a few hours
+at the library and not end up learning anything at all. Because Ruth didn't want
+to sink back into that painful boredom she had felt just minutes earlier, she
+decided to take a chance and headed down to the library.
+
+A few hours, Ruth returned to her grandfather's apartment and saw that he had set
+up an ancient looking computer on his kitchen table, which he was already
+rapidly typing commands into. Now that she had the necessary background
+knowledge to be convinced that humans actually could program computers, she 
+felt a bit less incredulous and simply asked him what it was they were going 
+to do together.
+
+He looked at her for a moment with a quiet intensity, and then
+responded: "Isn't it obvious, child? We're going to hunt the wumpus!"
+
+---
 
 Perhaps use a TDD style similar to enum article. Also show game runs as you go.
 
