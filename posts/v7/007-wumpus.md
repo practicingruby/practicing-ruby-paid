@@ -1,3 +1,8 @@
+> This issue of Practicing Ruby is a short story in prose and code. It
+draws its inspiration directly from a [text-based game](http://en.wikipedia.org/wiki/Hunt_the_Wumpus) 
+from Gregory Yob that was released in the 1970s, and is meant to
+reconnect you with the lighter side of programming.
+
 Ruth set herself down on her grandfather's living room floor, surrendering to
 the rising tide of boredom that had been tugging at her since the moment she
 first arrived at his apartment. In the kitchen, Grandpa Joe sipped coffee and
@@ -76,9 +81,10 @@ lesson card made her a little nervous, but she knew that there were enough safet
 controls that the worst thing that could happen is that she'd waste a few hours
 at the library and not end up learning anything at all. Because Ruth didn't want
 to sink back into that painful boredom she had felt just minutes earlier, she
-decided to take a chance and headed down to the library.
+decided to take a chance and headed down to the library. Grandpa Joe's
+lesson actually worked!
 
-A few hours, Ruth returned to her grandfather's apartment and saw that he had set
+A few hours later, Ruth returned to her grandfather's apartment and saw that he had set
 up an ancient looking computer on his kitchen table, which he was already
 rapidly typing commands into. Now that she had the necessary background
 knowledge to be convinced that humans actually could program computers, she 
@@ -88,25 +94,272 @@ to do together.
 He looked at her for a moment with a quiet intensity, and then
 responded: "Isn't it obvious, child? We're going to hunt the wumpus!"
 
+## The journey begins...
+
+"What in the world is a Wumpus?", Ruth asked.
+
+"It's a terrible cave-dwelling beast", said Grandpa Joe, 
+"and by golly, we're going to hunt it!"
+
+Ruth looked at the old man and sighed deeply. It would seem that
+she had got her hopes up for nothing, and that today would
+be the usual mix of boring and crazy she had come to expect
+from her grandfather.
+
+"Grandpa, I thought you said we were going to write computer programs,
+and now you're talking nonsense about a hunting trip. Did you 
+forget to take your medication today?"
+
+The old man was frustrated by her accusation, but it wasn't enough to curb his
+enthusiasm.
+
+"Don't be so annoyed, my dear. We're going to do both! Today we're
+going build a *computer game* together. All we need to do is
+write a little bit of code and use our imaginations, and we'll
+be hunting the Wumpus in no time at all."
+
+The puzzled look on Ruth's face made it clear to the old man just where the
+disconnect was. His granddaughter didn't know the first thing about "video
+games", and to be frank, she didn't have much of a sense of "imagination",
+either. The world she lived in leaned heavily on virtual reality 
+for entertainment. Those big-budget affairs had plenty of room for 
+personalization, but they were intentionally designed to leave very little 
+up to the imagination. To Ruth, the concept of cooking up a little game in your living 
+room using nothing but the ideas in your head was a completely foreign concept. 
+
+"I'm sorry Grandpa, maybe you aren't crazy, but I still don't get it."
+
+The old man felt glad to hear her say this, because he could tell from her voice
+that she was still interested, even if she didn't come out and say it.
+
+"I know this is a bit uncomfortable for you Ruth, and I'm sorry for rushing
+ahead with things. I'm 100 years older than you are, and we both know
+that a lot has changed about the world in the last century. I think
+that's why we're having such a hard time understanding each other.
+
+Let me back up a little bit and fill in some details for you. The game
+we're going to build today is based on one that was originally built
+by Gregory Yob back in the 1970s, and it's called 'Hunt the Wumpus'.
+He originally wrote that game using the BASIC programming language,
+but even back in my day that was considered a rather ancient
+and awkward language to work with. So I think today we'll work
+with the Ruby language, which you should now understand at least
+as well as I do -- assuming that lesson card did its job right.
+
+Programming can be really complicated, and sometimes it's better
+to just get started and figure things out as you go, and maybe if we did 
+that, it would be a bit less overwhelming for you. What do you think?"
+
+Ruth sat quietly for a moment, considering her grandfather's words. Realizing
+that she had nothing to lose in trying to understand what the hell he was
+talking about, she nodded in agreement, and their journey began.
+
+## Wumpus in a linear cave, kills hunter on contact
+
+**FIXME: Clean up code (just enough to make change easier later)**
+
+```ruby
+wumpus_room  = rand(2..10)
+current_room = 1
+
+loop do
+  puts
+
+  if current_room == 0
+    puts "You escaped the cave unharmed,"
+    puts "but the wumpus still lurks in the shadows. GAME OVER!"
+    exit
+  elsif current_room == wumpus_room
+    puts "The wumpus gobbled you up. GAME OVER!"
+    exit
+  else
+    puts "You are in room #{current_room}."
+    puts "Exits go to #{current_room - 1} and #{current_room + 1}."
+    print "Where do you want to go? "
+
+    choice = gets.to_i
+
+    if (current_room - choice).abs == 1
+      current_room = choice
+    else
+      puts "THERE IS NO PATH TO THAT ROOM! TRY AGAIN!"
+    end
+  end
+end
+```
+
+**Possible replacement model?**
+
+```ruby
+require "set"
+
+class Room
+  def initialize(number)
+    @number    = number
+    @neighbors = Set.new
+  end
+
+  attr_reader :number, :neighbors
+
+  def connect(other_room)
+    neighbors << other_room
+
+    other_room.neighbors << self
+  end
+
+  def neighboring_room_numbers 
+    neighbors.map { |e| e.number }
+  end
+
+  def find_neighbor(number)
+    neighbors.find { |e| e.number == number }
+  end
+end
+
+rooms = (1..10).map{ |i| Room.new(i) }
+rooms.each_cons(2) { |a,b| a.connect(b) }
+
+room  = rooms.first
+
+loop do
+  puts room.number
+
+  break if room.number == 10
+  room = room.find_neighbor(room.neighboring_room_numbers.max)
+end
+```
+
+## Stench is added
+
+**FIXME: Clean up code (just enough to make change easier later)**
+
+```ruby
+wumpus_room  = rand(2..10)
+current_room = 1
+
+loop do
+  puts
+
+  if current_room == 0
+    puts "You escaped the cave unharmed,"
+    puts "but the wumpus still lurks in the shadows. GAME OVER!"
+    exit
+  elsif current_room == wumpus_room
+    puts "The wumpus gobbled you up. GAME OVER!"
+    exit
+  else
+    if (current_room - wumpus_room).abs == 1
+      puts "You smell something terrible."
+    end
+
+    puts "You are in room #{current_room}."
+    puts "Exits go to #{current_room - 1} and #{current_room + 1}."
+    print "Where do you want to go? "
+
+    choice = gets.to_i
+
+    if (current_room - choice).abs == 1
+      current_room = choice
+    else
+      puts "THERE IS NO PATH TO THAT ROOM! TRY AGAIN!"
+    end
+  end
+end
+```
+
+## Hunter gets arrows (limit one room range)
+
+**FIXME: Clean up code (just enough to make change easier later)**
+
+```ruby
+wumpus_room  = rand(2..10)
+current_room = 1
+
+loop do
+  puts
+
+  if current_room == 0
+    puts "You escaped the cave unharmed,"
+    puts "but the wumpus still lurks in the shadows. GAME OVER!"
+    exit
+  elsif current_room == wumpus_room
+    puts "The wumpus gobbled you up. GAME OVER!"
+    exit
+  else
+    if (current_room - wumpus_room).abs == 1
+      puts "You smell something terrible."
+    end
+
+    puts "You are in room #{current_room}."
+    puts "Exits go to #{current_room - 1} and #{current_room + 1}."
+
+    puts "What do you want to do? (m)ove or (s)hoot?"
+    action = gets.chomp
+
+    unless ["m","s"].include?(action)
+      puts "INVALID ACTION! TRY AGAIN!"
+      next
+    end
+
+    print "Where? "
+    room = gets.to_i
+
+    unless (current_room - room).abs == 1
+      puts "THERE IS NO PATH TO THAT ROOM! TRY AGAIN!"
+      next
+    end
+
+    case action
+    when "m"
+      current_room = room
+    when "s"
+      if room == wumpus_room
+        puts "YOU KILLED THE WUMPUS! GOOD JOB, BUDDY!!!"
+        exit
+      else
+        puts "Your arrow didn't hit anything. Try a different room?"
+      end
+    end
+  end
+end
+```
+
+## Topology is made from a line, into a small map, into dodecahedron
+
+![](http://i.imgur.com/zxwQXnp.png)
+
+(revise code to allow arbitrary mapping)
+
+![](http://i.imgur.com/9N0Uy5v.png)
+
+(revise mapping file to implement dodecahedron)
+
+
+![](http://upload.wikimedia.org/wikipedia/commons/thumb/6/66/POV-Ray-Dodecahedron.svg/300px-POV-Ray-Dodecahedron.svg.png)
+![](http://i.imgur.com/FwFdfZZ.png)
+
+(screenshots are placeholders, see keynote file for raw assets)
+
+## Wumpus movement added (arrows and room entering)
+
+## Pits added + Wind added
+
+## Bats added (they move to wherever they drop you) + Rustling added
+
+## Crooked arrows added (explicitly specify room numbers, if wrong path, random selection)
+
+## Morals
+
+The joy of working on an interesting problem
+The joy of leaving something up to the imagination
+The joy of writing code with someone else
+The beauty of growing a simple idea into something useful
+
 ---
 
-Perhaps use a TDD style similar to enum article. Also show game runs as you go.
+Bonus (or homework):
 
-Start with very simple requirements and add complexity gradually:
-
-- Wumpus in a linear cave, kills hunter on contact
-- Hunter gets arrows (limit one room range)
-- Stench is added
-- Topology is made into dodecahedron
-- Crooked arrows added (explicitly specify room numbers, if wrong path, random selection)
-- Wumpus movement added (arrows and room entering)
-- Pits added
-- Wind added
-- Bats added (they move to wherever they drop you)
-- Rustling added
-
-Bonus:
-
+- Room number randomization
 - Visual UI
 - Asymettrical connection topology (ala BSDGames wump)
 
