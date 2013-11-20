@@ -328,25 +328,172 @@ end
 
 ![](http://i.imgur.com/zxwQXnp.png)
 
-(revise code to allow arbitrary mapping)
+```ruby
+rooms = (1..10).map{ |i| Room.new(i) }
+rooms.each_cons(2) { |a,b| a.connect(b) }
 
-![](http://i.imgur.com/9N0Uy5v.png)
+current_room = rooms.first
+wumpus_room  = rooms[5..-1].sample
+```
+
+![](http://i.imgur.com/aBk2aB8.png)
+
+
+```ruby
+rooms = (1..10).map.with_object({}) { |i, h| h[i] = Room.new(i) }
+
+connections = [[1,2],[1,3],[2,4],[2,5],[3,6],[3,7],[4,7],[4,8],
+               [5,6],[5,8],[6,9],[7,9],[8,10],[9,10]]
+
+
+
+connections.each { |a,b| rooms[a].connect(rooms[b]) }
+
+current_room = rooms[1]
+wumpus_room  = rooms[rand(5..10)]
+```
+
+
+    -----------------------------------------
+    You are in room 1.
+    Exits go to: 2, 3
+    -----------------------------------------
+    What do you want to do? (m)ove or (s)hoot? m
+    Where? 2
+    -----------------------------------------
+    You are in room 2.
+    Exits go to: 1, 4, 5
+    -----------------------------------------
+    What do you want to do? (m)ove or (s)hoot? m
+    Where? 4
+    -----------------------------------------
+    You are in room 4.
+    You smell something terrible.
+    Exits go to: 2, 7, 8
+    -----------------------------------------
+    What do you want to do? (m)ove or (s)hoot? m
+    Where? 2
+    -----------------------------------------
+    You are in room 2.
+    Exits go to: 1, 4, 5
+    -----------------------------------------
+    What do you want to do? (m)ove or (s)hoot? m
+    Where? 5
+    -----------------------------------------
+    You are in room 5.
+    You smell something terrible.
+    Exits go to: 2, 6, 8
+    -----------------------------------------
+    What do you want to do? (m)ove or (s)hoot? s
+    Where? 8
+    -----------------------------------------
+    YOU KILLED THE WUMPUS! GOOD JOB, BUDDY!!!
 
 (revise mapping file to implement dodecahedron)
+
+```ruby
+rooms = (1..20).map.with_object({}) { |i, h| h[i] = Room.new(i) }
+
+connections = [[1,2],[2,10],[10,11],[11,8],[8,1],
+               [1,5],[2,3],[9,10],[20,11],[7,8],
+               [5,4],[4,3],[3,12],[12,9],[9,19],
+               [19,20],[20,17],[17,7],[7,6],[6,5],
+               [4,14],[12,13],[18,19],[16,17],
+               [15,6],[14,13],[13,18],[18,16],
+               [16,15],[15,14]]
+
+connections.each { |a,b| rooms[a].connect(rooms[b]) }
+
+current_room = rooms[rand(1..20)]
+wumpus_room  = rooms[rand(1..20)]
+```
 
 
 ![](http://upload.wikimedia.org/wikipedia/commons/thumb/6/66/POV-Ray-Dodecahedron.svg/300px-POV-Ray-Dodecahedron.svg.png)
 ![](http://i.imgur.com/FwFdfZZ.png)
 
-(screenshots are placeholders, see keynote file for raw assets)
 
-## Wumpus movement added (arrows and room entering)
+    -----------------------------------------
+    You are in room 10.
+    Exits go to: 2, 11, 9
+    -----------------------------------------
+    What do you want to do? (m)ove or (s)hoot? m
+    Where? 2
+    -----------------------------------------
+    You are in room 2.
+    Exits go to: 1, 10, 3
+    -----------------------------------------
+    What do you want to do? (m)ove or (s)hoot? m
+    Where? 1
+    -----------------------------------------
+    You are in room 1.
+    Exits go to: 2, 8, 5
+    -----------------------------------------
+    What do you want to do? (m)ove or (s)hoot? m
+    Where? 8
+    -----------------------------------------
+    You are in room 8.
+    Exits go to: 11, 1, 7
+    -----------------------------------------
+    What do you want to do? (m)ove or (s)hoot? m
+    Where? 7
+    -----------------------------------------
+    You are in room 7.
+    You smell something terrible.
+    Exits go to: 8, 17, 6
+    -----------------------------------------
+    What do you want to do? (m)ove or (s)hoot? m
+    Where? 8
+    -----------------------------------------
+    You are in room 8.
+    Exits go to: 11, 1, 7
+    -----------------------------------------
+    What do you want to do? (m)ove or (s)hoot? m
+    Where? 1
+    -----------------------------------------
+    You are in room 1.
+    Exits go to: 2, 8, 5
+    -----------------------------------------
+    What do you want to do? (m)ove or (s)hoot? m
+    Where? 5
+    -----------------------------------------
+    You are in room 5.
+    Exits go to: 1, 4, 6
+    -----------------------------------------
+    What do you want to do? (m)ove or (s)hoot? m
+    Where? 1
+    -----------------------------------------
+    You are in room 1.
+    Exits go to: 2, 8, 5
+    -----------------------------------------
+    What do you want to do? (m)ove or (s)hoot? m
+    Where? 8
+    -----------------------------------------
+    You are in room 8.
+    Exits go to: 11, 1, 7
+    -----------------------------------------
+    What do you want to do? (m)ove or (s)hoot? m
+    Where? 7
+    -----------------------------------------
+    You are in room 7.
+    You smell something terrible.
+    Exits go to: 8, 17, 6
+    -----------------------------------------
+    What do you want to do? (m)ove or (s)hoot? s
+    Where? 17
+    -----------------------------------------
+    YOU KILLED THE WUMPUS! GOOD JOB, BUDDY!!!
+
+
+(screenshots are placeholders, see keynote file for raw assets)
 
 ## Pits added + Wind added
 
 ## Bats added (they move to wherever they drop you) + Rustling added
 
 ## Crooked arrows added (explicitly specify room numbers, if wrong path, random selection)
+
+## Wumpus movement added (arrows and room entering)
 
 ## Morals
 
@@ -357,7 +504,7 @@ The beauty of growing a simple idea into something useful
 
 ---
 
-Bonus (or homework):
+Bonus (or homework for Ruth):
 
 - Room number randomization
 - Visual UI
