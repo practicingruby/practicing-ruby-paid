@@ -643,11 +643,6 @@ class Narrator
   def describes_room
     puts "-----------------------------------------"
     puts "You are in room #{@current_room.number}."
-
-    if exits.include?(@wumpus_room.number)
-      puts "You smell something terrible."
-    end
-
     puts "Exits go to: #{exits.join(', ')}"
   end
 
