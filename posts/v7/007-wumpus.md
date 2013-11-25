@@ -1,3 +1,451 @@
+There is a cave. It is made up of 20 rooms laid out in a dodecahedron,
+with three connections between each room.
+
+```ruby
+cave = Wumpus::Cave.new
+```
+
+The cave has a number of hazards, the main one being the wumpus itself. However,
+there are also bottomless pits for the player to fall into, and bats that will
+carry the player off to random rooms.
+
+```ruby
+cave.add_hazard(:wumpus, 1)
+cave.add_hazard(:pit, 3)
+cave.add_hazard(:bats, 3)
+```
+
+There are also models for the player itself (which starts at a random safe
+location in the cave), and a narrator who "tells the player's story" by handling
+input and output on the command line.
+
+```ruby
+player   = Wumpus::Player.new(cave.entrance)
+narrator = Wumpus::Narrator.new(player)
+```
+
+The player is able to sense hazards in rooms adjacent to their current 
+location. These senses do not tell us exactly *where* the hazard is, but do give
+us a way to figure that out through deduction. Approaching a room from several
+different angles will allow you to isolate what hazard is in what room.
+
+```ruby
+player.sense(:bats) do
+  narrator.say("You hear a rustling sound nearby") 
+end
+
+player.sense(:wumpus) do
+  narrator.say("You smell something terrible nearby")
+end
+
+player.sense(:pit) do
+  narrator.say("You feel a cold wind blowing from a nearby cavern.")
+end
+```
+
+The player only has two direct actions available: to move into a neighboring
+room, or to shoot into a neighboring room. Both of these actions may lead
+to the indirect action of startling the wumpus.
+
+When the wumpus is startled, it has a chance of either staying where it is, or
+moving into an adjacent room.
+
+If the wumpus ends up in the same place as the player after it has been
+startled, it kills the player.
+
+(fix this description, it's terrible and probably inaccurate ^)
+
+```ruby
+player.action(:move) do |destination|
+  player.enter(destination)
+end
+
+player.action(:shoot) do |destination|
+  wumpus_room = cave.room_with(:wumpus)
+
+  if wumpus_room == destination
+    narrator.finish_story("YOU KILLED THE WUMPUS! GOOD JOB, BUDDY!!!") 
+  else
+    narrator.say("Your arrow missed!")
+
+    player.act(:startle_wumpus, wumpus_room)
+  end
+end
+
+player.action(:startle_wumpus) do |old_wumpus_room|
+  if [:move, :stay].sample == :move
+    new_wumpus_room = old_wumpus_room.random_neighbor
+    cave.move(:wumpus, from: old_wumpus_room, to: new_wumpus_room)
+
+    narrator.say("You heard a rumbling in a nearby cavern.")
+  end
+
+  if player.room.has?(:wumpus)
+    narrator.finish_story("You woke up the wumpus and he ate you!")
+  end
+end
+```
+
+Whenever a player enters a room, events can occur based on what hazards are in
+that room. Moving into the wumpus's room startles it, moving into a room with
+bats causes them to move the player to a random location, and moving into a room
+with a pit causes the player to die.
+
+```ruby
+player.encounter(:wumpus) do
+  player.act(:startle_wumpus, player.room)
+end
+
+player.encounter(:bats) do
+  narrator.say "Giant bats whisk you away to a new cavern!"
+
+  old_room = player.room
+  new_room = cave.random_room
+
+  player.enter(new_room)
+
+  cave.move(:bats, from: old_room, to: new_room)
+end
+
+player.encounter(:pit) do
+  narrator.finish_story("You fell into a bottomless pit. Enjoy the ride!")
+end
+```
+
+All of these events are triggered by the narrator "telling the story", which
+alternates between accepting input from the player and printing out descriptions
+of the rooms and events of the game.
+
+```ruby
+# Kick off the event loop
+narrator.tell_story
+```
+
+An example transcript should go here.
+
+
+---
+
+All of this functionality is built on top of four classes, the `Cave`, the
+`Room`, the `Player`, and the `Narrator`.
+
+Let's start by looking at the `Room` class.
+
+At its heart, a room consists of an identifying number (between 1 and 20), 
+a set of connections to its neighbors, and a set of hazards. The
+`Room` class models those attributes and provides some basic helper
+methods for manipulating them:
+
+```ruby
+require "set"
+
+module Wumpus
+  class Room
+    def initialize(number)
+      @number    = number
+      @neighbors = Set.new
+      @contents  = []
+    end
+
+    attr_reader :number, :neighbors
+
+    def add(thing)
+      @contents.push(thing)
+    end
+
+    def remove(thing)
+      @contents.delete(thing)
+    end
+
+    def has?(thing)
+      @contents.include?(thing)
+    end
+
+    def empty?
+      @contents.empty?
+    end
+
+    def safe?
+      empty? && neighbors.all? { |e| e.empty? }
+    end
+
+    def connect(other_room)
+      neighbors << other_room
+
+      other_room.neighbors << self
+    end
+
+    def exits
+      neighbors.map { |e| e.number }
+    end
+
+    def neighbor(number)
+      neighbors.find { |e| e.number == number }
+    end
+
+    def random_neighbor
+      neighbors.to_a.sample
+    end
+  end
+end
+```
+
+Although it's technically possible to model an arbitrary cave layout using only
+`Room` objects, it makes sense to create a `Cave` class to manage these objects
+in aggregate.
+
+A cave is nothing more than a collection of `Room` objects that model
+a particular topological layout:
+
+```ruby
+module Wumpus
+  class Cave
+    def initialize
+      @rooms = (1..20).map.with_object({}) { |i, h| h[i] = Room.new(i) }
+      build_dodechadron_layout
+    end
+
+    def add_hazard(thing, count)
+      count.times do
+        room = random_room
+
+        redo if room.has?(thing)
+
+        room.add(thing) 
+      end
+    end
+
+    def random_room
+      @rooms.values.sample
+    end
+
+    def move(thing, from: raise, to: raise)
+      from.remove(thing)
+      to.add(thing)
+    end
+
+    def room_with(thing)
+      @rooms.values.find { |e| e.has?(thing) }
+    end
+
+    def entrance
+      @entrance ||= @rooms.values.find(&:safe?)
+    end
+
+    def room(number)
+      @rooms[number]
+    end
+
+    def build_dodechadron_layout
+      connections = [[1,2],[2,10],[10,11],[11,8],[8,1],
+                     [1,5],[2,3],[9,10],[20,11],[7,8],
+                     [5,4],[4,3],[3,12],[12,9],[9,19],
+                     [19,20],[20,17],[17,7],[7,6],[6,5],
+                     [4,14],[12,13],[18,19],[16,17],
+                     [15,6],[14,13],[13,18],[18,16],
+                     [16,15],[15,14]]
+
+      connections.each { |a,b| @rooms[a].connect(@rooms[b]) }
+    end
+  end
+end
+```
+
+For the most part, the job of the `Cave` is to serve as a collection of rooms,
+and to manage interactions with those rooms.
+
+It starts out by construction a topology that's equivalent to a dodecahedron:
+
+```ruby
+    def build_dodechadron_layout
+      connections = [[1,2],[2,10],[10,11],[11,8],[8,1],
+                     [1,5],[2,3],[9,10],[20,11],[7,8],
+                     [5,4],[4,3],[3,12],[12,9],[9,19],
+                     [19,20],[20,17],[17,7],[7,6],[6,5],
+                     [4,14],[12,13],[18,19],[16,17],
+                     [15,6],[14,13],[13,18],[18,16],
+                     [16,15],[15,14]]
+
+      connections.each { |a,b| @rooms[a].connect(@rooms[b]) }
+    end
+```
+
+With these connections made, it's possible to add hazards to
+rooms, taking care of a few corner cases in the process.
+
+
+
+```ruby
+module Wumpus
+  class Player
+    def initialize(room)
+      @senses     = {}
+      @encounters = {}
+      @actions    = {}
+      @room       = room
+    end
+
+    attr_reader :room
+
+    def sense(thing, &callback)
+      @senses[thing] = callback
+    end
+
+    def encounter(thing, &callback)
+      @encounters[thing] = callback
+    end
+
+    def action(thing, &callback)
+      @actions[thing] = callback
+    end
+
+    def enter(room)
+      @room = room
+
+      @encounters.each do |thing, action|
+        return(action.call) if room.has?(thing)
+      end
+    end
+
+    def explore_room
+      @senses.each do |thing, action|
+        action.call if @room.neighbors.any? { |e| e.has?(thing) }
+      end
+    end
+
+    def act(action, destination)
+      @actions[action].call(destination)
+    end
+  end
+end
+```
+
+```ruby
+module Wumpus
+  class Narrator
+    def initialize(player)
+      @player = player
+    end
+
+    def say(message)
+      STDOUT.puts message
+    end
+
+    def ask(question)
+      print "#{question} "
+      STDIN.gets.chomp
+    end
+
+    def tell_story
+      until finished?
+        describe_room
+        ask_player_to_act
+      end
+
+      describe_ending
+    end
+
+    def finish_story(message)
+      @ending_message = message
+    end
+
+    private
+    
+    def finished?
+      !!@ending_message
+    end
+
+    def describe_ending
+      say "-----------------------------------------"
+      say @ending_message
+    end
+
+    def describe_room
+      say "-----------------------------------------"
+      say "You are in room #{@player.room.number}."
+
+      @player.explore_room
+
+      say "Exits go to: #{@player.room.exits.join(', ')}"
+    end
+
+    def ask_player_to_act
+      actions = {"m" => :move, "s" => :shoot, "i" => :inspect }
+      
+      accepting_player_input do |command, room_number| 
+        @player.act(actions[command], @player.room.neighbor(room_number))
+      end
+    end
+
+    def accepting_player_input
+      say "-----------------------------------------"
+      command = ask("What do you want to do? (m)ove or (s)hoot?")
+
+      unless ["m","s"].include?(command)
+        say "INVALID ACTION! TRY AGAIN!"
+        return
+      end
+
+      dest = ask("Where?").to_i
+
+      unless @player.room.exits.include?(dest)
+        say "THERE IS NO PATH TO THAT ROOM! TRY AGAIN!"
+        return
+      end
+
+      yield(command, dest)
+    end
+  end
+end
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+----------------------------------------------------------------------
+
 > This issue of Practicing Ruby is a short story in prose and code. It
 draws its inspiration directly from a [text-based game](http://en.wikipedia.org/wiki/Hunt_the_Wumpus) 
 from Gregory Yob that was released in the 1970s, and is meant to
