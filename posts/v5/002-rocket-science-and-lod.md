@@ -8,7 +8,7 @@ literally out of this world.
 
 ### An introduction to Smyth's Law of Demeter
 
-[David Smyth](http://zipcodemars.jpl.nasa.gov/bio-contribution.cfm?bid=1018&cid=393&pid=377), 
+[David Smyth](http://mars.jpl.nasa.gov/zipcodemars/bio-contribution.cfm?bid=1018&cid=393&pid=377&country_id=0), 
 a scientist who worked on various Mars missions for NASA's Jet 
 Propulsion Laboratory, came up with this seemingly innocuous definition
 of the Law of Demeter:
@@ -419,7 +419,7 @@ as our domain objects.
 
 I would love it if you'd share a comment with your own thoughts about 
 the philosophical divide between data structures and domain objects, and
-also encourage you to read [this post from Bob Martin](http://blog.objectmentor.com/articles/2007/11/02/active-record-vs-objects) 
+also encourage you to read [this post from Bob Martin](https://sites.google.com/site/unclebobconsultingllc/active-record-vs-objects) 
 on the topic, but I won't dwell on the point for now. We still have
 work to do!
 
