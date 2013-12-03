@@ -1,3 +1,195 @@
+## Wumpus
+
+(describe the game and its magic)
+
+(hint at what can be learned)
+
+## Project structure
+
+* Room
+* Cave
+* Player
+* Narrator
+* bin/wumpus
+
+## Modeling the Room class
+
+(diagram)
+
+Every room has an identifying number, to help the player keep 
+track of where they have been:
+
+```ruby
+let(:room) { Wumpus::Room.new(42) }
+
+it "has a number" do
+  room.number.must_equal(42)
+end
+```
+
+Each room is connected to other rooms in the cave, and it is possible to 
+look up and select neighboring rooms by their number, or via 
+random selection:
+
+```ruby
+it "has connections to neighbors" do
+  neighbors = [2,4,8].each do |i| 
+    # create a connection to a neighboring room
+    room.connect(Wumpus::Room.new(i)) 
+
+    # a neighbor can be looked up by room number
+    room.neighbor(i).number.must_equal(i)
+
+    # Room connections are bidirectional
+    room.neighbor(i).neighbor(room.number).must_equal(room)
+  end
+
+  # Can get numbers of all neighboring rooms
+  room.exits.must_equal([2,4,8])
+
+  # Can grab a random room
+  [2,4,8].must_include(room.random_neighbor.number)
+end
+```
+
+Rooms may contain hazards, which can be added or removed as the 
+game progresses:
+
+```ruby
+  it "may contain hazards" do 
+    # rooms start out empty
+    assert room.empty? 
+
+    # hazards can be added
+    room.add(:wumpus)
+    room.add(:bats)
+
+    # a room with hazards isn't empty
+    refute room.empty?
+
+    # hazards can be detected by name
+    assert room.has?(:wumpus)
+    assert room.has?(:bats)
+
+    refute room.has?(:alf)
+
+    # hazards can be removed
+    room.remove(:bats)
+    refute room.has?(:bats)
+  end
+```
+
+A room is considered safe only if there are no hazards within it
+or any of its neighbors:
+
+```ruby
+  it "is not safe if it has hazards" do
+    room.add(:wumpus)
+
+    refute room.safe?
+  end
+
+  it "is not safe if its neighbors have hazards" do
+    [2,4,8].each { |i| room.connect(Wumpus::Room.new(i)) }
+
+    room.random_neighbor.add(:wumpus)
+
+    refute room.safe?
+  end
+
+  it "is safe when it and its neighbors have no hazards" do
+    [2,4,8].each { |i| room.connect(Wumpus::Room.new(i)) }
+
+    assert room.safe?
+  end
+end
+```
+
+Because this class only handles basic data tranformations, it is very
+straightforward to implement. Run `git pull origin room-tests` now to try 
+implementing it yourself, or [view my solution][room-class]
+before moving on.
+
+## Modeling the Cave class
+
+```ruby
+require "set"
+
+require_relative "../helper"
+
+describe "A cave" do
+  let(:cave) { Wumpus::Cave.new }
+  let(:rooms) { (1..20).map { |i| cave.room(i) } }
+  
+  it "is dodecahedron shaped" do
+    rooms.each do |room|
+      room.neighbors.count.must_equal(3)
+      
+      assert room.neighbors.all? { |e| e.neighbors.include?(room) }
+    end
+  end
+
+  it "can select rooms at random" do
+    sampling = Set.new
+
+    must_eventually("randomly select each room") do
+      new_room = cave.random_room 
+      sampling << new_room
+
+      sampling == Set[*rooms] 
+    end
+  end
+
+  it "can move hazards from one room to another" do
+    room      = cave.random_room
+    neighbor  = room.neighbors.first
+
+    room.add(:bats)
+
+    assert room.has?(:bats)
+    refute neighbor.has?(:bats)
+
+    cave.move(:bats, :from => room, :to => neighbor)
+
+    refute room.has?(:bats)
+    assert neighbor.has?(:bats)
+  end
+
+  it "can add hazards at random to a specfic number rooms" do
+    cave.add_hazard(:bats, 3)
+
+    rooms.select { |e| e.has?(:bats) }.count.must_equal(3)
+  end
+
+  it "can find a room with a particular hazard" do
+    cave.add_hazard(:wumpus, 1)
+
+    assert cave.room_with(:wumpus).has?(:wumpus)
+  end
+
+  it "can find a safe room to serve as an entrance" do
+    cave.add_hazard(:wumpus, 1)
+    cave.add_hazard(:pit, 3)
+    cave.add_hazard(:bats, 3)
+
+    entrance = cave.entrance
+
+    entrance.must_be_instance_of(Wumpus::Room)
+
+    assert entrance.safe?
+  end
+
+  def must_eventually(message, n=1000)
+    n.times { yield and return pass }
+    flunk("Expected to #{message}, but didn't")
+  end
+end
+```
+
+[room-class]: https://github.com/elm-city-craftworks/wumpus/blob/master/lib/wumpus/room.rb
+
+--------------------------------------------------
+
 There is a cave. It is made up of 20 rooms laid out in a dodecahedron,
 with three connections between each room.
 
