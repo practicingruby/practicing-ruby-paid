@@ -186,6 +186,259 @@ describe "A cave" do
 end
 ```
 
+## Modeling the Player class
+
+```ruby
+it "can sense nearby hazards when exploring rooms" do
+  cave = Wumpus::Cave.new
+  room = cave.entrance
+
+  room.random_neighbor.add(:bats)
+  room.random_neighbor.add(:wumpus)
+
+  output = []
+
+  player = Wumpus::Player.new
+  player.enter(room)
+
+  player.sense(:bats) do
+    output << "You hear a rustling sound"
+  end
+
+  player.sense(:wumpus) do
+    output << "You smell something terrible"
+  end
+
+  player.explore_room
+
+  output.must_equal(["You hear a rustling sound", "You smell something terrible"])
+
+  cave.room_with(:bats).remove(:bats)
+  output.clear
+
+  player.explore_room
+  output.must_equal(["You smell something terrible"])
+end
+
+it "can encounter hazards when entering a room" do
+  safe_room   = Wumpus::Room.new(42)
+
+  unsafe_room = Wumpus::Room.new(99)
+  unsafe_room.add(:wumpus)
+
+  effects = []
+  
+  player = Wumpus::Player.new
+  
+  player.encounter(:wumpus) do
+    effects << "The wumpus ate you up!"
+  end
+
+  player.enter(safe_room)
+
+  assert effects.empty?
+
+  player.enter(unsafe_room)
+
+  effects.must_equal(["The wumpus ate you up!"])
+end
+
+it "can perform actions" do
+  player = Wumpus::Player.new
+
+  room_a = Wumpus::Room.new(42)
+  room_b = Wumpus::Room.new(99)
+
+  player.enter(room_a)
+
+  player.room.must_equal(room_a)
+
+  player.action(:move) do |destination|
+    player.enter(destination)
+  end
+
+  player.act(:move, room_b)
+  player.room.must_equal(room_b)
+end
+```
+
+## Modeling the Narrator class
+
+```ruby
+it "can ask for input" do
+  narrator = Wumpus::Narrator.new
+
+  with_stdin do |user|
+    user.puts("m")
+
+    narrator.ask("What do you want to do? (m)ove or (s)hoot?").must_equal("m")
+  end
+end
+
+it "can say things" do
+  narrator = Wumpus::Narrator.new
+
+  -> { narrator.say("Well hello there, stranger!") }
+     .must_output("Well hello there, stranger!\n")
+end
+
+it "knows when the story is over" do
+  narrator = Wumpus::Narrator.new
+
+  refute narrator.finished?
+
+  narrator.finish_story("It's done!")
+  
+  assert narrator.finished?
+
+  -> { narrator.describe_ending }.must_output("It's done!\n")
+end
+
+it "knows how to tell a story from beginning to end" do
+  narrator = Wumpus::Narrator.new
+
+  chapters = (1..5).to_a
+
+  out, err = capture_io do
+    narrator.tell_story do
+      narrator.say("Thus begins chapter #{chapters.shift}")
+
+      if chapters.empty?
+        narrator.finish_story("And they all lived happily ever after!")
+      end
+    end
+  end
+
+  expect_string_sequence(out, 
+    /chapter 1/, /chapter 2/, /chapter 3/, /chapter 4/, /chapter 5/,
+    /And they all lived happily ever after!/)
+end
+```
+
+```ruby
+# http://stackoverflow.com/a/16950202
+def with_stdin
+  stdin = $stdin             
+  $stdin, write = IO.pipe    
+  capture_io { yield(write) }               
+ensure
+  write.close                
+  $stdin = stdin             
+end
+
+def expect_string_sequence(out, *patterns)
+  scanner = StringScanner.new(out)
+
+  patterns.each do |pattern|
+    scanner.scan_until(pattern) or 
+      flunk("Didn't find pattern #{pattern.inspect} in sequence")
+  end
+
+  pass
+end
+```
+
+** LINK TO CONSOLE OBJECT **
+
+## Building the game
+
+
+```ruby
+#!/usr/bin/env ruby
+require_relative "../lib/wumpus"
+
+# For testing, but also for restoring a world with the same conditions
+srand(ARGV[0].to_i) if ARGV[0]
+
+# World setup
+
+cave = Wumpus::Cave.new
+
+cave.add_hazard(:wumpus, 1)
+cave.add_hazard(:pit, 3)
+cave.add_hazard(:bats, 3)
+
+# Player and narrator setup
+
+player    = Wumpus::Player.new
+narrator  = Wumpus::Narrator.new
+
+console = Wumpus::Console.new(player, narrator)
+
+# Senses
+
+player.sense(:bats) do
+  narrator.say("You hear a rustling sound nearby") 
+end
+
+player.sense(:wumpus) do
+  narrator.say("You smell something terrible nearby")
+end
+
+player.sense(:pit) do
+  narrator.say("You feel a cold wind blowing from a nearby cavern.")
+end
+
+# Encounters
+
+player.encounter(:wumpus) do
+  player.act(:startle_wumpus, player.room)
+end
+
+player.encounter(:bats) do
+  narrator.say "Giant bats whisk you away to a new cavern!"
+
+  old_room = player.room
+  new_room = cave.random_room
+
+  player.enter(new_room)
+
+  cave.move(:bats, from: old_room, to: new_room)
+end
+
+player.encounter(:pit) do
+  narrator.finish_story("You fell into a bottomless pit. Enjoy the ride!")
+end
+
+# Actions
+
+player.action(:move) do |destination|
+  player.enter(destination)
+end
+
+player.action(:shoot) do |destination|
+  if destination.has?(:wumpus)
+    narrator.finish_story("YOU KILLED THE WUMPUS! GOOD JOB, BUDDY!!!") 
+  else
+    narrator.say("Your arrow missed!")
+
+    player.act(:startle_wumpus, cave.room_with(:wumpus))
+  end
+end
+
+player.action(:startle_wumpus) do |old_wumpus_room|
+  if [:move, :stay].sample == :move
+    new_wumpus_room = old_wumpus_room.random_neighbor
+    cave.move(:wumpus, from: old_wumpus_room, to: new_wumpus_room)
+
+    narrator.say("You heard a rumbling in a nearby cavern.")
+  end
+
+  if player.room.has?(:wumpus)
+    narrator.finish_story("You woke up the wumpus and he ate you!")
+  end
+end
+
+# Kick off the event loop
+
+player.enter(cave.entrance)
+
+narrator.tell_story do
+  console.show_room_description
+  console.ask_player_to_act
+end
+```
+
 [room-class]: https://github.com/elm-city-craftworks/wumpus/blob/master/lib/wumpus/room.rb
 
 --------------------------------------------------
