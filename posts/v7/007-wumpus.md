@@ -1,5 +1,149 @@
-Link (or at least reference) each branch and provide a README for each.
-[Audit and improve README information where needed]
+Hunt the Wumpus is a hide-and-seek game that takes place in an underground
+cave network full of interconnected rooms. To win the game, the player
+needs to locate the evil Wumpus and kill it while avoiding various different 
+hazards that are hidden within in the cave.
+
+Originally written by Gregory Yob in the 1970s, this game is traditionally
+played using a text-based interface, which leaves plenty up to the
+player's imagination, and also makes programming easier for those who
+want to build Wumpus-like games of their own.
+
+Because of its simple but clever nature, Hunt the Wumpus has been ported 
+to many different platforms and programming languages over the last several
+decades. In this article, you will discover why this blast from the past 
+serves as an excellent example of creative computing, and you'll also 
+learn how to implement it from scratch in Ruby.
+
+## Gameplay demonstration
+
+There are only two actions available to the player throughout the game: to move
+from room to room, or to shoot arrows into nearby rooms in an attempt to kill 
+the Wumpus. Until the player knows for sure where the Wumpus is, most of their actions 
+will be dedicated to moving around the cave to gain a sense of its layout:
+
+    You are in room 1.
+    Exits go to: 2, 8, 5
+    -----------------------------------------
+    What do you want to do? (m)ove or (s)hoot? m
+    Where? 2
+    -----------------------------------------
+    You are in room 2.
+    Exits go to: 1, 10, 3
+    -----------------------------------------
+    What do you want to do? (m)ove or (s)hoot? m
+    Where? 10
+    -----------------------------------------
+    You are in room 10.
+    Exits go to: 2, 11, 9
+
+Even after only a couple actions, the player can start to piece together
+a map of the cave's topography, which will help them avoid getting lost
+as they continue their explorations:
+
+![](http://i.imgur.com/5gCTOAt.png)
+
+Play continues in this fashion, with the player wandering around until 
+a hazard is detected:
+
+    What do you want to do? (m)ove or (s)hoot? m
+    Where? 11
+    -----------------------------------------
+    You are in room 11.
+    Exits go to: 10, 8, 20
+    -----------------------------------------
+    What do you want to do? (m)ove or (s)hoot? m
+    Where? 20
+    -----------------------------------------
+    You are in room 20.
+    You feel a cold wind blowing from a nearby cavern.
+    Exits go to: 11, 19, 17
+
+In this case, the player has managed to get close
+to a bottomless pit, which is detected by the presence of
+a cold wind emanating from an adjacent room.
+
+Because hazards are sensed indirectly, the player needs to use a deduction
+process to know for sure which hazards are in what rooms. With the knowledge of
+the cave layout so far, the only thing that is for certain is there is at least one
+pit nearby, with both rooms 17 and 19 being possible candidates. One of them
+might be safe, but there is also a chance that BOTH rooms contain pits.
+In a literal sense, the player might have reached a dead end:
+
+![](http://i.imgur.com/D6aA2wl.png)
+
+A risky player might chance it and try one of the two rooms, but
+that isn't a smart way to play. The safe option is to 
+backtrack in search of a different path through the cave:
+
+    What do you want to do? (m)ove or (s)hoot? m
+    Where? 11
+    -----------------------------------------
+    You are in room 11.
+    Exits go to: 10, 8, 20
+    -----------------------------------------
+    What do you want to do? (m)ove or (s)hoot? m
+    Where? 8
+    -----------------------------------------
+    You are in room 8.
+    You smell something terrible nearby
+    Exits go to: 11, 1, 7
+
+Changing directions ends up paying off. Upon entering room 8,
+the terrible smell that is sensed indicates the Wumpus is nearby,
+and because rooms 1 and 11 have already been visited, there
+is only one place left for the Wumpus to be hiding:
+
+    What do you want to do? (m)ove or (s)hoot? s
+    Where? 7
+    -----------------------------------------
+    YOU KILLED THE WUMPUS! GOOD JOB, BUDDY!!!
+
+At the end of the hunt, the player's map ended up looking like this:
+
+![](http://i.imgur.com/IZnqNNw.png)
+
+In less fortunate circumstances, the player would need to do a lot more
+exploration before they could be certain about where the Wumpus 
+was hiding. Other hazards might also be encountered, including giant bats 
+that are capable of moving the player to a random location in the cave.
+Because all these factors are randomized in each new game, Hunt the Wumpus
+can be played again and again without ever encountering an identical
+cave layout.
+
+We will discuss more about the game rules throughout the rest of this
+article, but the few concepts illustrated in this demonstration are more 
+than enough for us to start modeling some of the key game objects.
+Let's get to work!
+
+## Implementing "Hunt the Wumpus" from scratch
+
+Like many programs from its era, Hunt the Wumpus was designed to 
+be hackable. If you look at one of the [original publications][atari]
+about the game, you can see that the author actively encourages
+tweaking its rules, and even includes the full source code 
+of the game.
+
+Before you rush off to study the original implementation, remember that 
+it was written four decades ago in BASIC. Unless you consider yourself
+a technological archaeologist, it's probably not the best way to
+learn about the game. With that in mind, I've put together a learning
+exercise that will guide you through implementing some of the core 
+game concepts of Hunt the Wumpus -- without getting bogged down in
+specific game rules or having to write boring user interface code.
+
+In particular, I want you to implement three classes that I have 
+already written the tests for:
+
+1. A `Wumpus::Room` class to manage hazards and connections between rooms
+2. A `Wumpus::Cave` class to manage the overall topography of the cave
+3. A `Wumpus::Player` class that handles sensing and encountering hazards
+
+Once these three classes are written, you'll be able to use my UI code 
+and game logic to play a rousing round of Hunt the Wumpus. You'll
+also be able to compare your own work to my [reference implementation][FIXME]
+of the game, and discuss any questions or thoughts with me about
+the differences between our approaches.
+
 
 ## Modeling the Room class
 
@@ -346,9 +490,7 @@ it "can perform actions" do
 end
 ```
 
-## Discuss user interface (Narrator / Console)
-
-## Building the game
+## Defining the game rules
 
 ```ruby
 cave = Wumpus::Cave.dodecahedron
@@ -445,7 +587,10 @@ narrator.tell_story do
 end
 ```
 
+## Additional Exercises
+
 [room-class]: https://github.com/elm-city-craftworks/wumpus/blob/master/lib/wumpus/room.rb
+[atari]: http://www.atariarchives.org/bcc1/showpage.php?page=247
 
 
 http://www.atariarchives.org/bcc1/showpage.php?page=247
