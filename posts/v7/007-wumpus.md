@@ -40,7 +40,7 @@ Even after only a couple actions, the player can start to piece together
 a map of the cave's topography, which will help them avoid getting lost
 as they continue their explorations:
 
-![](http://i.imgur.com/5gCTOAt.png)
+![](//i.imgur.com/5gCTOAt.png)
 
 Play continues in this fashion, with the player wandering around until 
 a hazard is detected:
@@ -69,7 +69,7 @@ pit nearby, with both rooms 17 and 19 being possible candidates. One of them
 might be safe, but there is also a chance that BOTH rooms contain pits.
 In a literal sense, the player might have reached a dead end:
 
-![](http://i.imgur.com/D6aA2wl.png)
+![](//i.imgur.com/D6aA2wl.png)
 
 A risky player might chance it and try one of the two rooms, but
 that isn't a smart way to play. The safe option is to 
@@ -100,7 +100,7 @@ is only one place left for the Wumpus to be hiding:
 
 At the end of the hunt, the player's map ended up looking like this:
 
-![](http://i.imgur.com/IZnqNNw.png)
+![](//i.imgur.com/IZnqNNw.png)
 
 In less fortunate circumstances, the player would need to do a lot more
 exploration before they could be certain about where the Wumpus 
@@ -167,7 +167,7 @@ if you don't complete the full exercise.
 
 Structurally speaking, rooms and their connections form a simple undirected graph:
 
-![](http://i.imgur.com/p81T0Gn.png)
+![](//i.imgur.com/p81T0Gn.png)
 
 Our `Room` class will manage these connections, and also make it easy 
 to query and manipulate the hazards that can be found in a room --
@@ -317,7 +317,7 @@ model things this way, a room is placed at each vertex, and the edges form
 the connections between rooms. If you squash the structure to fit in a
 two-dimensional space, you end up with the following graph:
 
-![](http://i.imgur.com/Myxk4vS.png)
+![](//i.imgur.com/Myxk4vS.png)
 
 Even though it would be technically possible to construct this structure without
 a collection object by connecting rooms together in an ad-hoc fashion,
@@ -488,7 +488,7 @@ player's current room and its direct neighbors. For example,
 imagine that the player is positioned in Room #1 as shown in 
 following diagram:
 
-![](http://i.imgur.com/A0e5pMn.png)
+![](//i.imgur.com/A0e5pMn.png)
 
 With this setup, the player would sense the nearby hazards,
 resulting in the following output:
