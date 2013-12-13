@@ -1,4 +1,4 @@
-Hunt the Wumpus is a hide-and-seek game that takes place in an underground
+ [Hunt the Wumpus][wikipedia] is a hide-and-seek game that takes place in an underground
 cave network full of interconnected rooms. To win the game, the player
 needs to locate the evil Wumpus and kill it while avoiding various different 
 hazards that are hidden within in the cave.
@@ -40,7 +40,7 @@ Even after only a couple actions, the player can start to piece together
 a map of the cave's topography, which will help them avoid getting lost
 as they continue their explorations:
 
-![](http://i.imgur.com/5gCTOAt.png)
+![](http://i.imgur.com/ivQeAc6.png)
 
 Play continues in this fashion, with the player wandering around until 
 a hazard is detected:
@@ -138,18 +138,41 @@ already written the tests for:
 2. A `Wumpus::Cave` class to manage the overall topography of the cave
 3. A `Wumpus::Player` class that handles sensing and encountering hazards
 
+You can work through this exercise by [cloning its git repository][wumpus-diy], 
+and following the instructions in the README. I have put the tests for each 
+class on its own branch, so that you can merge them into your own code 
+one at a time until you end up with a complete passing test suite.
+
 Once these three classes are written, you'll be able to use my UI code 
 and game logic to play a rousing round of Hunt the Wumpus. You'll
-also be able to compare your own work to my [reference implementation][FIXME]
+also be able to compare your own work to my [reference implementation][wumpus-ref]
 of the game, and discuss any questions or thoughts with me about
 the differences between our approaches.
 
+Throughout the rest of this article, I will provide design and implementation
+notes for each class, as well as a brief overview of how the game rules for
+Hunt the Wumpus can be implemented using these objects. These notes
+should help you interpret what the test suite is actually asking
+you to build, and will also help you understand my reference
+implementation.
 
-## Modeling the Room class
+> **NOTE:** If you're short on time or aren't in the mood for hacking
+right now, you can still get a lot out of this exercise by simply 
+thinking about how you'd write the code to pass the provided test 
+suite, and then looking my implementation. But it's definitely
+better to at least *try* to write some code yourself, even
+if you don't complete the full exercise.
 
-The concept of a room is fundamental to the "Hunt the Wumpus" game,
-so we can start by implementing them. Our goal will be to define
-and then pass the following tests:
+## Modeling rooms 
+
+Structurally speaking, rooms and their connections form a simple undirected graph:
+
+![](http://i.imgur.com/p81T0Gn.png)
+
+Our `Room` class will manage these connections, and also make it easy 
+to query and manipulate the "hazards" that can be found in a room --
+including bats, pits, and the wumpus itself. In particular, we will
+build an object with the following attributes and behaviors:
 
 ```ruby
 describe "A room" do
@@ -170,17 +193,7 @@ end
 Let's walk through each of these requirements individually and fill
 in the necessary details.
 
-**Design notes + unit tests**
-
-Structurally speaking, rooms and their connections form a simple undirected graph:
-
-![](http://i.imgur.com/p81T0Gn.png)
-
-The bulk of the responsibility of the `Room` class will be to manage these
-connections, and make it easy to query and manipulate the "hazards" that
-can be found in a room, including bats, pits, and the wumpus itself.
-
-1) Every room needs an identifying number, to help the player keep 
+1) Every room has an identifying number, to help the player keep 
 track of where they are:
 
 ```ruby
@@ -236,8 +249,8 @@ describe "with neighbors" do
 end
 ```
 
-4) Connections between rooms are bidirectional; one-way
-paths are not allowed.
+4) One-way paths are not allowed, i.e. all connections between rooms are
+bidirectional:
 
 ```ruby
 it "has two-way connections to neighbors" do
@@ -292,28 +305,42 @@ end
 
 **Implementation notes**
 
-Because this class only handles basic data tranformations, it is very
-straightforward to implement. Run `git pull origin room-tests` now to try 
-implementing it yourself, or [view my solution][room-class]
-before moving on.
+Because this object only handles basic data tranformations, it
+shouldn't be hard to implement. But if you get stuck, you
+can always look at [my version of the Wumpus::Room class][wumpus-room].
 
-## Modeling the Cave class
+## Modeling the cave
 
+Although a game of Hunt the Wumpus can be played with an arbitrary cave layout,
+the traditional Wumpus cave is based on the dodecahedron. To
+model things this way, a room is placed at each vertex, and the edges form
+the connections between rooms. If you squash the structure to fit in a
+two-dimensional space, you end up with the following graph:
+
+![](http://i.imgur.com/Myxk4vS.png)
+
+Even though it would be technically possible to construct this structure without
+a collection object by connecting rooms together in an ad-hoc fashion,
+traversing the structure and manipulating it would be cumbersome. For that
+reason, we will build a `Wumpus::Cave` object with the following properties:
 
 ```ruby
 describe "A cave" do
   it "has 20 rooms that each connect to exactly three other rooms" 
   it "can select rooms at random"
   it "can move hazards from one room to another"
-  it "can add hazards at random to a specfic number rooms"
+  it "can add hazards at random to a specific number rooms"
   it "can find a room with a particular hazard"
   it "can find a safe room to serve as an entrance"
 end
 ```
 
-**Design notes + unit tests**
+Some of these features a bit tricky to explain comprehensively through
+tests, but the following examples should give you a basic idea of
+how they're meant to work.
 
-![](http://i.imgur.com/Myxk4vS.png)
+1) The cave has 20 rooms, and each room is connected to exactly 
+three other rooms:
 
 ```ruby
 describe "A cave" do
@@ -330,10 +357,25 @@ describe "A cave" do
 end
 ```
 
+The intent here is to loosly verify that the layout is dodecahedron 
+shaped, but it is more of a sanity check than a strict validation.
+A stronger check would require us to compute things like minimal
+cycles for each point, which would make for a much more 
+complicated test.
+
+In my implementation I use a JSON file that hard-codes the 
+connections between each room explicitly rather than trying to 
+automatically generate the layout, so this test is mostly just to catch errors 
+with that configuration file. If you reuse the [dodecahredon.json][json] 
+file in your own code, it should make passing these tests easy.
+
+2) Rooms in the cave can be selected randomly:
+
 ```ruby
 it "can select rooms at random" do
   sampling = Set.new
 
+  # see test/helper.rb for how this assertion works
   must_eventually("randomly select each room") do
     new_room = cave.random_room 
     sampling << new_room
@@ -343,14 +385,13 @@ it "can select rooms at random" do
 end
 ```
 
-```ruby
-# consider linking rather than including source here.
+This feature is important for implementing the behavior of giant bats, who move
+the player to a random location in the cave. It is also useful for hazard
+placement, as we'll see later. The way I test the behavior is a bit awkward,
+but the basic idea is that if you keep selecting rooms at random, you'll
+eventually hit every room.
 
-def must_eventually(message, n=1000)
-  n.times { yield and return pass }
-  flunk("Expected to #{message}, but didn't")
-end
-```
+3) Hazards can be moved from one room to another:
 
 ```ruby
 it "can move hazards from one room to another" do
@@ -369,13 +410,31 @@ it "can move hazards from one room to another" do
 end
 ```
 
+This test shows bats being moved from a random room to
+one of its neighbors, but `Cave#move` can used to move any hazard
+between any two rooms in the cave, even if they are not
+adajecent to each other.
+
+4) Hazards can be randomly distributed throughout the cave:
+
 ```ruby
-it "can add hazards at random to a specfic number rooms" do
+it "can add hazards at random to a specific number rooms" do
   cave.add_hazard(:bats, 3)
 
   rooms.select { |e| e.has?(:bats) }.count.must_equal(3)
 end
 ```
+
+For the most part, the work to be done here is just to pick
+a given number of rooms at random and add the specified hazard
+to them. However, because there is no sense in adding a single
+type of hazard to a room more than once, `Cave#add_hazard`
+should take care to select only rooms that do not already have
+the specified hazard in them. This is hinted at by the specs,
+but because the check is a loose one, just keep this detail
+in mind while implementing this method.
+
+5) Rooms can be looked up based on the hazards they contain:
 
 ```ruby
 it "can find a room with a particular hazard" do
@@ -384,6 +443,13 @@ it "can find a room with a particular hazard" do
   assert cave.room_with(:wumpus).has?(:wumpus)
 end
 ```
+
+In my implementation, I just grab the first room that matches the 
+criteria, but any matching room would be acceptable. It
+would also make sense to have a `Cave#all_rooms_with` method, but it isn't needed for a basic implementation
+of the game.
+
+6) A safe entrance can be located:
 
 ```ruby
 it "can find a safe room to serve as an entrance" do
@@ -397,24 +463,78 @@ it "can find a safe room to serve as an entrance" do
 end
 ```
 
+This is where the `Cave::Room#safe?` method comes in handy. Picking any room
+that passes that condition is enough to get the job done here.
+
 **Implementation notes**
 
-* A dodecahedron.json file is provided.
-* Note subtleties of `add_hazard` ## Modeling the Player class
+The desired behavior of the `Wumpus::Cave` class is admittedly a bit
+underspecified here, but in many cases minor variations won't effect
+gameplay all that much. Some of these operations are also intentionally 
+a bit more general than what is strictly needed for the game, to permit 
+some experimentation with rule changes once you have a working game. 
 
-## Modeling the Player class
+This was a challenging object for me to design and test, because many 
+of the features which are intuitively obvious are hard to specify 
+formally. Do the best you can with building it, and refer
+to [my implementation of the Wumpus::Cave class][wumpus-cave] whenever 
+you hit any snags.
+
+## Modeling the player
+
+Despite the complexity of the cave layout, most game events in 
+Hunt the Wumpus are triggered by local conditions based on the 
+player's current room and its direct neighbors. For example, 
+imagine that the player is positioned in Room #1 as shown in 
+following diagram:
+
+![](http://i.imgur.com/A0e5pMn.png)
+
+With this setup, the player would sense the nearby hazards,
+resulting in the following output:
+
+    You are in room 1.
+    You hear a rustling sound nearby
+    You smell something terrible nearby
+    Exits go to: 2, 3, 4
+
+Ordinarily we'd need to do some investigation work to discover which hazards
+were where, but because this is a contrived scenario, we don't 
+need to guess. Knowing the layout of the neighborhood, we can enumerate the 
+possible outcomes for any player action. 
+
+* The player will encounter the wumpus upon moving into room 2
+* The player will encounter bats upon moving into room 3
+* The player will not encounter any hazards in room 4
+* The player can shoot into room 2 to kill the wumpus
+* The player will miss the wumpus by shooting into room 3 or 4
+
+If you take this single example and generalize it, you'll find that every turn
+of Hunt the Wumpus involves only three distinct kinds of events:
 
 ```ruby
 describe "the player" do
-  it "can sense hazards in neighboring rooms"
+  it "can sense hazards in neighboring rooms" 
   it "can encounter hazards when entering a room"
-  it "can perform actions"
+  it "can perform actions on neighboring rooms" 
 end
 ```
 
-**Design notes + unit tests**
+With these requirements in mind, it is possible for us to model 
+the `Wumpus::Player` class as an event-driven object that handles 
+each event type listed above. The only state it needs to explicitly
+maintain is a reference to the room currently being explored: everything 
+else can be managed externally through callbacks. You'll see why this
+is useful when we look at how the game rules are implemented later,
+but for now just try to follow along as best as you can.
 
-![](http://i.imgur.com/tlCrFkn.png)
+The test setup for the `Wumpus::Player` class is a bit complicated, mostly 
+because we need to reconstruct something similar to the layout shown in the
+previous diagram in order to meaningfully test its behavior. I also register
+all of the events we're interested in tracking during setup, using some 
+dummy callbacks that are meant to serve as stand-ins for real game logic. T
+his is not a very elegant way of building a test harness, but it gets the job
+done:
 
 ```ruby
 describe "the player" do
@@ -460,6 +580,9 @@ describe "the player" do
 end
 ```
 
+Once all of that is taken care of, the callbacks can be tested in isolated
+scenarios:
+
 ```ruby
 it "can sense hazards in neighboring rooms" do
   player.enter(empty_room)
@@ -469,19 +592,15 @@ it "can sense hazards in neighboring rooms" do
   
   assert encountered.empty?
 end
-```
 
-```ruby
 it "can encounter hazards when entering a room" do
   player.enter(bat_room)
   encountered.must_equal(Set["The bats whisk you away!"])
   
   assert sensed.empty? 
 end
-```
 
-```ruby
-it "can perform actions" do
+it "can perform actions on neighboring rooms" do
   player.act(:move, wumpus_room)
   player.room.must_equal(wumpus_room)
 
@@ -490,21 +609,64 @@ it "can perform actions" do
 end
 ```
 
+These test cases verify that the desired callbacks have been called
+by manipulating simple sets of strings, but the real use case for 
+the `Wumpus::Player` class is to trigger arbitrary operations on 
+game objects as well as the user interface. If you are having
+trouble imagining what that would look like, it may help to 
+read ahead a bit further before attempting to get these 
+tests to pass.
+
+**Implementation notes:**
+
+Like the `Wumpus::Cave` class, this object is underspecified, but you probably
+don't need to build something identical to [my implementation of Wumpus::Player][wumpus-player]
+in order to get the game to run. However, you may want to make an effort
+to ensure that callbacks are triggered in the order that they are registered,
+otherwise you can run into some interesting edge cases when more than one
+condition would be triggered at once!
+
 ## Defining the game rules
+
+With a solid foundation in place, implementing the game logic for Hunt the
+Wumpus is very easy. My version of the game simplifies the rules somewhat, but
+hopefully still captures the spirit of the original.  
+
+As you walk through the following code, feel free to treat both the
+`Wumpus::Narrator` and `Wumpus::Console` objects as black boxes that implement
+the game's user interface. They are very boring under the hood, and only handle
+text-based I/O and some basic validations. The game logic itself is a whole
+lot more interesting.
+
+With that caveat out of the way, let's take a look at how Hunt the Wumpus can be
+implemented in terms of the three game objects we just built. To get started, we
+need a cave!
 
 ```ruby
 cave = Wumpus::Cave.dodecahedron
+```
 
+This cave will contain three pits, three giant bats, and the most evil and
+stinky Wumpus you could ever imagine:
+
+```ruby
 cave.add_hazard(:wumpus, 1)
 cave.add_hazard(:pit, 3)
 cave.add_hazard(:bats, 3)
 ```
 
+We also need a player to navigate the cave, and a narrator to regale us with
+tales about the players adventures:
 
 ```ruby
 player    = Wumpus::Player.new
 narrator  = Wumpus::Narrator.new
+```
 
+Whenever a player senses a hazard nearby, the narrator will give us a hint
+of what kind of trouble lurks just around the bend:
+
+```ruby
 player.sense(:bats) do
   narrator.say("You hear a rustling sound nearby") 
 end
@@ -518,11 +680,29 @@ player.sense(:pit) do
 end
 ```
 
+If upon entering a room the player encounters the Wumpus, it
+will become startled. We'll discuss the detailed consequences
+of this later, but the basic idea is that it will cause the
+Wumpus to either run away to an adjacent room, or to gobble
+the player up:
+
 ```ruby
 player.encounter(:wumpus) do
   player.act(:startle_wumpus, player.room)
 end
 ```
+
+When bats are encountered, the narrator will inform us of
+the event, then a random room will be selected to drop
+the player off in. If any hazards are encountered
+in that room, the effects will be applied immediately,
+possibly leading to the player's demise.
+
+But assuming that the player managed to survive the flight, 
+the bats will take up residence in the new location. This
+can make navigation very complicated, because stumbling
+back into that room will cause the player to be moved
+to yet another random location:
 
 ```ruby
 player.encounter(:bats) do
@@ -537,17 +717,35 @@ player.encounter(:bats) do
 end
 ```
 
+If the player happens to come across a bottomless pit, the
+story ends immediately, because there is nothing much
+left to say about it:
+
 ```ruby
 player.encounter(:pit) do
   narrator.finish_story("You fell into a bottomless pit. Enjoy the ride!")
 end
 ```
 
+The player's actions are what ultimately ends up triggering game events. 
+The movement action is straightforward: it simply updates the player's
+current location and then fires callbacks for any hazards encountered:
+
 ```ruby
 player.action(:move) do |destination|
   player.enter(destination)
 end
 ```
+
+Shooting is a little more complicated, although the way it is implemented here
+is still a simplification of how the original game worked. In Gregory Yob's
+version, you had only five arrows, but they could travel a distance of up to
+five rooms, even shooting around corners if you knew the right path. In my
+version, arrows are unlimited but can only fire into neighboring rooms.
+
+If the player shoots into the room that the Wumpus is hiding in, the story ends
+happily ever after. If instead the player shoots into the empty room, then
+no matter where the Wumpus is in the cave, it will be startled by the sound.
 
 ```ruby
 player.action(:shoot) do |destination|
@@ -560,6 +758,13 @@ player.action(:shoot) do |destination|
   end
 end
 ```
+
+When the Wumpus is startled, it will either stay where it is or move into
+one of its neighboring rooms. The player will be able to hear the Wumpus
+move anywhere in the cave, even if it is not in a nearby room.
+
+If the Wumpus is in the same room as the player at the end of this process,
+it will gobble the player up and the game will end in sadness and tears:
 
 ```ruby
 player.action(:startle_wumpus) do |old_wumpus_room|
@@ -576,32 +781,52 @@ player.action(:startle_wumpus) do |old_wumpus_room|
 end
 ```
 
-```ruby
-console = Wumpus::Console.new(player, narrator)
+And that pretty much sums it up. I omitted a few lines of boilerplate
+code that fire up the main event loop, but this pretty much covers
+all of the code that implemnents the actual game rules. It is designed
+to be very hackable, so please do experiment with it however you'd like.
 
-player.enter(cave.entrance)
-
-narrator.tell_story do
-  console.show_room_description
-  console.ask_player_to_act
-end
-```
+If you want to review the full game executable without the intermingled
+commentary, please see [the bin/wumpus script][wumpus-script].
 
 ## Additional Exercises
 
-[room-class]: https://github.com/elm-city-craftworks/wumpus/blob/master/lib/wumpus/room.rb
+Hopefully by working through this article you've seen for yourself why Hunt the
+Wumpus is both fun to play and fun to implement. If you are looking for more
+things to try, I'd suggest the following activities:
+
+* Limit the number of arrows that the player can shoot, and end the game when
+the player runs out of arrows.
+
+* Try implementing the "crooked arrow" behavior of the original Wumpus game. To
+do this allow the player to specify a path of up to five rooms. Whenever the
+player guesses an incorrect path, have the arrow to bounce into a random room.
+If the arrow ends up hitting the player because of this, they lose!
+
+* Try out one of the alternative cave layouts described in Gregory Yob's
+followup publication about [Wumpus 2][atari-2].
+
+* Build a better user interface for the game, either improving the text-based
+UI or attempting something using a GUI or web-based interface. You should
+only need to edit the `Wumpus::Narrator` and `Wumpus::Console` objects
+in order to replace the current interface.
+
+* Add new hazards of your own, or other types of game objects that
+are beneficial, or provide some more depth to the story.
+
+* Keep the game behavior the same, but try out a different design than the one
+I provided here and/or improve the test suite.
+
+If you try out any of these extra credit exercises, please share your work. I'd
+be very interested to see what you come up with. Until then, happy hacking!
+
 [atari]: http://www.atariarchives.org/bcc1/showpage.php?page=247
-
-
-http://www.atariarchives.org/bcc1/showpage.php?page=247
-
-http://en.wikipedia.org/wiki/Hunt_the_Wumpus
-
-http://scv.bu.edu/miscellaneous/Games/wumpus.html
-
-Dodecahedron generation:
-http://stackoverflow.com/questions/1280586/hunt-the-wumpus-room-connection/1280611#1280611
-
-Good visualization:
-http://flockhart.virtualave.net/ajax/wumpus.html
-
+[atari-2]: http://www.atariarchives.org/bcc2/showpage.php?page=244
+[wumpus-ref]: https://github.com/elm-city-craftworks/wumpus/tree/reference_implementation
+[wumpus-diy]: https://github.com/elm-city-craftworks/wumpus
+[wumpus-room]: https://github.com/elm-city-craftworks/wumpus/blob/reference_implementation/lib/wumpus/room.rb
+[wumpus-cave]: https://github.com/elm-city-craftworks/wumpus/blob/reference_implementation/lib/wumpus/cave.rb
+[wumpus-player]: https://github.com/elm-city-craftworks/wumpus/blob/reference_implementation/lib/wumpus/player.rb
+[wumpus-script]: https://github.com/elm-city-craftworks/wumpus/blob/reference_implementation/bin/wumpus
+[wikipedia]: http://en.wikipedia.org/wiki/Hunt_the_Wumpus
+[json]: https://raw.github.com/elm-city-craftworks/wumpus/reference_implementation/data/dodecahedron.json
