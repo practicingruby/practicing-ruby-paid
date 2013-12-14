@@ -809,16 +809,21 @@ do this allow the player to specify a path of up to five rooms. Whenever the
 player guesses an incorrect path, have the arrow to bounce into a random room.
 If the arrow ends up hitting the player because of this, they lose!
 
+* Make it harder to guess the connections between rooms by randomizing
+the room numbers for each new game while keeping the overall shape the same.
+
 * Try out one of the alternative cave layouts described in Gregory Yob's
 followup publication about [Wumpus 2][atari-2].
+
+* Add new hazards of your own, or other types of game objects that
+are beneficial, or provide some more depth to the story.
+
+* Implement a solver bot that plays the game automatically.
 
 * Build a better user interface for the game, either improving the text-based
 UI or attempting something using a GUI or web-based interface. You should
 only need to edit the `Wumpus::Narrator` and `Wumpus::Console` objects
 in order to replace the current interface.
-
-* Add new hazards of your own, or other types of game objects that
-are beneficial, or provide some more depth to the story.
 
 * Keep the game behavior the same, but try out a different design than the one
 I provided here and/or improve the test suite.
