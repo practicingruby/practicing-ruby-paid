@@ -1,109 +1,810 @@
-**IMPORTANT: You'll need to find a way to write this while minimizing references
-to "Programming Erlang" text and code**
+**Summarize my preliminaries and the four step structure, then make
+case study presentation chronological but free-form narrative 
+(i.e. don't put in clear headers for exercise, book, project, etc, make it 
+more like a journal -- give the reader a 'riding shotgun' view of the
+action, with a brief summary at the end of each day. Include evolution
+in thought process and new realizations as I go. Wrap up with a where
+to next section.**
 
-http://css-tricks.com/words-avoid-educational-writing
+** Look up dates for everything to linearize it, but don't be afraid to do mild
+editing / resequencing for clarity**
 
-- Demonstrate a day-by-day summary of the high level concepts learned (and how
-  they might compare to Ruby), then illustrate concrete concepts learned
-  via code samples (especially look for tangents outside of the book,
-  i.e. book says X, but I want to know if X implies Y).
+## What is trivial code literacy?
 
-- Read the entire JOURNAL.md file and then update this manuscript with notes
-  before you start writing.
+**Starting with fizzbuzz may work, but consider condensing or replacing with a
+shorter anecdote (the chinese one?)**
 
-- Make sure to discuss the hows and whys of the learning process in addition to
-  just what I did. (See for example notes on January 5 about deliberate
-  reading). The PR article should be a structured guide to how to learn with 
-  my example as a case study, not just a stream-of-consciousness "how I learned"
-  piece. Synthesize everything, don't just quote raw notes or repeat
-  the PE narrative / example structure.
+(rewrite to be a bit more positive, and to illustrate
+Ruby vs. Erlang, and Reading vs. Writing)
 
-- Come up with 3-4 questions that this article must answer, and destroy anything
-that does not serve those questions. This article in particular should be
-as tight as possible.
+Programmers often joke about how ridiculous it is to use the FizzBuzz problem as
+a screening test, because it is so easy to solve. Derived from a word
+game that's used to test the division skills of small children, FizzBuzz is
+about as conceptually trivial as computing challenges get:
 
-- Discuss my previous experiences with learning Erlang (get the book and work
-  through the first couple chapters excitedly, then just stop without ever
-  really building anything... random hacks across the years that never got
-  finished, constantly struggling with syntax and basic idioms, even
-  if I knew the broad concepts and costs/benefits of the language,
-  and could kind-of read it -- reading is much easier than writing!)
+> Write a program that prints the numbers from 1 to 100. But for multiples 
+of three print “Fizz” instead of the number and for the multiples of 
+five print “Buzz”. For numbers which are multiples of both three and 
+five print “FizzBuzz”.
 
-- For learning how to read, exercise like (ANT SIM) is good. To learn how to
-write, approach needs to be different. Perhaps obviously, you need to spend
-more time writing than reading, and you need a good reference to cover
-minute details so you don't keep getting snagged. Repetition is also important.
+Any working programmer or hobbyist that's built absolutely any software could
+solve this problem in their sleep, as long as they were allowed to use a language 
+they were already comfortable with. But suppose the interviewer asked a Ruby
+programmer who had never worked in a functional programming language before to 
+produce an Erlang solution instead. What would that programmer need to learn in
+order to pass the test? Let's figure that out by working backwards from the 
+following solution:
 
-- Discuss what I learned about Erlang in preliminaries, and importance of doing
-preliminary phase (this is mentioned in Checklists.MD)
+```erlang
+-module(fizzbuzz).
+-export([run/0]).
 
-- Discuss why the different segments, i.e. exercises for warmup, reading,
-  projects, planning / reflection. What can each teach you?
+run() -> 
+  io:format("~p~n", [lists:map(fun transform/1, lists:seq(1,100))]).
 
-- Point out that writing this article was a valuable practice exercise 
-for me, too.
+transform(X) when X rem 15 =:= 0 -> "FizzBuzz";
+transform(X) when X rem 5  =:= 0  -> "Fizz";
+transform(X) when X rem 3  =:= 0  -> "Buzz";
+transform(X) -> X.
+```
 
-- Summarize what I learned in the preliminary and pracrice week, and also what
-  my next steps would be if I kept studying. Explain that it's like trying to
-  make the first cut into a boulder, and that from there you can always
-  divide-and-conquer.
+Let's assume that simply producing the source code shown above wouldn't be good
+enough to pass the test, the programmer would actually need to execute it and
+show that it produces the correct output, too. Right out of the gate, that means
+understanding how to install Erlang, compile Erlang modules, and then call
+functions on them. If that was all done successfully, the programmer might
+produce something like the following output:
 
-### Learning advice
+```erlang
+$ erl
+1> c(fizzbuzz).
+{ok,fizzbuzz}
+2> fizzbuzz:run().
+[1,2,"Buzz",4,"Fizz","Buzz",7,8,"Buzz","Fizz",11,"Buzz",13,14,"Fizzbuzz",16,
+ 17,"Buzz",19,"Fizz","Buzz",22,23,"Buzz","Fizz",26,"Buzz",28,29,"Fizzbuzz",31,
+ 32,"Buzz",34,"Fizz","Buzz",37,38,"Buzz","Fizz",41,"Buzz",43,44,"Fizzbuzz",46,
+ 47,"Buzz",49,"Fizz","Buzz",52,53,"Buzz","Fizz",56,"Buzz",58,59,"Fizzbuzz",61,
+ 62,"Buzz",64,"Fizz","Buzz",67,68,"Buzz","Fizz",71,"Buzz",73,74,"Fizzbuzz",76,
+ 77,"Buzz",79,"Fizz","Buzz",82,83,"Buzz","Fizz",86,"Buzz",88,89,"Fizzbuzz",91,
+ 92,"Buzz",94,"Fizz","Buzz",97,98,"Buzz","Fizz"]
+```
 
-- You can and should lookup outside documentation while reading a book, as well
-  as code samples, etc. No article or book is truly self-contained.
+But imagine the interviewer was not convinced by this alone, and wanted the
+programmer to walk through the code statement-by-statement and explain it.
 
-- Have a sense of *why* you want to learn more about a language. For me, I was
-  interested in Erlang's concurrency, fault tolerance, and pattern matching
-  features.
+```erlang
+-module(fizzbuzz).
+```
 
-- Type every code sample, don't just copy and paste. It's one of the best ways to
-drill syntax rules into your head, as well as to practice working and memorizing
-language primitives. It really slows down your thought process too, forcing you to spend
-a lot more time with each code sample. Typing code in as you read also gives you
-an opportunity to go off on tangents (see import example in Journal from Jan 6) 
-or clarify concepts that you might otherwise skip over if you are just reading 
-the code. Finally, it will help you recognize whether a code sample has all 
-of its necessary boilerplate or if some other code is omitted (and in order 
-to make it run, you'll learn what that boilerplate is). For example, typing 
-out examples got me familiar with Erlang's module organization in just a 
-few code samples.
+This code defines the module name, but it also implies what the filename should
+be (`fizzbuzz.erl`). If the programmer didn't know the two must match,
+autoloading would not work correctly when the Erlang `c()` shell command 
+was used.
 
-- Work on problems that are familiar to you, at least at first. This way you
-  won't end up confusing problems related to holes in your understanding of a
-  language with holes in your understanding of the problem you're working on.
-  Also, you will reduce the opportunities to get stuck, and drive down
-  overall frustration. This will let you pour all your energy into learning
-  the language you're studying. (For the same reason, preliminary practice
-  is worthwhile). 
-  
-- As you gain more experience you can and should venture into
-  uncharted territory (especially problems well suited for the language you're
-  studying, as well as problems well-suited for languages you're comfortable
-  with (so that you can see how well the new language can solve them). But
-  it is good to alternate between trying new stuff and working on problems
-  you already know how to solve.
+```erlang
+-export([run/0]).
+```
 
-- There is a huge difference between being able to read code in a language
-  and being able to write code. They're both useful skills, but the latter
-  involves a lot more deliberate practice by necessity (both can benefit
-  from it of course).
+This code is necessary to make it possible to call the `fizzbuzz:run()` function
+externally, because all Erlang functions are private by default. The programmer
+would also need to explain that `run/0` means 
+"the run function with zero arguments", demonstrating an understanding of the
+concept of *function arity*.
 
-- Take a TON of notes, don't worry if you'll use them later or not, and don't
-  worry too much about making them perfect, as long as they reflect your
-  current understanding. The process of writing down your ideas helps refine 
-  your thoughts, even if you don't end up using your notes for reference later.
+```erlang
+run() -> 
+  io:format("~p~n", [lists:map(fun transform/1, lists:seq(1,100))]).
+```
 
-- It's better to use self-discipline to work through a practice session while
-resisting distractions than it is to alternate between distractions and focused
-work, but if that's not possible, stop the timer, and take as long of a break
-as you need before getting back into focused work.
+This line of code has a ton of features crammed into it, including calls to both
+the `io` and `lists` standard libraries, along with the syntax for passing
+an existing function as an argument to another function 
+(e.g. `fun transform/1`).
 
-- Don't worry at all about elegance and don't even be too worried about
-  correctness. Build something that "sort of works", and then refine it as your
-  knowledge expands or as the particular topic covered by the code becomes more
-  important to you. Every piece of code is an artifact that grows your general
-  understanding of a language and also reflects your current mental model (which
-  will need constant refining), so simply writing code that runs and kind of
-  does what you want it to is all that matters, you can build a step-ladder
-  upward and outward from there.
+```erlang
+transform(X) when X rem 15 =:= 0 -> "FizzBuzz";
+transform(X) when X rem 5  =:= 0  -> "Fizz";
+transform(X) when X rem 3  =:= 0  -> "Buzz";
+transform(X) -> X.
+```
+
+Finally, we see function overloading and guards, both concepts that don't exist
+in Ruby, but are commonly used in Erlang.
+
+When you add up all of these points, it takes a whole lot of knowledge for even
+an experienced programmer to write such a trivial program in a language they're
+unfamiliar with. When you throw in things like familiarizing yourself with new
+syntax and grammar rules, it becomes easy to see that trivial code literacy
+demands a whole lot more understanding of a language than it appears to
+at a first glance.
+
+
+```
+1. Work on exercises (30 mins)
+
+Make sure to have these ready the night before, pick stuff
+that you can work on right away without having to study 
+in advance. 
+
+They can either be book exercises or stuff
+from other sources, but they should be self-verifiable
+for correctness. Goal is not to finish but just to 
+learn as much as possible.
+
+2. Work through book reading and book exercises (90 mins)
+
+Jumping around chapters is OK, but reading whole chapters
+at a time is encouraged. Read what is most related to
+the projects you're working on. 
+
+Give reading a higher priority over exercises during this 
+time, and do only exercises related to the current reading.
+
+3. Work on projects (90 mins)
+
+Start with bowling score calculator, then dining philosophers,
+then IRC rover bot if time permits. Focus on getting working
+code first, before worrying about correct code. But once you
+have a working solution, figure out how to make it right,
+and get help if necessary for style questions.
+
+4. Review today's work and do next day's prep work (30 mins)
+
+Prepare questions, TODO lists, and exercises for the next
+day. Reflect on what was learned today, possibly looking
+up tangential points that you didn't have time for in the
+day, or seek solutions to exercises already published online,
+or write notes asking for help. 
+
+Try to do all four hours in a single day if possible,
+otherwise try to do 1+2 and 3+4 in two sessions as close
+together as possible.
+```
+
+Projects summary (what and why)
+-----------------
+
+Book learning
+-------------
+
+Typed in, ran, and tinkered with nearly every code snipped from 
+CH 1 to CH 14. (First several chapters before the "practice week"
+brought me up to fizz-buzz level knowledge, skipped a couple 
+chapters, but wrote dozens of functions)
+
+Went off on several tangents (find a couple examples)
+
+Find some book learning highlights from each day, and note tie-ins with
+exercises / projects.
+
+(what's shown in this article is actually just a small fraction
+of the code I typed, including all book snippets and most exercises
+(get a count or rough estimate)
+
+Daily Review
+------------
+
+Cover this by adding a wrap-up paragraph or two at the end of each day entry.
+Summarize the most important lessons learned, the pitfalls and triumphs,
+and what I had planned to do the next day.
+
+Next actions
+------------
+
+What did I leave undone? What could I have done next?
+
+Wrapup
+------
+
+Re-state the four step system and its benefits in a couple paragraphs,
+invite others to try it.
+
+
+Raw journal notes + checklists
+-------------------------------
+
+Share, don't share, summarize?
+
+
+Preliminaries: December 26 - Jan 5 (12 hrs)
+-------------------------------------------
+
+Summarize what was studied / learned during this time period.
+
+
+Day 1: January 6 (Monday)
+-------------------------------------------
+
+### Finding the smallest element of a list
+
+Original solution:
+
+```erlang
+-module(mylists).
+-export([minimum/1]).
+
+minimum([H|T]) -> minimum(T, H).
+
+minimum([],    Min) -> Min;
+minimum([H|T], Min) -> 
+  case Smallest < H of
+    true  -> minimum(T, Min);
+    false -> minimum(T, H)
+  end.
+```
+
+In retrospect:
+
+```erlang
+-module(mylists).
+-export([minimum/1]).
+
+minimum([Min|T]) -> minimum(T, Min).
+
+minimum([], Min) -> Min;
+
+minimum([H|T], Min) when Min < H -> minimum(T, Min);
+
+minimum([Min|T], _) -> minimum(T, Min).
+```
+
+## (Almost working ping-pong 
+
+```erlang
+-module(ping_pong).
+-export([start/1, loop/1]).
+
+start(Message) -> spawn(ping_pong, loop, [Message]).
+
+loop(Message) ->
+  receive
+    {Client, N} ->
+      io:format("~p Received: ~s~n", [self(), Message]),
+
+      %% FIXME: Find out why this isn't working! %%
+      case N of
+        1    -> Client ! { self(), N -1 }, exit(self(), ok);
+        0    -> exit(self(), ok);
+        true -> Client ! { self(), N - 1 }
+      end
+  end,
+  loop(Message).
+```
+
+### Reading notes summarized here in transition
+
+## Bowling
+
+Discuss the first data modeling challenges. Note that at this point, I'm not
+even sure what the differences between lists and tuples are.
+
+Note how pattern matching makes non-uniformity less awkward than in Ruby
+(e.g. `{10}` vs `{A, B}`)
+
+(original)
+
+```erlang
+-module(bowling).
+-export([score/1, test/0]).
+
+test() -> 
+  9  = score([{7, 2}]), 
+
+  %            4     6     8     9     5     0     3     1     0     4
+  40 = score([{1,3},{2,4},{3,5},{5,4},{2,3},{0,0},{1,2},{1,0},{0,0},{1,3}]),
+
+  %            4     6     8     S:12  5     0     3     1     0     4
+  43 = score([{1,3},{2,4},{3,5},{5,5},{2,3},{0,0},{1,2},{1,0},{0,0},{1,3}]),
+
+  %            4     6     8     S:15 5     0     3     1     0     4
+  46 = score([{1,3},{2,4},{3,5},{10},{2,3},{0,0},{1,2},{1,0},{0,0},{1,3}]),
+
+  %            4     6     8     S:14  S:11  1     3     1     0     4
+  52 = score([{1,3},{2,4},{3,5},{5,5},{4,6},{1,0},{1,2},{1,0},{0,0},{1,3}]),
+
+  %            4     6     8    S:21 S:13    3   3     1     0     4
+  63 = score([{1,3},{2,4},{3,5},{10},{10},{1,2},{1,2},{1,0},{0,0},{1,3}]),
+
+  300 = score([{10},{10},{10},{10},{10},{10},{10},{10},{10},{10},{10},{10}]),
+
+  %             30   30   30   30   29   20   20    30   30   30   
+  279 = score([{10},{10},{10},{10},{10},{10},{9,1},{10},{10},{10},{10},{10}]),
+
+  ok.
+
+score([]) -> 0;
+score([H|T]) -> 
+  case H of
+    {A} ->
+
+      [H1|T1] = T,
+
+      case H1 of
+        { B, C } -> A + B + C + score(T);
+        { B } -> 
+          case T1 of
+            []    -> 0;
+            _ ->
+              [H2|_] = T1,
+              case H2 of
+                { C, _ } -> A + B + C + score(T);
+                { C }    -> A + B + C + score(T)
+              end
+          end
+      end;
+
+    {A, B} when 10 =:= A + B ->
+      [H1|_] = T,
+
+      case H1 of
+        {C, _} -> A + B + C + score(T);
+        {C}    -> A + B + C + score(T)
+      end;
+
+
+    {A, B} -> H, A + B + score(T)
+  end.
+```
+
+## Day wrapup notes
+
+Day 2: January 7 (Monday)
+-------------------------------------------
+
+## Working ping pong + Refactored ping-pong
+
+(working example)
+
+```erlang
+-module(ping_pong).
+-export([start/1, loop/1]).
+
+start(N) -> 
+  Ping = spawn(ping_pong, loop, [ping]),
+  Pong = spawn(ping_pong, loop, [pong]),
+
+  Ping ! { Pong, N },
+  done.
+
+loop(Message) ->
+  receive
+    {Client, N} ->
+      io:format("[~p] ~p Received: ~s ~n", [N, self(), Message]),
+
+      if 
+        N > 2   -> Client ! { self(), N - 1 }, loop(Message);
+        N =:= 2 -> Client ! { self(), N - 1 };
+        true -> void
+      end
+  end.
+```
+
+(cleaner example)
+
+```erlang
+-module(ping_pong).
+-export([start/1, loop/1]).
+
+start(N) -> 
+  Ping = spawn(ping_pong, loop, [ping]),
+  Pong = spawn(ping_pong, loop, [pong]),
+
+  Ping ! { Pong, N },
+  done.
+
+loop(Message) ->
+  receive
+    {Client, N} ->
+      io:format("[~p] ~p Received: ~s ~n", [N, self(), Message]),
+
+      case N of
+        1 -> done;
+        2 -> Client ! { self(), N - 1 }, done;
+        _ -> Client ! { self(), N - 1 }, loop(Message)
+      end
+  end.
+```
+
+
+What lessons did I learn from this?
+
+### Reading notes summarized here in transition
+
+## Refactored bowling
+
+```erlang
+-module(bowling).
+-export([score/1, test/0]).
+
+score([])                          -> 0;
+score([{10}|T])                    -> strike(T) + score(T);
+score([{A,B}|T]) when 10 =:= A + B -> spare(T) + score(T);
+score([{A,B}|T])                   -> A + B + score(T).
+
+strike([])                   -> 0;
+strike([{10}])               -> 0;
+strike([{10}, {10}|_])       -> 30;
+strike([{10}, {Ball2, _}|_]) -> 20 + Ball2;
+strike([{Ball1, Ball2}|_])   -> 10 + Ball1 + Ball2.
+
+spare([])                -> 0;
+spare([{10}|_])          -> 20;
+spare([{NextBall, _}|_]) -> 10 + NextBall.
+
+test() -> 
+  9  = score([{7, 2}]), 
+
+  %            4     6     8     9     5     0     3     1     0     4
+  40 = score([{1,3},{2,4},{3,5},{5,4},{2,3},{0,0},{1,2},{1,0},{0,0},{1,3}]),
+
+  %            4     6     8     S:12  5     0     3     1     0     4
+  43 = score([{1,3},{2,4},{3,5},{5,5},{2,3},{0,0},{1,2},{1,0},{0,0},{1,3}]),
+
+  %            4     6     8     S:15 5     0     3     1     0     4
+  46 = score([{1,3},{2,4},{3,5},{10},{2,3},{0,0},{1,2},{1,0},{0,0},{1,3}]),
+
+  %            4     6     8     S:14  S:11  1     3     1     0     4
+  52 = score([{1,3},{2,4},{3,5},{5,5},{4,6},{1,0},{1,2},{1,0},{0,0},{1,3}]),
+
+  %            4     6     8    S:21 S:13    3   3     1     0     4
+  63 = score([{1,3},{2,4},{3,5},{10},{10},{1,2},{1,2},{1,0},{0,0},{1,3}]),
+
+  300 = score([{10},{10},{10},{10},{10},{10},{10},{10},{10},{10},{10},{10}]),
+
+  %             30   30   30   30   29   20   20    30   30   30   
+  279 = score([{10},{10},{10},{10},{10},{10},{9,1},{10},{10},{10},{10},{10}]),
+
+  %             30   30   30   30   29   20   20    29   20   20   
+  258 = score([{10},{10},{10},{10},{10},{10},{9,1},{10},{10},{9,1},{10}]),
+
+  %             30   30   30   30   29   20   20    29   20   20   
+  257 = score([{10},{10},{10},{10},{10},{10},{9,1},{10},{10},{9,1},{9,1}]),
+
+  ok.
+```
+
+(refactoring also applies to list:min, though I didn't know
+it at the time)
+
+
+## Inital very broken dining philosophers
+
+https://github.com/sandal/erlang-practice/commit/df17dddec3588bff7b73417d0290c48beb2cf6bf
+
+(But maybe Chopstick is almost right?)
+
+## Day wrapup notes
+
+Day 3: January 8 (Wednesday) -- cut short
+-------------------------------------------
+
+## Register race condition
+
+Note my struggle and lessons learned from this, even though I couldn't solve 
+it myself. Note epiphany about Erlang not being totally immune to race
+conditions, and my understanding of the problem. Also note request/response
+pattern first seen here for sync (point out synthesis used to get from
+here to dining philosophers).
+
+```erlang
+-module(concurrency).
+-export([start/2]).
+
+% Solution is from http://forums.pragprog.com/forums/27/topics/124
+
+start(Atom, Fun) ->
+    Registrant = self(),
+    spawn(
+        fun() ->
+            try register(Atom, self()) of
+                true ->
+                    Registrant ! true,
+                    Fun()
+            catch
+                error:badarg ->
+                    Registrant ! false
+            end
+        end),
+    receive
+        true  -> true;
+        false -> erlang:error(badarg)
+    end.
+```
+
+Consider cleaning up code.
+
+### Reading notes summarized here in transition (discuss Philo research?)
+
+## Day wrapup notes
+
+Day 4: January 9 (Thursday)
+-------------------------------------------
+
+## Process Ring
+
+note dining philosophers synthesis.
+(or maybe not, because we didn't go chandry/misra)
+
+note mixed feelings about academic nature of exercise
+note usefulness of drawing a picture
+
+```erlang
+-module(ring).
+-export([send/2, loop/1]).
+
+send(N, M) ->
+  Head = build(N),
+  Head ! { deliver, howdy, N*M }.
+
+start() ->
+  spawn(ring, loop, [void]).
+
+connect(From, To) ->
+  From ! {observe, To}.
+
+build(N) ->
+  First = start(),
+  Last  = build(N-1, First),
+
+  connect(Last, First),
+  First.
+
+build(0, Current) -> Current;
+
+build(N, Current) ->
+  Next = start(),
+  connect(Current, Next),
+  build(N-1, Next).
+
+loop(Observer) ->
+  receive
+    {observe, NewObserver} -> 
+      io:format("~p is now observing ~p", [self(), NewObserver]),
+      loop(NewObserver);
+    {deliver, _, 0} ->
+      io:format("Done sending messages!~n"),
+      loop(Observer);
+    {deliver, Message, Count} when Observer =/= void ->
+      io:format("[~p], ~p is sending message ~p to ~p~n", 
+        [Count, self(), Message, Observer]),
+      Observer ! {deliver, Message, Count - 1},
+      loop(Observer)
+  end.
+```
+
+## Reading notes summarized here in transition
+   (Fun error handling stuff)
+
+## Dining philosophers
+
+
+```erlang
+-module(philosophers).
+-export([dine/0, loop/3]).
+
+dine() ->
+  [C1, C2, C3, C4, C5] = [chopstick:start(X) || X <- [1,2,3,4,5]],
+  dine(C1, C2, C3, C4, C5).
+
+
+dine(C1, C2, C3, C4, C5) -> 
+  Aristotle    = spawn(philosophers, loop, ["Aristotle",    C1, C2]),
+  Popper       = spawn(philosophers, loop, ["Popper",       C2, C3]),
+  Epictetus    = spawn(philosophers, loop, ["Epictetus",    C3, C4]),
+  Heraclitus   = spawn(philosophers, loop, ["Heraclitus",   C4, C5]),
+  Schopenhauer = spawn(philosophers, loop, ["Schopenhauer", C1, C5]),
+
+  Aristotle ! Popper ! Epictetus ! Heraclitus ! Schopenhauer ! think.
+
+loop(Philosopher, LeftChopstick, RightChopstick) ->
+  receive
+    think -> 
+      io:format("~p is thinking.~n", [Philosopher]),
+      timer:sleep(1000),
+
+      self() ! eat;
+    eat   -> 
+      LeftChopstick  ! {take, self()},
+
+      receive
+        {cs, FirstChopstick} ->
+          io:format("~p picked up chopstick ~p~n", [Philosopher, FirstChopstick]), 
+
+          RightChopstick ! {take, self()},
+          receive
+            {cs, SecondChopstick} ->
+              io:format("~p picked up chopstick ~p~n", [Philosopher, SecondChopstick]),
+              io:format("~p is eating.~n", [Philosopher]),
+              timer:sleep(1000)
+          end
+      end,
+
+      LeftChopstick  ! {drop, self()},
+      RightChopstick ! {drop, self()},
+
+      io:format("~p is done eating, releases chopsticks ~p and ~p~n",
+        [Philosopher, FirstChopstick, SecondChopstick]),
+
+      self() ! think
+  end,
+
+  loop(Philosopher, LeftChopstick, RightChopstick).
+```
+
+```erlang
+-module(chopstick).
+-export([start/1, loop/2]).
+
+start(Number) ->
+  spawn(chopstick, loop, [Number, nobody]).
+
+loop(Number, Owner) ->
+  receive
+    {take, Owner} -> loop(Number, Owner);
+    {take, NewOwner} when Owner =:= nobody -> 
+      NewOwner ! {cs, Number},
+      loop(Number, NewOwner);
+    {drop, Owner} ->
+      loop(Number, nobody)
+  end.
+```
+
+(note request/response synchronization and similarity to
+N-ring problem, and also why I used the naive solution)
+
+Note what I learned about Erlang from this example, even when using the naive
+solution.
+
+Never really thought through the many ways of solving this problem.
+
+
+Day 4: January 10 (Friday)
+-------------------------------------------
+
+### Start with monitor
+
+Note points of interest here, mainly error handling.
+
+```erlang
+-module(errors).
+-export([my_spawn/3]).
+
+my_spawn(Mod, Func, Args) ->
+  Pid = spawn(Mod, Func, Args),
+  {T1, _} = statistics(wall_clock),
+
+  spawn(fun() ->
+    Ref = monitor(process, Pid),
+    receive
+      { 'DOWN', Ref, process, Pid, Why } ->
+        io:format("~p went down with reason: ~p~n", [Pid, Why]),
+
+        {T2, _} = statistics(wall_clock),
+
+        io:format("~p was alive for ~p seconds~n", [Pid, (T2-T1)/1000])
+    end
+  end),
+
+  Pid.
+```
+
+## Reading notes summarized here in transition
+   (RPC stuff)
+
+## Trivial process
+
+(explain tangent)
+
+```erlang
+-module(trivial_process).
+-export([start/0, loop/1]).
+
+start() -> spawn(?MODULE, loop, [1]).
+
+loop(N) ->
+  io:format("Tick ~p.~n", [N]),
+
+  receive
+    _ -> error("Boom!")
+  after 1000 ->
+    loop(N+1)
+  end.
+```
+
+
+## Rover
+
+
+```erlang
+-module(world).
+-export([start/1, loop/3]).
+
+start(Filename) ->
+  spawn(world, loop, [read(Filename), 11, 13]).
+
+loop(MapData, Row, Col) ->
+  receive 
+    {Caller, MsgID, snapshot} ->
+      Caller ! { self(), MsgID, {snapshot, snapshot(MapData, Row, Col)}},
+      loop(MapData, Row, Col);
+    {Caller, MsgID, move_north} ->
+      Caller ! { self(), MsgID, {move_north, Row-1, Col}},
+      loop(MapData, Row-1, Col);
+    {Caller, MsgID, move_south} ->
+      Caller ! { self(), MsgID, {move_south, Row+1, Col}},
+      loop(MapData, Row+1, Col);
+    {Caller, MsgID, move_east} ->
+      Caller ! { self(), MsgID, {move_east, Row, Col+1}},
+      loop(MapData, Row, Col+1);
+    {Caller, MsgID, move_west} ->
+      Caller ! { self(), MsgID, {move_west, Row, Col-1}},
+      loop(MapData, Row, Col-1)
+  end.
+
+
+read(Filename) ->
+  { ok, MapBinary } = file:read_file(Filename),
+  MapText = binary_to_list(MapBinary),
+  list_to_tuple(
+    [ list_to_tuple(string:tokens(X, " ")) || 
+      X <- string:tokens(MapText, "\n")]).
+
+% TODO: add @ sign to indicate current location.
+snapshot(Map, Row, Col) ->
+  RowWindow = [ element(RowD, Map) || 
+                RowD <- lists:seq(Row - 2, Row + 2) ],
+
+  string:join(
+    lists:map(fun(RowData) ->
+      string:join(
+        [element(ColD, RowData) || ColD <- lists:seq(Col - 2, Col + 2)], 
+        " ")
+      end, 
+      RowWindow), 
+     "\n") ++ "\n".
+```
+
+```erl
+-module(radio).
+-export([start/1, loop/1]).
+-define(TRANSMISSION_DELAY, 5000).
+
+start(Controller) -> spawn(radio, loop, [Controller]).
+
+loop(Controller) ->
+  receive
+    { transmit, Pid, Message } ->
+      erlang:send_after(?TRANSMISSION_DELAY, Pid, {self(), erlang:make_ref(), Message});
+    Message ->
+      erlang:send_after(?TRANSMISSION_DELAY, Controller, Message)
+  end,
+
+  loop(Controller).
+```
+
+
+```erl
+-module(controller).
+-export([start/0, loop/0]).
+
+start() -> spawn(controller, loop, []).
+
+loop() ->
+  receive
+    {_, MsgId, {snapshot, MapData} } ->
+      io:format("~s~n~n(msg id: ~p)~n", [MapData, MsgId]);
+    Any -> io:format("Received message: ~p~n", [Any])
+  end,
+  loop().
+```
+
+Rover (note ugly map parsing code, consider attempting a refactor,
+note ease of concurrency stuff)
+
+
+
+
+
+
+
+
