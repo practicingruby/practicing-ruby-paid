@@ -70,6 +70,11 @@ in the process.
 
 ### Make good use of extension points to limit your project's scope
 
+Although clients are likely to change their mind and product companies are
+likely to change their vision, they do not deal with the same challenges of
+open-source, which is that the potential scope of what people will use your code
+for is effectively infinite.
+
 When someone wants to add a new non-critical feature or rethink an existing one,
 encourage them to build it as an extension first. Provide the necessary support
 and improve your extension points whenever it is reasonable to do so (but beware
