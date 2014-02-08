@@ -1,25 +1,30 @@
-The need for high quality standards in open-source projects is a matter of practicality, not pride. To understand why, it helps to remember that "bad code" is often hard to understand, hard to test, hard to change, and hard to reuse. No matter how useful your software is to the world, poorly written code can get in the way of its future progress.
 
-Once the impact of low quality code reaches a critical mass, the pace of development grinds to a halt, and the temptation is great to either let projects stagnate or to attempt the *big rewrite* with a heavy focus on quality standards. Unfortunately, neither of these outcomes typically end well for a project's existing community of users, because historically speaking the road to maintainer burnout is paved with *big rewrites*.
+The need for high quality standards in open-source projects is a matter of practicality, not pride. To understand why, it helps to remember that "bad code" is often hard to understand, hard to test, hard to change, and hard to reuse. In turn, a project that depends on lots of poor quality code will end up being painful to contribute to, painful to maintain, and painful to use. To put it bluntly: poor quality open source projects can end up causing more trouble than they're worth for everyone involved with them.
  
-Some will inevitably take these observations as a cautionary tale, and make a solemn promise to themselves and to their community to establish high quality standards for their project from day one; promising to never ship any bad code in their releases, and establishing strict coding guidelines to keep their projects in ship shape at all times. But anyone who has spent enough time down the rabbit hole can tell you that this doesn't really work, either.
+Does this mean that only people with amazing coding skills should work on open source projects? Absolutely not! In most cases, quality issues in open source projects stem from a lack of a well-balanced maintenance process rather than a lack of technical competence. In other words, it pays to assume that some amount of chaos is endemic to open source software development, and that we just need to learn how to manage it better.
 
-Writing high quality code takes time, and you can't be sure that time is well spent until you have a decent understanding of the domain you are working in. In order to quickly build up knowledge about a complex problem space, you need to be able to try out some ideas without allowing quality concerns to slow you down. This approach helps you generate feedback quickly, and what you lose in code quality up front you gain back in insights that can be used to write better code later. The trick is to understand the bargain you are making when doing this, and whether or not the benefits are likely to outweigh the costs. 
+An optimal development process is one that always keep the quality arrow pointing upwards over the long haul, but isn't so brittle as to prevent the occasional mistake from happening. In this article, we'll share a few techniques for maintaining high quality standards without assuming that everything will always work out as planned, and without assuming that every contributor knows as much about your project as you do.
 
-The path to quality is a balancing act, and it involves making some educated guesses along the way. If you are too strict with your quality standards, you can miss out on the healthy experimentation you need to improve your project over the long haul. But if allow things to get too loose, and project will perpetually remain in a state of flux where none of its code can be trusted. The sweet spot is somewhere between these two extremes, and it pays to actively seek it out rather than just hope to end up there by chance.
+There are many ways to improve open source software quality, but our recommendations boil down to three simple ideas that we already use in our own projects:
 
-An optimal process is one that always keep the quality arrow pointing upwards over the long haul, but isn't so brittle as to prevent necessary experimentation and the occasional mistake from happening. We'll now discuss a few specific tactics that can help you achieve that goal.
+1. Let external changes drive internal quality improvements
+2. Treat all code with inadequate testing as legacy code
+3. Favor extension points over features
 
+We'll now take a look at each of these techniques individually and walk you through some examples of how we've put them 
+into practice in RDoc, RubyGems, and Prawn.  
 
-### Let external changes drive internal quality improvements
+### 1) Let external changes drive internal quality improvements
 
-You don't need an extremely disciplined team with endless resources to successfully manage an open source project, but you do need to develop a pragmatic way of looking at things. There will always be rough patches in your codebase, and it pays to focus only on the ones that are having the most impact on the project as a whole. Attempting to deal with each and every pain point you encounter will eat away at energy that would be better spent moving your project forward, warts and all. Clean code does makes a difference, but your ability to use your time wisely is far more important.
+Attempting to deal with each and every pain point that exists in your project will eat away at energy that would be better spent moving it forward, warts and all. Because there will always be rough patches in your codebase, it pays to focus only on the ones that are having the most impact on the project as a whole.
 
-Most non-trivial bug fixes and improvements to your project will require you to understand and interact with several of its components, and its likely that at least some of them will be in a state of disrepair. This is a common scenario for any software project, but open source projects complicate matters because they are often developed by way of one-off patches from near-strangers that solve one particular problem and then disappear into the ether. With everything always shifting under foot, it is unrealistic to expect that any large scale cleanup efforts will be particularly efficient, if they are even effective at all.
+To keep a project stable as it grows, it is sufficient to simply focus on improving quality wherever people are actively working in the codebase. This is something that can be done a little at a time, and it can be done without taking too much effort away from producing valuable user-facing changes. Taking this approach makes it so that you don't need to explicitly schedule time to rewrite entire functions, classes, and subsystems. All that matters is that you leave your codebase a little better off whenever you set out to do some work.
 
-A better way to keep a project stable as it grows is to simply focus on improving quality wherever people are actively working in the codebase. This is something that can be done a little at a time, and it can be done without taking too much effort away from producing valuable user-facing changes. Taking this approach makes it so that you don't need to explicitly schedule time to spend on a "big cleanup" -- you just need to leave the code better off than you found it whenever you set out to do some work. 
+If the effort you spend on code cleanup is proportional to the amount of pain that bad code is causing you, the problematic areas of your project's codebase will gradually break up into smaller and smaller chunk. Eventually it will becomes easy to make many kinds of meaningful change without bad code getting in the way. This process does take time though, so a bit 
+of patience will go a long way.
 
-By repeating this process over and over, the problematic areas of your project's codebase will gradually break up into smaller and smaller chunks, until eventually it becomes easy to make many kinds of meaningful change without bad code getting in the way.  Even though incremental quality improvements won't make you feel like a hero in the way that a highly focused cleanup effort might, it is a much more sustainable approach over the long haul for two reasons: it requires a much smaller initial investment, and it allows you to benefit from the knowledge gained over time about what is actually important to work on in your project.
+Incremental quality improvements won't make you feel like a hero in the way that a highly focused cleanup effort might, 
+but they are much more efficient over the long haul for two reasons: they require a much smaller initial investment, and they allows you to benefit from any knowledge gained over time as your project continues to evolve. Unlike large-scale efforts, incremental improvements also hold no risk of being abandoned because they don't stay in a work-in-progress state for long.
 
 **Examples of incremental quality improvements**
 
@@ -29,23 +34,17 @@ https://github.com/prawnpdf/prawn/pull/579 (complicated)
 
 (legacy article for a MUCH longer example)
 
-### Treat all code without adequate testing as legacy code
+### 2) Treat all code without adequate testing as legacy code
 
 Historically, we've defined legacy code as code that was written long before our time, without any consideration for our current needs. However, any code without adequate test coverage can also be considered legacy code[^1], because it often has many of the same characteristics that make outdated systems difficult to work with.
 
 The lifecycle of an open source project is effectively infinite and the scope of its problem domain is often left open-ended, and that means that most maintainers see their fair share of both antiquated and poorly tested code. Knowing how to work skillfully with legacy code in a project and can go a long way towards raising overall quality and maintainability.
 
 The most direct way to guard against the negative impacts of legacy code is to keep growing and maintaining your project's automated test suite so that it constantly reflects your current understanding of the problem domain you are 
-working in, along with any formal assumptions you have about how your code is meant to be used. These goals cannot be met by simply having good code coverage and keeping the build
-green in CI, although that may be a good place to start if you aren't already at that level with your testing setup. 
+working in, along with any formal assumptions you have about how your code is meant to be used. These goals cannot be met solely by having good code coverage and keeping the build
+green in CI, but that may be a good place to start if you aren't already at that level with your testing setup. 
 
-The important thing to note is that even when full test coverage exists, it is often only a sign that “all the code gets run by the test suite”, and it’s not an indicator of how clear or well-defined the tests themselves are. In the experimental phases of a project, sometimes writing only very loose tests can be a good idea. But if you do not go back to refine these tests later when you want to stabilize your codebase, underspecification tends to lead to undefined behaviors that turn into bugs as soon as an incorrect assumption is made about them.
-
-Rigorous testing becomes increasingly important as a project matures, because by then more people and projects will expect your code to be stable. With the right kind of attention to detail, your test suite can be a very powerful tool for setting expectations about how the features of your project are meant to behave, and you will also catch more accidental behavior changes before they leak out into released software.
-
-The better your test suite is, the safer it will be for you to accept the help of strangers who may not have any plans to stick around for the long haul. It will also make contributors happy, because they will be able to experiment with making changes to your codebase without fear of accidentally breaking some unrelated feature.
-
-Because you can't assume that everyone working on your project will practice rigorous TDD and constantly check their assumptions about the intent behind each minor feature's implementation, most of the verification and further cultivation of your test suite will happen at code review time. Here are some guidelines that can be helpful when considering new change requests, no matter what state your project is currently in:
+The best place to look for opportunities to improve the quality of your test suite is whenever some new feature or fix is about to be merged. In particular, the following guidelines  can be helpful when considering new change requests:
 
 * When reviewing a pull request, check to make sure that new behavior has tests, and that they are written precisely enough that you will understand them several months from now. If anything is unclear, discuss it with the submitter and then add additional specs to cover the assumptions.
 
@@ -53,7 +52,7 @@ Because you can't assume that everyone working on your project will practice rig
 
 * Be extra wary of changes to existing features. Even if the change is covered by tests, the base behavior may not be adequately covered.
 
-* If bugs are encountered while working on integrating a new change, add tests for those as well.
+* If bugs or bad behaviors are encountered in collaborating objects while working on integrating a new feature, add tests for those as well. This will help prevent regressions from slipping back into your system from a different entry point.
 
 * If the change is a bugfix itself, make sure that it captures the bug at the actual level it is happening at, and not just at the surface level. Usually it makes sense to add a test at two levels: the level it was discovered at, and at the source of the problem. But if you choose only one, pick the source level.
 
@@ -72,9 +71,9 @@ good enough)
 
 https://github.com/rubygems/rubygems/pull/781
 
-### Make good use of extension points to limit your project's scope
+### 3) Favor extension points over features
 
-Although clients are likely to change their mind and product companies are
+Although clients are likely to change thoseeir mind and product companies are
 likely to change their vision, they do not deal with the same challenges of
 open-source, which is that the potential scope of what people will use your code
 for is effectively infinite.
