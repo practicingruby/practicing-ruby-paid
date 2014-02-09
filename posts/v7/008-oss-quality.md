@@ -1,50 +1,155 @@
 
-The need for high quality standards in open-source projects is a matter of practicality, not pride. To understand why, it helps to remember that "bad code" is often hard to understand, hard to test, hard to change, and hard to reuse. In turn, a project that depends on lots of poor quality code will end up being painful to contribute to, painful to maintain, and painful to use. To put it bluntly: poor quality open source projects can end up causing more trouble than they're worth for everyone involved with them.
- 
-Does this mean that only people with amazing coding skills should work on open source projects? Absolutely not! In most cases, quality issues in open source projects stem from a lack of a well-balanced maintenance process rather than a lack of technical competence. In other words, it pays to assume that some amount of chaos is endemic to open source software development, and that we just need to learn how to manage it better.
+The typical open source project is a long-term effort with an open-ended scope and a distributed development team made up of volunteers. In this kind of environment, focusing on quality is a matter of practicality, not pride.
 
-An optimal development process is one that always keep the quality arrow pointing upwards over the long haul, but isn't so brittle as to prevent the occasional mistake from happening. In this article, we'll share a few techniques for maintaining high quality standards without assuming that everything will always work out as planned, and without assuming that every contributor knows as much about your project as you do.
+Quality matters because high quality code is easy to understand, easy to change, and easy to reuse. For those reasons, a project consisting mostly of good code will be easy to contribute to, easy to maintain, and easy to extend to meet a wide variety of use cases. This is the ideal we all strive for, but it is difficult to maintain consistently in practice.
 
-There are many ways to improve open source software quality, but our recommendations boil down to three simple ideas that we already use in our own projects:
+As projects mature, their internals often get worse rather than better as their external capabilities expand. Features become less stable as interactions between low-level components get increasingly complex and mistaken assumptions permeate throughout the system. As bad code accumulates, it becomes difficult to improve one part of a system without breaking something else in the process. This is the point where open source projects start to become more trouble than they are worth, and people set out in search of greener pastures.
+
+Not all projects need to end up this way, though. As long as you can manage to keep the quality arrow pointing upwards over the long haul without burning yourself out, the bad code you've accumulated over time won't prevent you from gradually replacing it with better code. Because code quality often declines due to poor maintenance practices rather than a lack of technical skills, reversing this trend is as easy as improving the way a project is maintained.
+
+In this article, we'll discuss three specific tactics we've used in our own projects that can be applied at any stage in the software development lifecycle. These are not quick fixes; they are helpful habits that pay off more and more as you continue to practice them. The good news is that even though it might be challenging to keep up with these efforts on a daily basis, the recommendations themselves are very simple:
 
 1. Let external changes drive internal quality improvements
 2. Treat all code with inadequate testing as legacy code
-3. Favor extension points over features
+3. Favor adding new extension points over new features
 
 We'll now take a look at each of these techniques individually and walk you through some examples of how we've put them 
-into practice in RDoc, RubyGems, and Prawn.  
+into practice in RDoc, RubyGems, and Prawn -- three projects that have had their own share of quality issues over 
+the years, but continue to serve very diverse communities
+of users and contributors.  
 
 ### 1) Let external changes drive internal quality improvements
 
-Attempting to deal with each and every pain point that exists in your project will eat away at energy that would be better spent moving it forward, warts and all. Because there will always be rough patches in your codebase, it pays to focus only on the ones that are having the most impact on the project as a whole.
 
-To keep a project stable as it grows, it is sufficient to simply focus on improving quality wherever people are actively working in the codebase. This is something that can be done a little at a time, and it can be done without taking too much effort away from producing valuable user-facing changes. Taking this approach makes it so that you don't need to explicitly schedule time to rewrite entire functions, classes, and subsystems. All that matters is that you leave your codebase a little better off whenever you set out to do some work.
+```ruby
+def build_image_object(file)
+  # ... I/O DUCK TYPING GUARDS ...
+  file.rewind  if file.respond_to?(:rewind)
+  file.binmode if file.respond_to?(:binmode)
 
-If the effort you spend on code cleanup is proportional to the amount of pain that bad code is causing you, the problematic areas of your project's codebase will gradually break up into smaller and smaller chunk. Eventually it will becomes easy to make many kinds of meaningful change without bad code getting in the way. This process does take time though, so a bit 
-of patience will go a long way.
+  if file.respond_to?(:read)
+    image_content = file.read
+  else
+    raise ArgumentError, "#{file} not found" unless File.file?(file)  
+    image_content = File.binread(file)
+  end
+  
+  # ... EVERYTHING ELSE ...
+  image_sha1 = Digest::SHA1.hexdigest(image_content)
 
-Incremental quality improvements won't make you feel like a hero in the way that a highly focused cleanup effort might, 
-but they are much more efficient over the long haul for two reasons: they require a much smaller initial investment, and they allows you to benefit from any knowledge gained over time as your project continues to evolve. Unlike large-scale efforts, incremental improvements also hold no risk of being abandoned because they don't stay in a work-in-progress state for long.
+  if image_registry[image_sha1]
+    info = image_registry[image_sha1][:info]
+    image_obj = image_registry[image_sha1][:obj]
+  else
+    info = Prawn.image_handler.find(image_content).new(image_content)
 
-**Examples of incremental quality improvements**
+    min_version(info.min_pdf_version) if info.respond_to?(:min_pdf_version)
 
-https://github.com/prawnpdf/prawn/issues/570
+    image_obj = info.build_pdf_object(self)
+    image_registry[image_sha1] = {:obj => image_obj, :info => info}
+  end
 
-https://github.com/prawnpdf/prawn/pull/579 (complicated)
+  [image_obj, info]
+end
+```
 
-(legacy article for a MUCH longer example)
+```ruby
+def build_image_object(file)
+  # ... Call a helper to perform I/O guards ...
+  io = verify_and_open_image(file)
+  image_content = io.read
+
+  # ... Everything else stays the same ... 
+end
+```
+
+```ruby
+def verify_and_open_image(io_or_path)
+  if io_or_path.respond_to?(:rewind)
+    io = io_or_path
+
+    io.rewind
+
+    io.binmode if io.respond_to?(:binmode)
+    return io
+  end
+
+  io_or_path = Pathname.new(io_or_path)
+  raise ArgumentError, "#{io_or_path} not found" unless io_or_path.file?
+  
+  io_or_path.open('rb')
+end
+```
+
+Even though we had tests in Prawn that covered using `Pathname` objects, they
+only verified the behavior at the level of Prawn's object model, and not at the
+PDF output level. We have a low-level way of testing the PDF format, but it
+would be tedious to write tests directly using it. For this reason, Matt added
+an rspec to make that kind of tester easier:
+
+```ruby
+RSpec::Matchers.define :have_parseable_xobjects do
+  match do |actual|
+    expect { PDF::Inspector::XObject.analyze(actual.render) }.not_to raise_error
+    true
+  end
+  failure_message_for_should do |actual|
+    "expected that #{actual}'s XObjects could be successfully parsed"
+  end
+end
+```
+
+Finally, he provides a few test cases to demonstrate that his patch works 
+as expected:
+
+```ruby
+context "setting the length of the bytestream" do
+  it "should correctly work with images from Pathname objects" do
+    info = @pdf.image(Pathname.new(@filename))
+    expect(@pdf).to have_parseable_xobjects
+  end
+
+  it "should correctly work with images from IO objects" do
+    info = @pdf.image(File.open(@filename, 'rb'))
+    expect(@pdf).to have_parseable_xobjects
+  end
+
+  it "should correctly work with images from IO objects not set to mode rb" do
+    info = @pdf.image(File.open(@filename, 'r'))
+    expect(@pdf).to have_parseable_xobjects
+  end
+end
+```
+
+Putting all this together we see that in the span of a single bug fix, we also
+gained the following benefits:
+
+* The `build_image_object` method is more understandable because one of its
+responsibilities has been broken out into its own method.
+
+* The `verify_and_open_image` method allows us to group together all the
+basic guard clauses for determining how to process the I/O-like object in
+one place, making it easier to see exactly what those rules are.
+
+* The added tests clarify the intended behavior of our image support.
+
+* The additional test helper makes it possible for us to more easily do
+PDF-level tests for corrupted output in the future.
+
+None of this required a specific and focused effort of refactoring or redesign,
+it just required paying attention to what the pain points were surrounding the
+change to be made, and some consideration of what the future maintenance costs
+of the feature would be.
 
 ### 2) Treat all code without adequate testing as legacy code
 
-Historically, we've defined legacy code as code that was written long before our time, without any consideration for our current needs. However, any code without adequate test coverage can also be considered legacy code[^1], because it often has many of the same characteristics that make outdated systems difficult to work with.
+Historically, we've defined legacy code as code that was written long before our time, without any consideration for our current needs. However, any code without adequate test coverage can also be considered legacy code[^1], because it often has many of the same characteristics that make outdated systems difficult to work with. Open source projects evolve quickly, and even very clean code eventually decays if its desired behavior is never formally specified.
 
-The lifecycle of an open source project is effectively infinite and the scope of its problem domain is often left open-ended, and that means that most maintainers see their fair share of both antiquated and poorly tested code. Knowing how to work skillfully with legacy code in a project and can go a long way towards raising overall quality and maintainability.
+To guard against the negative impacts of legacy code, it is necessary to continuously grow and maintain your project's automated test suite so that it constantly reflects your current understanding of the problem domain you are 
+working in. A good starting point is to make sure that your project has good code coverage and that you keep your builds green in CI, but once you've done that you need to go beyond the idea of just having lots of tests and focus on the
+overall quality of your test suite.
 
-The most direct way to guard against the negative impacts of legacy code is to keep growing and maintaining your project's automated test suite so that it constantly reflects your current understanding of the problem domain you are 
-working in, along with any formal assumptions you have about how your code is meant to be used. These goals cannot be met solely by having good code coverage and keeping the build
-green in CI, but that may be a good place to start if you aren't already at that level with your testing setup. 
-
-The best place to look for opportunities to improve the quality of your test suite is whenever some new feature or fix is about to be merged. In particular, the following guidelines  can be helpful when considering new change requests:
+A good time to look for opportunities to improve the quality of your test suite is whenever some new feature or fix is about to be merged. In particular, the following guidelines  can be helpful when considering new change requests:
 
 * When reviewing a pull request, check to make sure that new behavior has tests, and that they are written precisely enough that you will understand them several months from now. If anything is unclear, discuss it with the submitter and then add additional specs to cover the assumptions.
 
@@ -71,38 +176,7 @@ good enough)
 
 https://github.com/rubygems/rubygems/pull/781
 
-### 3) Favor extension points over features
-
-Although clients are likely to change thoseeir mind and product companies are
-likely to change their vision, they do not deal with the same challenges of
-open-source, which is that the potential scope of what people will use your code
-for is effectively infinite.
-
-When someone wants to add a new non-critical feature or rethink an existing one,
-encourage them to build it as an extension first. Provide the necessary support
-and improve your extension points whenever it is reasonable to do so (but beware
-the rule of 3).
-
-Make use of your own extension points internally so that all extension points
-already have once consumer. This also makes your testing easier, and decreases
-the likelihood that you will break external extensions accidentally.
-
-Doing this greatly reduces your own maintenance responsibilities, and allows
-both the extraction of unstable / non-essential features and the ability
-for new features to gain support organically before being incorporated
-into your project. The tradeoff is that you need to be careful about API 
-compatibility, because other libraries will depend on these features.
-
-For this reason, you may not be able to develop a good extension API in the
-early days of a project, but once you are at the point where people are using
-your code for things you didn't expect them to, it is a good time to
-work in the direction of a stable extension API.
-
-(i.e. the importance of an extension API is proportional to the amount
-of active use for purposes other than the author's original intent
-that are still "reasonable" within the context of the problem domain,
-which is measurable by the number of feature requests / complaints
-and the types of things people ask for.
+### 3) Favor adding new extension points over new features
 
 (RDoc examples)
 (prawn-templates)
