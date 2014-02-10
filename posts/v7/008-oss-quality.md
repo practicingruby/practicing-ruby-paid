@@ -20,6 +20,7 @@ of users and contributors.
 
 ### 1) Let external changes drive internal quality improvements
 
+This is not a particularly well-factored method.
 
 ```ruby
 def build_image_object(file)
@@ -53,6 +54,9 @@ def build_image_object(file)
 end
 ```
 
+Extract the I/O-related test into a helper method before changing their
+behavior:
+
 ```ruby
 def build_image_object(file)
   # ... Call a helper to perform I/O guards ...
@@ -62,6 +66,8 @@ def build_image_object(file)
   # ... Everything else stays the same ... 
 end
 ```
+
+Then revise the code to support the new behavior.
 
 ```ruby
 def verify_and_open_image(io_or_path)
@@ -177,6 +183,24 @@ good enough)
 https://github.com/rubygems/rubygems/pull/781
 
 ### 3) Favor adding new extension points over new features
+
+19:07 <seacreature> Nice. So another reason to have an extension API beyond external use is to make internals more
+                    pluggable / replaceable too. In the case of something like RDoc this is as good of a reason to use
+                    them as potential third-party benefits. Do you agree?
+19:07 <seacreature> It also separates the parts of the system that change independently of one another from those that
+                    need to change all at once.
+19:10 <drbrain> yes
+19:10 <drbrain> I added a bunch of stuff to kick out rdoc-chm
+19:11 <seacreature> I want to be able to emphasize this this aspect of things because I think people often consider
+                    plugin systems t o be primarily about third party additions
+19:13 <seacreature> but the ability to move things in and out of core gracefully is an underappreciated maintenance
+                    benefit
+19:13 <drbrain> definitely
+19:14 <drbrain> also, with a plugin system more people touch more of your code meaning you have to make everything
+                better
+
+
+RDoc wiki example... use it to create github issue links?
 
 (RDoc examples)
 (prawn-templates)
