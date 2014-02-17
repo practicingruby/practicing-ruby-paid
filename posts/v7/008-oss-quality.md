@@ -6,8 +6,8 @@
 A big challenge in managing open source projects is that their codebases tend
 to decay as they grow. This isn't due to a lack of technically skilled
 contributors, but instead is a result of the gradual loss of understandability 
-that comes along with any  long-term project that has an open-ended scope 
-and a distributed team of volunteers supporting it.
+that comes along with any long-term and open-ended project 
+that has an distributed team of volunteers supporting it.
 
 Once a project becomes more useful, it naturally attracts a more
 diverse group of developers who are interested in adapting the codebase to
@@ -15,17 +15,19 @@ meet their own needs. Patches are submitted by contributors who do not fully
 understand a project's implementation, and maintainers merge these patches 
 without fully understanding the needs of their contributors. Maintainers 
 may also struggle to remember the reasoning behind any of their own code that they 
-haven't touched in a while, but they still need to be able to work with it. 
+haven't touched in a while, but they still need to be able to work with it.
+
 As a result of both of these influencing factors, mistaken assumptions tend to 
 proliferate as a project grows, and with them come bugs and undefined behaviors. 
-
 When direct knowledge of the codebase becomes limited and unreliable, it's easy to 
 let code quality standards slip without fully realizing the potential
-for future problems. If bad code continues to accumulate in this fashion, it becomes 
-difficult to improve one part of a project without breaking something else in the 
-process. This forces maintainers to spend most of their time fixing bugs, and that 
-drains energy that could otherwise be used to move the project forward in meaningful 
-ways. This is where open source development stops being fun, and starts feeling 
+for future problems. 
+
+If bad code continues to accumulate in this fashion, improving one part of a 
+a project usually means breaking something else in the 
+process. Once a maintainer starts spending most of their time fixing bugs, 
+it gets hard to move their project forward in meaningful 
+ways. This is where open source development stops being fun, and starts ffeeling 
 like a painful chore.
 
 Not all projects need to end up this way, though. As long as project maintainers 
@@ -71,7 +73,7 @@ distinct activity but as part of responding to ordinary change requests. There
 are only two rules to remember when applying this technique in your daily work:
 
 * Try to avoid making the codebase worse with each new change, or at least
-minimize future maintenance costs as much as possible.
+minimize new maintenance costs as much as possible.
 * If there is an easy way to improve the code while doing everyday work, 
 go ahead and invest a little bit of effort now to make future changes easier. 
 
@@ -246,14 +248,14 @@ following ways:
 of its responsibilities has been broken out into its own method.
 
 * The `verify_and_open_image` method allows us to group together all the
-basic guard clauses for determining how to process the I/O-like object in
-one place, making it easier to see exactly what those rules are.
+basic guard clauses for determining how to read the image data, 
+making it easier to see exactly what those rules are.
 
 * The added tests clarify the intended behavior of Prawn's image loading
 mechanism.
 
-* The newly added RSpec matcher will encourage us to do more
-PDF-level sanity checks in the future.
+* The newly added RSpec matcher will help us to do more
+PDF-level checks in future tests.
 
 None of these changes required a specific and focused effort of refactoring or redesign,
 it just involved a bit of attention to detail and a willingness to make minor
@@ -282,8 +284,8 @@ that it constantly reflects your current understanding of the problem domain
 you are working in. A good starting point is to make sure that your project
 has good code coverage and that you keep your builds green in CI.
 Once you've done that, the next step is to go beyond the idea of just having
-lots of tests and start focusing on how effective they are at catching
-problems before they leak out into released code.
+lots of tests and start focusing on making your test suite more capable 
+of catching problems before they leak out into released code.
 
 Here are some things to keep in mind when considering the potential 
 impact that new changes will have on your project's stability:
@@ -449,8 +451,8 @@ Even within the scope of a single codebase, explicitly defining a layer one
 level beneath the surface forces you to think about what the common points
 of interaction are between your project's features. It also makes testing
 easier, because feature implementations tend to get slimmed down as the
-extension API becomes more capable, and so it becomes possible to test
-each part in isolation without having to think about large amorphous blobs
+extension API becomes more capable. Each part can then be tested in 
+isolation without having to think about large amorphous blobs
 of internal dependencies.
 
 It may be hard to figure out how to create an extension API when you first start
@@ -474,7 +476,7 @@ figure out what it would take to re-implement them on top of well defined
 extension points rather than relying on lots of private internal code.
 
 At first, you may start by carrying out these design considerations as simple
-though experiments that will indirectly influence the way you implement 
+thought experiments that will indirectly influence the way you implement 
 things. Later, you can take them more seriously and seek to support
 new functionality via external add-ons rather than merging new features 
 unless there is a very good reason to do otherwise. Every project needs to
@@ -496,7 +498,7 @@ Please see #125, #127, and #159
 Also see @bed324 and v0.14.0
 ```
 
-My goal was to the following HTML output after telling RDoc what repository
+My goal was to produce the following HTML output after telling RDoc what repository
 that these issues, commits, and tags referred to:
 
 ```
@@ -583,10 +585,10 @@ of code that is easy to understand, easy to test, easy to change, and easy to
 maintain are far more likely to be sustainable over the long haul than projects 
 that are allowed to decay internally as they grow.
 
-The recommended techniques we've discussed in this article are ones that will
+The techniques we've discussed in this article are ones that will
 pay off even if you just apply them some of the time, but the more you use them,
-the more you can expect to get in return. The nice thing about them is that they
-are quite robust, and can be applied in early stage experimental software as
+the more you'll get in return. The nice thing about these practices is that they
+are quite robust -- they can be applied in early stage experimental software as
 well as in projects that have been used in production for years.
 
 The hard part of applying these ideas is not in remembering them when things are
@@ -595,8 +597,8 @@ your project. The more contributions you receive, the more important these
 strategies will become, but it is also hard to keep up with them because they do
 slow down the maintenance process a little bit. Whenever you feel that pressure,
 remember that you are looking out for the future of your project by focusing on
-quality, and do what you can to educate others so that they understand why
-that matters.
+quality, and then do what you can to educate others so that they understand why
+these issues matter.
 
 Every project is different, and you may find that there are other ways to keep a
 high quality standard without following the guidelines we've discussed in this
