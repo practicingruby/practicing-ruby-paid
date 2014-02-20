@@ -27,7 +27,7 @@ If bad code continues to accumulate in this fashion, improving one part of a
 a project usually means breaking something else in the 
 process. Once a maintainer starts spending most of their time fixing bugs, 
 it gets hard to move their project forward in meaningful 
-ways. This is where open source development stops being fun, and starts ffeeling 
+ways. This is where open source development stops being fun, and starts feeling 
 like a painful chore.
 
 Not all projects need to end up this way, though. As long as project maintainers 
