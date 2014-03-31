@@ -17,9 +17,9 @@ pieces of technology that we all use on a regular basis.
 
 We all use web applications daily and many of us build
 them for a living, but much of our work is done far above the HTTP level.
-Today, we'll need come down from the clouds a bit to explore
+We'll need come down from the clouds a bit in order to explore
 what happens at the protocol level when someone clicks a 
-link to `http://example.com/file.txt` in their web browser. 
+link to *http://example.com/file.txt* in their web browser. 
 
 The following steps roughly cover the typical HTTP request/response lifecycle:
 
@@ -27,8 +27,7 @@ The following steps roughly cover the typical HTTP request/response lifecycle:
 `example.com` on port 80. The server accepts the connection, opening a
 socket for bi-directional communication.
 
-2) Once the connection has been made, the HTTP client sends the request over the
-connection:
+2) When the connection has been made, the HTTP client sends a HTTP request:
 
 ```
 GET /file.txt HTTP/1.1
@@ -39,7 +38,7 @@ Accept: */*
 
 3) The server then parses the request. The first line is the Request-Line which contains
 the HTTP method (`GET`), Request-URI (`/file.txt`), and HTTP version (`1.1`).
-Subsequent lines are headers, which consists of key-value pairs delimited by ":". 
+Subsequent lines are headers, which consists of key-value pairs delimited by `:`. 
 After the headers is a blank line followed by an optional message body (not shown in
 this example).
 
@@ -48,14 +47,13 @@ this example).
 ```
 HTTP/1.1 200 OK
 Content-Type: text/plain
-Content-Length: 11
+Content-Length: 13
 Connection: close
 
 hello world
 ```
 
-5) Finally, the server closes the socket after finishing the response to
-terminate the connection.
+5) After finishing the response, the server closes the socket to terminate the connection.
 
 The basic workflow shown above is one of HTTP's most simple use cases,
 but it is also one of the most common interactions handled by web servers.
