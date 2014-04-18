@@ -1116,4 +1116,9 @@ It's pretty messy, but I think could be cleaned up by using a state machine.
 
 That's all. Thanks for reading! <3 <3 <3
 
+*We'd like to thank Eric Hodel, Magnus Holm, Piotr Szotkowski, and 
+Mathias Lafeldt for reviewing this article and providing feedback 
+before we published it.*
+
+
 > NOTE: If you'd like to learn more about this topic, consider doing the Practicing Ruby self-guided course on [Streams, Files, and Sockets](https://practicingruby.com/articles/study-guide-1?u=dc2ab0f9bb). You've already completed one of its reading exercises by working through this article!
