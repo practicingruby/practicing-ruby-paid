@@ -1114,8 +1114,6 @@ buffers.  I implemented a simple non-buffering tokenizer that you can read
 [here](https://github.com/tenderlove/rjson/blob/master/lib/rjson/stream_tokenizer.rb).
 It's pretty messy, but I think could be cleaned up by using a state machine.
 
-That's all. Thanks for reading! <3 <3 <3
-
 *We'd like to thank Eric Hodel, Magnus Holm, Piotr Szotkowski, and 
 Mathias Lafeldt for reviewing this article and providing feedback 
 before we published it.*
