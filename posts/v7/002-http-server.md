@@ -402,6 +402,8 @@ Please do share your experiences and code if you decide to try any of
 these ideas, or if you come up with some improvement ideas of your own.
 Happy hacking!
 
-> We'd like to thank Eric Hodel, Magnus Holm, Piotr Szotkowski, and 
+*We'd like to thank Eric Hodel, Magnus Holm, Piotr Szotkowski, and 
 Mathias Lafeldt for reviewing this article and providing feedback 
-before we published it.
+before we published it.*
+
+> NOTE: If you'd like to learn more about this topic, consider doing the Practicing Ruby self-guided course on [Streams, Files, and Sockets](https://practicingruby.com/articles/study-guide-1?u=dc2ab0f9bb). You've already completed one of its reading exercises by working through this article!
