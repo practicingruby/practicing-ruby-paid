@@ -1,9 +1,728 @@
-## The structure and meaning of formats and protocols
+
+* Exposing meaning without knowing how to process something
+* What it means to understand a message (we'll focus on the first tier)
+* Direct representation vs indirect representation via generalized constructs
+* The inherent limitation of syntax, no matter how simple.
+* Processing without knowing meaning (messagepack)
+* Unification (formal grammars)
+* Commentary on the gradient of information formats from binary to English.
+
+
+> CREDIT: GEB.
+
+TODO: Come up with a suitable definition of "information",
+basically it's an interpeted message that we can discern the
+structure and meaning of.
+http://en.wikipedia.org/wiki/Information
+
+THOUGHT: As structure becomes more explicit, meaning becomes less specific.
+(or something like that)
+
+THOUGHT: The concept of an array (or any entitity) isn't tied up its
+representation, but instead exists in our heads (meaning), and in 
+the symbolic transformations carried out by the computer (structure).
+
+THOUGHT: The more expressive the "language", the more edge cases
+and rules you'll need to address, but the tradeoff is that you
+can precisely describe more complex structures.
+
+To begin our explorations, let's look at an example from the Internet
+Relay Chat (IRC) protocol. The following string represents the
+command that you'd send to an IRC server to post a message
+to a particular channel:
+
+```ruby
+"PRIVMSG #practicing-ruby-testing :Seasons greetings to you all!\r\n"
+```
+
+Even if you've never used IRC before or looked into its implementation
+details, you can extract a great deal of meaning from this single line 
+of text. The structure is very simple, so it's fairly obvious that
+`PRIVMSG` represents a command, `#practicing-ruby-testing` represents
+the channel, and that the message to be delivered is 
+`"Seasons greetings to you all!"`. If I asked you to parse this
+string to produce the following array, you probably would have
+no trouble doing so without any further instruction:
+
+```ruby
+["PRIVMSG", "#practicing-ruby-testing", "Seasons greetings to you all!"]
+```
+
+But if this were a real project and not just an academic exercise,
+you might start to wonder more about the nuances of the protocol. Here
+are a few questions that might come up after a few minutes of
+careful thought:
+
+* What is the significance of the `:` character? Does it always signify 
+the start of the message contents, or does it mean something else?
+
+* Why does the message end in `\r\n`? Can messages contain newlines,
+and if so, should they be represented as `\n` or `\r\n`, or something
+else entirely?
+
+* Will messages always take the form `"PRIVMSG #channelname :Message Body\r\n"`, 
+or are their cases where additional parameters will be used?
+
+* Can channel names include spaces? How about `:` characters?
+
+Try as we might, no amount of analyzing this single example will answer 
+these questions for us. That leads us to a very important point: 
+Understanding  the *meaning* of a message doesn't necessarily mean that 
+we know how to process the information contained within it.
+
+## Processing Something Something
+
+Because we can't reliably infer how to process information by simply looking at
+examples, we rely on formal specifications to guide us in our interpretation
+of the structure and meaning of encoded messages.
+
+For a piece of information to be useful in a software system, it needs to be
+*well-formed*, *valid*, and *correct*. Although these three properties may
+appear to be synonymous to one another at first glance, they actually
+represent a strict hierarchy that spans the gap between the meaningless
+and meaningful. Here's why:
+
+* If a message is not *well-formed*, it means that it does not even follow the
+basic structural rules of the underlying protocol or format. A strict
+processor will reject these messages out of hand, while a more flexible
+system might apply some error-correction routines to transform the
+ill-formed message into a well-formed one. In this case, your message
+*might* get interpreted as you'd expect it would, but there's no guarantee.
+DETERMINING WHETHER A MESSAGE IS WELL-FORMED CAN BE DONE BY DIRECT INSPECTION
+AS LONG AS YOU KNOW THE PROCESSING/PARSING RULES.
+(writing a channel name in the wrong format)
+
+* If a message is *well-formed* but *invalid*, it's entirely up to the
+software that processes it to decide how to respond. Unless the behavior
+for handling invalid messages is formally specified, it's anybody's
+guess what a software system might do with an invalid message. You
+might get an error message of some sort, or you might get no response
+at all. In less optimistic scenarios, you might get a false-positive
+response that indicates that your message was processed correctly,
+only to find out that it wasn't interpreted as you expected it would be.
+In the most hellish of circumstances, you make end up triggering
+some undefined behavior that can fall anywhere on the spectrum from
+weird little glitches to system crashes to nukes being launched at 
+the moon (FOOTNOTE: fork fail) .
+DETERMINING WHETHER A MESSAGE IS VALID DEPENDS ON LOGIC /
+APPLICATION STATE. I.E. THE SYSTEM NEEDS TO TELL YOU,
+YOU CAN'T JUST GUESS FROM THE PROCESSING RULES (posting to
+a channel that doesn't exist)
+
+* If a message is both *well-formed* and *valid*, it still isn't
+guaranteed to produce a *correct* result. This is a more subtle issue, 
+and typically involves either system behavior that's underspecified, 
+or a lack of understanding of the specified behavior by implementers.
+Sometimes messages can be processed incorrectly because of bugs
+in the systems that interpret them, but just as often it is
+the case that the programmer who encoded the message thought it
+meant one thing when it really meant something else.
+DETERMINING CORRECTNESS CAN ONLY BE DONE BY VERIFYING BEHAVIOR
+AFTER AN ACTION IS CARRIED OUT.
+
+Perhaps unsurprisingly, many problematic behaviors and bugs in
+software systems come from these three basic requirements for 
+meaningful information processing. Without satisfying all
+three of them, the best we can hope for are systems that 
+"kind-of, sort-of work, some of the time."
+
+## Structure and simplicity SOMETHING SOMETHING
+
+Earlier we looked at an example of how chat messages are represented 
+in the IRC protocol. On the surface level, the simple text-based
+format made it easy for us to identify the structure and meaning
+of different parts of the command format. But when we thought
+a little more about what it would take to actually implement
+the protocol, we quickly ran into several questions about
+how to construct well-formed messages.
+
+A lot of the questions we came up with had to do with basic syntax
+rules, which is only natural when exploring an unfamiliar information
+format. For example, we can guess that the `:` symbol is a special character 
+in the following string, but we can't reliably guess its meaning without 
+reading the IRC command specification:
+
+```ruby
+"PRIVMSG #practicing-ruby-testing :Seasons greetings to you all!\r\n"
+```
+
+To see the effect of syntax on our interpretation of information
+formats, consider what happens when we shift the representation 
+of a chat message into a generic structure that
+we are already familiar with, such as a Ruby array: 
+
+```ruby
+["PRIVMSG", "#practicing-ruby-testing", "Seasons greetings to you all!"]
+```
+
+Looking at this information, we still have no idea whether it 
+constitutes a well-formed message to be processed by 
+our hypothetical IRC-like chat system. But because we know Ruby's 
+syntax, we understand what is being communicated here at
+a primitive level.
+
+Before when we looked at the `PRIVMSG` command expressed in
+the format specified by the IRC protocol, we weren't able to
+reliably determine the rules for breaking the message up
+into its parts by looking at a single example. Because
+we didn't already have its syntax memorized, we wouldn't even
+be able to reliably parse IRC commands, let alone process them.
+But as Ruby programmers, we know what array and string literals
+look like, and so we know how to map their syntax to the concepts
+behind them.
+
+The mundane observation to be made here is that it's easier 
+to understand a format you're familiar with than it is to 
+interpret one you've never seen before. A far more interesting
+point to discover is that these two examples have fundamental
+differences in meaning, even if they can be interpreted in
+a way that makes them equivalent to one another.
+
+Despite their superficial similarities, the two examples
+we've looked at operate at completely different
+levels of abstraction. The IRC-based example directly 
+encodes the concept of a "chat command", whereas 
+our Ruby example encodes the concept of an "array of strings". 
+In that sense, the former is a direct representation of a 
+domain-specific concept, and the latter is a indirect 
+representation built up from general-purpose data structures.
+Both can express the concept a chat command, but they're not
+cut from the same cloth.
+
+Let's use a practical examples to explore why this difference
+in structure matters. Consider what might happen if we attempted
+to allow whitespace in chat channel names, i.e. 
+`#practicing ruby testing` instead of `#practicing-ruby-testing`.
+By directly substituting this new channel name into our `PRIVMSG`
+command example, we get the string shown below:
+
+```ruby
+"PRIVMSG #practicing ruby testing :Seasons greetings to you all!\r\n"
+```
+
+Here we run into a syntactic challenge: If we allow for channel
+names to include whitespace, we need to come up with more complex
+rules for splitting up the command into its different parts. But
+if we decide this is an ill-formed string, then we need to come
+up with a syntactic rule that says that the channel parameter
+cannot include spaces in it. Either way, we need to come up
+with a formal constraint that will be applied at parse time,
+before processing even begins.
+
+Now consider what happens when we use Ruby syntax instead:
+
+```ruby
+["PRIVMSG", "#practicing ruby testing", "Seasons greetings to you all!"]
+```
+
+This is without question a well-formed Ruby array, and it will
+be successfully parsed and turned into an internal data structure.
+By definition, Ruby string literals allow whitespace in them, 
+and there's no getting around that without writing our own 
+custom parser. So while the IRC example *must* consider the meaning
+of whitespace in channel names during the parsing phase, our
+Ruby example *cannot*. Any additional constraints placed on the 
+format of channel names would need to be done via logical 
+validations rather than syntactic rules.
+
+The key realization here is that the concepts we're expressing
+when we encode something in one syntax or another have meaning
+beyond the raw data that they represent. In the IRC protocol
+a 'channel' is a defined concept at the symbolic level, with a 
+specific meaning to it. When we represent it using a Ruby
+string, we can only approximate the concept by starting with
+a more general structure and then applying logical rules to
+it to make it a more faithful representation of a concept
+it cannot directly express. This is not unlike translating
+a word from one spoken language to another which doesn't
+have a precisely equivalent concept.
+
+A STRING HAS THE PROPERTY/CONSTRAINTS OF "A SEQUENCE OF BYTES/CHARACTERS"
+AN IRC CHANNEL NAME IS A RESTRICTED SUBSET OF THAT CONCEPT
+EXPRESSING THE CONCEPT DIRECTLY REMOVES THE NEED TO DERIVE IT
+
+## Ambiguity
+
+Consider once more our fascinating Ruby example:
+
+```ruby
+["PRIVMSG", "#practicing-ruby-testing", "Seasons greetings to you all!"]
+```
+
+We've seen that because its structure is highly generic, its
+representation is very permissive. Nearly any sequence of
+printable characters can be expressed within a Ruby string literal,
+and so there isn't much ambiguity in expression of ordinary strings.
+
+However, like all text-based formats, there are things that without
+special consideration, could lead to ambiguous or incomprehensible
+messages. For example, consider strings which have `"` characters
+within them:
+
+```
+"My name is: "Gregory"\n"
+```
+
+The above will generate syntax error in Ruby, becasuse it ends up
+getting parsed as the string `"My name is: "`, followed immediately
+by the constant `Gregory`, followed by the string `"\n"`. Ruby
+understandably has no way of interpreting that nonsense, so
+the parse fails. 
+
+If we were only concerned with parsing string literals, we could 
+find a way to resolve these ambiguities by adding some special 
+parsing rules, but Ruby has a much more complex grammar across
+its entire featureset. For that reason, it expects you to be
+a bit more explicit when dealing with edge cases like this one.
+To get our string to parse, we'd need to do something like this:
+
+```
+"My name is: \"Gregory\"\n"
+```
+
+By writing <tt>\"</tt> instead of <tt>"</tt>, we tell the parser
+to treat the quote character as just another character in the string
+rather than a symbolic *end-of-string* marker. The <tt>\</tt> acts
+as an escape character, which is useful for resolving these sorts
+of ambiguities. The cost of course is that <tt>\</tt> itself
+becomes a potential source of ambiguity, so you end up having to write
+<tt>\\</tt> instead of <tt>\</tt> to express backslashes in Ruby
+string literals.
+
+Edge cases of this sort arise in any reasonably expressive text-based format.
+They are often easy to resolve by adding a few more rules, but in many
+cases the addition of new processing rules add an even more subtle layer
+of corner cases to consider (as we've seen w. the <tt>\</tt> character).
+Resolving minor ambiguities comes natural to humans because we can
+guess at the meaning of a message, but cold-hearted computers
+can only follow the explicit rules we've given them.
+
+## Speaking the language of the beast
+
+One possible solution to the syntactic ambiguity problem is to represent information in
+a way that is convenient for computers, rather than optimizing for
+human readability. For example, here's the same array of strings
+represented as a raw sequence of bytes in Messagepack format:
+
+```
+93 a7 50 52 49 56 4d 53 47 b8 23 70 72 61 63 74 69 63 69 6e 67 2d 72 75 62 
+79 2d 74 65 73 74 69 6e 67 bd 53 65 61 73 6f 6e 73 20 67 72 65 65 74 69 6e 
+67 73 20 74 6f 20 79 6f 75 20 61 6c 6c 21
+```
+
+At first, this looks like a huge step backwards, because it smashes our
+ability to intuitively extract meaning from the message by simply
+reading its contents. But when we discover that the vast majority of
+these bytes are just encoded character data, things get a little
+more comprehensible:
+
+```ruby
+"\x93\xA7PRIVMSG\xB8#practicing-ruby-testing\xBDSeasons greetings to you all!"
+```
+
+Knowing that most of the message is the same text we've seen in the other
+examples, we only need to figure out what the few extra bytes of information
+represent:
+
+![](http://i.imgur.com/YAh5olr.png)
+
+Like all binary formats, MessagePack is optimized for ease of processing
+rather than human readability. Instead using text-based symbols to describe 
+the structure of data, MessagePack uses an entirely numeric encoding format.
+
+By switching away from brackets, commas, and quotation marks to arbitrary
+values like `93`, `A7`, `B8`, and `BD`, we immediately lose the ability to
+visually distinguish between the different structural elements of the 
+message. This makes it harder to simply look at a message and know whether
+or not it is well-formed, and also makes it harder to notice the connections
+between the symbols and their meaning while reading an encoded message.
+
+Let's take a moment to consider a practical example. If you squint really 
+hard at the yellow boxes in the above diagram, you might
+guess that `93` describes the entire array, and that `A7`, `B8`, and `BD`
+all describe the strings that follow them. But `A7`, `B8`, and `BD` need to
+be expressing more than just the concept of "a string", otherwise there
+would be no need to use three different values. You might be able to
+discover the underlying rule by studying the example for a while, but
+it doesn't just jump out at you the way a pair of opening and closing
+brackets might.
+
+To avoid leaving you in suspense, here's the key idea: MessagePack
+attempts to represent seralized data structures using as few bytes 
+as possible, while making processing as fast as possible. To do this,
+MessagePack uses type headers that tell you exactly what type of
+data is encoded, and exactly how much space it takes up in 
+the message. For small chunks of data, it conveys both of these
+pieces of information using a single byte!
+
+Take for example the first byte in the message, which has the
+hexidecimal value of `93`. MessagePack maps the values `90-9F`
+to the concept of "an array with zero to 15 elements". This
+means that an array with zero elements would have the type code 
+of `90` and an array with 15 elements would have the type code
+of `9F`. Following the same logic, we can see that `93` represents 
+an array with 3 elements.
+
+For small strings, a similar encoding process is used. Values in 
+the range of `A0-BF` correspond to "strings of zero to 15 bytes".
+All three of our strings are in this range, so to compute
+their size, we just need to subtract the bottom of the range
+from each of them:
+
+```ruby
+# note that results are in decimal, not hexidecimal
+# String sizes are also computed explicitly for comparison
+
+>> 0xA7-0xA0
+=> 7
+>> "PRIVMSG".size
+=> 7
+
+>> 0xB8-0xA0
+=> 24
+>> "#practicing-ruby-testing".size
+=> 24
+
+>> 0xBD-0xA0
+=> 29
+>> "Seasons greetings to you all!".size
+=> 29
+```
+
+![](http://i.imgur.com/s3Rjgzz.png)
+
+CONSIDER SHOWING EXTENSIONS TO GIVE MEANINGFUL TYPES FOR DATA!
+THIS IS AN EXAMPLE OF KNOWING *EXACTLY* HOW TO EXTRACT CONTENTS
+OF A MESSAGE, WITHOUT ANY CONCEPT OF ITS MEANING.
+(the meaning must be applied entirely at the logical level,
+and now we're standing at the polar opposite of where we started)
+
+A Ruby string may not have trouble with spaces, but it has issues of its
+own (how do we make a string with `"` in it? We escape it with \. 
+How do we make a string with \ in it? (we escape that with a \\),
+and so on...
+
+What happens when you kill syntax entirely? CRAZY THINGS!
+We get to skip right past the "parsing phase" and immediately
+enter the processing phase.
+
+---
+
+So the question of interpreting the message becomes one not of
+syntactic comprehension, but logic and semantic meaning... etc.
+
+We are very directly representing "An array of strings" and
+very implicitly representing a "command with parameters"
+
+WE KNOW HOW TO "READ" THE RUBY ARRAY, WE KNOW ITS GRAMMAR.
+WE DON'T KNOW IRC'S (Assuming you haven't studied it before)
+
+We can go a step farther and eliminate the syntax entirely,
+by moving from a textual representation to a numeric one.
+
+MessagePack: If the type information is in the wrong place,
+missing, or just incorrect, the message is corrupted. If
+the size information is wrong, the message is corrupted.
+A message is either precisely unanambiguous or useless.
+
+
+MAIN BENEFIT: COMPLETELY UNAMBIGUOUS, EXTREMELY 
+EXPLICIT STRUCTURE. 
+
+------
+
+MESSAGEPACK:
+
+What is encoded is an array of strings,
+which in turn represents a chat command.
+
+This array of strings is represented by a specially
+formatted stream of bytes.
+
+An indirect representation of a domain concept,
+can still be ill-formed as a chat message while
+being well-formed as a message pack bytestream.
+
+IRC PROTOCOL:
+
+What is encoded is a chat command, represented
+in a particular syntax, with internal representation
+left as an implementation detail.
+
+So it's a direct representation of a domain concept.
+Without it being well-formed, it's not processable.
+
+----
+
+Let's attempt to eliminate the questions that arise about
+syntactic limitations / complexity.
+(( In the IRC protocol example, you MUST decide how : is
+interpreted, \r\n, spaces, etc as it effects the meaning
+of the statements and the way you'd process them, in
+a binary format you *may* apply restrictions on these
+sorts of things. -- i.e. you need to answer those questions
+we asked in the original format, so let's come up w.
+something that doesn't require us to)
+
+Going to MessagePack forces protocol to be implemented purely
+via logic rather than by syntax/grammar. MessagePack cannot
+even express the notion of limiting certain characters in
+strings, wheras a parser generated from a formal grammar must
+directly address that issue.
+
+Imagine that IRC used a generic message format rather than its own
+text-based command format. For example, the same information could
+be expressed in the MessagePack serialization format as shown below:
+
+```ruby
+"\x93\xA7PRIVMSG\xB8#practicing-ruby-testing\xBDSeasons greetings to you all!"
+```
+
+MessagePack is a universal format, so it only gives us a few different
+types to work with (i.e. things like arrays, strings, numbers, etc.). This has
+its tradeoffs, because it decouples the representation format from the protocol.
+
+`93` - A three element array
+`A7` - A 7 byte long string
+`B8` - A 24 byte long string
+`BD` - A 29 byte long string
+
+Very precise: Gives exact type information and length for all fields.
+
+Very simple:
+
+Read a single byte, 
+
+
+* Specific or general?
+* Tension between precision and expressiveness
+* Sequence of characters vs. sequence of bytes (text vs. binary)
+* Specialized format vs. generalized format
+
+---------
+
+## Unifying humans and computers
+
+Show implementation in the context of a correct IRC logger.
+(only focusing on PRIVMSG w. no prefix, on a particular channel)
+
+USE BNF to construct a well-formed regexp. Talk step by step about
+how to extract its patterns. Towards the end of this section,
+discuss how instead of Regexp,
+we could have used Racc (link to JSON article, or possibly
+use the calculator example as one more section).
+
+```
+/[^ :\0\r\n]+/
+```
+
+```
+/^:(.*) PRIVMSG (#
+```
+
+Formal specification of IRC messages:
+
+```
+Servers and clients send each other messages, which may or may not
+generate a reply.  If the message contains a valid command, as
+described in later sections, the client should expect a reply as
+specified but it is not advised to wait forever for the reply; client
+to server and server to server communication is essentially
+asynchronous by nature.
+
+Each IRC message may consist of up to three main parts: the prefix
+(OPTIONAL), the command, and the command parameters (maximum of
+fifteen (15)).  The prefix, command, and all parameters are separated
+by one ASCII space character (0x20) each.
+
+The presence of a prefix is indicated with a single leading ASCII
+colon character (':', 0x3b), which MUST be the first character of the
+message itself.  There MUST be NO gap (whitespace) between the colon
+and the prefix.  The prefix is used by servers to indicate the true
+origin of the message.  If the prefix is missing from the message, it
+is assumed to have originated from the connection from which it was
+received from.  Clients SHOULD NOT use a prefix when sending a
+message; if they use one, the only valid prefix is the registered
+nickname associated with the client.
+
+The command MUST either be a valid IRC command or a three (3) digit
+number represented in ASCII text.
+
+IRC messages are always lines of characters terminated with a CR-LF
+(Carriage Return - Line Feed) pair, and these messages SHALL NOT
+exceed 512 characters in length, counting all characters including
+the trailing CR-LF. Thus, there are 510 characters maximum allowed
+for the command and its parameters.  There is no provision for
+continuation of message lines.  See section 6 for more details about
+current implementations.
+```
+
+From section 2.3.1:
+
+```
+The protocol messages must be extracted from the contiguous stream of
+octets.  The current solution is to designate two characters, CR and
+LF, as message separators.  Empty messages are silently ignored,
+which permits use of the sequence CR-LF between messages without
+extra problems.
+
+The extracted message is parsed into the components <prefix>,
+<command> and list of parameters (<params>).
+
+The Augmented BNF representation for this is:
+
+    message    =  [ ":" prefix SPACE ] command [ params ] crlf
+    prefix     =  servername / ( nickname [ [ "!" user ] "@" host ] )
+    command    =  1*letter / 3digit
+    params     =  *14( SPACE middle ) [ SPACE ":" trailing ]
+               =/ 14( SPACE middle ) [ SPACE [ ":" ] trailing ]
+
+    nospcrlfcl =  %x01-09 / %x0B-0C / %x0E-1F / %x21-39 / %x3B-FF
+                    ; any octet except NUL, CR, LF, " " and ":"
+    middle     =  nospcrlfcl *( ":" / nospcrlfcl )
+    trailing   =  *( ":" / " " / nospcrlfcl )
+
+    SPACE      =  %x20        ; space character
+    crlf       =  %x0D %x0A   ; "carriage return" "linefeed"
+
+    letter     =  %x41-5A / %x61-7A       ; A-Z / a-z
+    digit      =  %x30-39                 ; 0-9
+
+
+NOTES:
+  1) After extracting the parameter list, all parameters are equal
+     whether matched by <middle> or <trailing>. <trailing> is just a
+     syntactic trick to allow SPACE within the parameter.
+
+  2) The NUL (%x00) character is not special in message framing, and
+     basically could end up inside a parameter, but it would cause
+     extra complexities in normal C string handling. Therefore, NUL
+     is not allowed within messages
+```
+
+`PRIVMSG` handling:
+http://tools.ietf.org/html/rfc2812#section-3.3.1
+
+----------
+
+JSON vs. MessagePack
+Calc vs. JSON
+MessagePack vs. BMP 
+BMP vs. HTTP (metadata)
+HTTP vs. LS
+LS vs. IRC
+IRC vs. MessagePack
+
+(overkill but interesting?)
+
+----
+
+* Does the format tell you exactly where to look, or do you
+need to scan the input data for separators?
+
+* JSON and MessagePack express the same information (nearly 1-1) but
+are processed in very different ways.
+
+* JSON and Calculator example are processed in a very similar way,
+but express completely different concepts.
+
+* Binary formats are already "pre-processed" so you don't need to
+do the intermediate tokenization / analysis with text formats.
+
+* Binary files are optimized for computation, text files for humans.
+BMP file will tell you exactly where the pixel array starts, but
+in HTTP requests, you look for the implicit "\n\n". But in a
+HTTP file you can directly use the body contents, whereas in
+BMP you have to concern yourself with 4-byte padding.
+
+* Explicit vs. implicit does not directly correspond to simple vs. complex.
+
+## The anatomy of information formats
 
 The job of any computer program is to convert seemingly meaningless sequences
 of bytes into useful information.
 
 
+## How do I get at the pixels?
+
+Use headers to determine the size
+and location of the pixel array, then
+read this binary data:
+
+```
+00 00 FF
+FF FF FF 
+00 00 
+FF 00 00 
+00 FF 00 
+00 00
+```
+
+## How do I get at the serialized hash structure?
+
+Read the first byte to determine how to read the
+next N bytes, rinse and repeat.
+
+```
+85 a1 61 01 a1 62 c3 a1 63 c2 
+a1 64 c0 a3 65 67 67 cb 3f f5 
+99 99 99 99 99 9a
+```
+
+Read this text file
+
+```
+{"a":1,"b":true,"c":false,"d":null,"egg":1.35}
+```
+
+## How do I get at the HTML file?
+
+Make a HTTP request, then parse this response:
+
+```
+HTTP/1.1 200 OK
+Content-Type: text/html
+Content-Length: 146
+Connection: close
+
+<html>
+  <body>
+    <div style="text-align: center">
+      <h1>Hello World!</h1>
+      <img src="earth_heart.jpg" />
+    </div>
+  </body>
+</html>
+```
+
+## How do I get at these files?
+
+(Read them directly from disk, or make OS calls on them)
+(Read metadata using OS calls)
+
+## How do I get at these IRC messages?
+
+Make a socket connection, run a few commands, then parse the
+following line-based syntax:
+
+```
+:nick!~user@host-111-222-33-444.example.net PRIVMSG #testing :Hello Bot!
+```
+
+## How do I process these formulas?
+
+Use a racc parser against each line from stdin
+
+? (10 + (23 * 5)) / 52.0
+
+
+------------------
+
+Embedded metadata or external (or non-existent)?
+Binary vs. Text
+Flat vs. nested
+Fixed vs. dynamic
+Explicit vs. Derived
 
 -----------------
 
