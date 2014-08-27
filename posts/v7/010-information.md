@@ -1,3 +1,10 @@
+Start with a story about what happens when I type a message into an
+IRC channel, and how it gets to you. (Sockets, IRC protocol,
+client->server->client etc).
+
+LOOKING AT DIFFERENT WAYS TO STORE, PROCESS, REPRESENT, AND INTERPRET
+A SINGLE SIMPLE MESSAGE.
+
 
 * Exposing meaning without knowing how to process something
 * What it means to understand a message (we'll focus on the first tier)
@@ -5,7 +12,11 @@
 * The inherent limitation of syntax, no matter how simple.
 * Processing without knowing meaning (messagepack)
 * Unification (formal grammars)
-* Commentary on the gradient of information formats from binary to English.
+* Commentary on the gradient of information formats from binary to English. (no
+free lunch, at each level you gain something and you lose something, so it's
+important to consider context if you need to design a format or protocol).
+There is also a weird cross-over effect in which they end up being so
+similar and so different at the same time.
 
 
 > CREDIT: GEB.
@@ -357,14 +368,14 @@ pieces of information using a single byte!
 
 Take for example the first byte in the message, which has the
 hexidecimal value of `93`. MessagePack maps the values `90-9F`
-to the concept of "an array with zero to 15 elements". This
+to the concept of *arrays with up to 15 elements*. This
 means that an array with zero elements would have the type code 
 of `90` and an array with 15 elements would have the type code
 of `9F`. Following the same logic, we can see that `93` represents 
 an array with 3 elements.
 
 For small strings, a similar encoding process is used. Values in 
-the range of `A0-BF` correspond to "strings of zero to 15 bytes".
+the range of `A0-BF` correspond to *strings with up to 31 bytes of data*.
 All three of our strings are in this range, so to compute
 their size, we just need to subtract the bottom of the range
 from each of them:
@@ -389,119 +400,153 @@ from each of them:
 => 29
 ```
 
+Piecing this all together, we can now see the orderly structure
+that was previously obfuscated by the compact nature of the
+MessagePack format:
+
+![](http://i.imgur.com/H9lOSex.png)
+
+Although this appears to be superficially similar to the structure
+of our Ruby array example, there are significant differences that
+become apparent when attempting to process the MessagePack data:
+
+* In a text-based format you need to look ahead to find closing
+brackets to match opening brackets, to organize quotation marks
+into pairs, etc. In MessagePack format, explicit sizes for each
+object are given so you know exactly where its data is stored
+in the bytestream.
+
+* Because we don't need to analyze the contents of the message
+to determine how to break it up into chunks, we don't need
+to worry about ambiguous interpretations of symbols in the data.
+This avoids the need for introducing escape sequences for the
+sole purpose of making parsing easier.
+
+* The explicit separation of metadata from the contents of the
+message makes it possible to read part of the message without
+analyzing the entire bytestream. We just need to extract all
+the relevant type and size information, and then from there
+it is easy to compute offsets and read just the data we need.
+
+The underlying theme here is that by compressing all of the
+structural meaning of the message into simple numerical values,
+we convert the whole problem of extracting the message into
+a series of trivial computations: read a few bytes to determine
+the type information and size of the encoded data, then
+read some content and decode it based on the specified type,
+then rinse and repeat.
+
+
+## Abtract types
+
+Even though representing our message in a binary format allowed
+us to make information extraction simpler and more precise, 
+the data type we used still corresponds to concepts that don't precisely
+fit the intended meaning of our message.
+
+One possible way to solve this conceptual problem is to completely 
+decouple structure from meaning in our message format. To do that,
+we could utilize MessagePack's abstract type mechanism --
+resulting in a message similar to what you see below:
+
 ![](http://i.imgur.com/s3Rjgzz.png)
 
-CONSIDER SHOWING EXTENSIONS TO GIVE MEANINGFUL TYPES FOR DATA!
-THIS IS AN EXAMPLE OF KNOWING *EXACTLY* HOW TO EXTRACT CONTENTS
-OF A MESSAGE, WITHOUT ANY CONCEPT OF ITS MEANING.
-(the meaning must be applied entirely at the logical level,
-and now we're standing at the polar opposite of where we started)
+The `C7` type code indicates an abstract type, and is followed
+by two additional bytes: the first provides an arbitrary type
+id (between 0-127), and the second specifies how many bytes
+of data to read in that format. After applying these rules,
+we end up with the following structure:
 
-A Ruby string may not have trouble with spaces, but it has issues of its
-own (how do we make a string with `"` in it? We escape it with \. 
-How do we make a string with \ in it? (we escape that with a \\),
-and so on...
+![](http://i.imgur.com/AubaxCk.png)
 
-What happens when you kill syntax entirely? CRAZY THINGS!
-We get to skip right past the "parsing phase" and immediately
-enter the processing phase.
+The contents of each object in the array is the same as it always
+has been, but now the types have changed. Instead of an
+array composed of three strings, we now have an array that
+consists of elements that each have their own type.
 
----
+Although I've shown the contents of each object as text-based
+strings in the above diagram for the sake of readability,
+the MessagePack format does not assume that the data associated
+with extended types will be text-based. The decision of
+how to process this data (if at all) is left up to the decoder.
 
-So the question of interpreting the message becomes one not of
-syntactic comprehension, but logic and semantic meaning... etc.
+FIXME: LINK A REFERENCE IMPLEMENTATION
 
-We are very directly representing "An array of strings" and
-very implicitly representing a "command with parameters"
-
-WE KNOW HOW TO "READ" THE RUBY ARRAY, WE KNOW ITS GRAMMAR.
-WE DON'T KNOW IRC'S (Assuming you haven't studied it before)
-
-We can go a step farther and eliminate the syntax entirely,
-by moving from a textual representation to a numeric one.
-
-MessagePack: If the type information is in the wrong place,
-missing, or just incorrect, the message is corrupted. If
-the size information is wrong, the message is corrupted.
-A message is either precisely unanambiguous or useless.
-
-
-MAIN BENEFIT: COMPLETELY UNAMBIGUOUS, EXTREMELY 
-EXPLICIT STRUCTURE. 
-
-------
-
-MESSAGEPACK:
-
-What is encoded is an array of strings,
-which in turn represents a chat command.
-
-This array of strings is represented by a specially
-formatted stream of bytes.
-
-An indirect representation of a domain concept,
-can still be ill-formed as a chat message while
-being well-formed as a message pack bytestream.
-
-IRC PROTOCOL:
-
-What is encoded is a chat command, represented
-in a particular syntax, with internal representation
-left as an implementation detail.
-
-So it's a direct representation of a domain concept.
-Without it being well-formed, it's not processable.
-
-----
-
-Let's attempt to eliminate the questions that arise about
-syntactic limitations / complexity.
-(( In the IRC protocol example, you MUST decide how : is
-interpreted, \r\n, spaces, etc as it effects the meaning
-of the statements and the way you'd process them, in
-a binary format you *may* apply restrictions on these
-sorts of things. -- i.e. you need to answer those questions
-we asked in the original format, so let's come up w.
-something that doesn't require us to)
-
-Going to MessagePack forces protocol to be implemented purely
-via logic rather than by syntax/grammar. MessagePack cannot
-even express the notion of limiting certain characters in
-strings, wheras a parser generated from a formal grammar must
-directly address that issue.
-
-Imagine that IRC used a generic message format rather than its own
-text-based command format. For example, the same information could
-be expressed in the MessagePack serialization format as shown below:
+Without getting into too many details, let's consider how abstract
+data types might be handled in a real Ruby program that processed
+MessagePack-based messages. You'd need to make an explicit mapping
+between type identifiers and the handlers for each type, perhaps
+using an API similar to what you see below:
 
 ```ruby
-"\x93\xA7PRIVMSG\xB8#practicing-ruby-testing\xBDSeasons greetings to you all!"
+data_types = { 1 => CommandName, 2 => Parameter, 3 => MessageBody }
+
+command = MessagePackDecoder.unpack(raw_bytes, data_types)
+#  [ CommandName <"PRIVMSG">, 
+#    Parameter   <"#practicing-ruby-testing">, 
+#    MessageBody <"Season greetings to you all!"> ]
 ```
 
-MessagePack is a universal format, so it only gives us a few different
-types to work with (i.e. things like arrays, strings, numbers, etc.). This has
-its tradeoffs, because it decouples the representation format from the protocol.
+Each handler would be responsible for transforming raw byte arrays
+into meaningful data objects. For example, the following class might
+be used to convert command parameters (e.g. the channel name) into
+a text-based representation:
 
-`93` - A three element array
-`A7` - A 7 byte long string
-`B8` - A 24 byte long string
-`BD` - A 29 byte long string
+```ruby
+class Parameter
+  def initialize(byte_array)
+    @text = byte_array.pack("C*")
 
-Very precise: Gives exact type information and length for all fields.
+    raise ArgumentError if @text.include?(" ")
+  end
 
-Very simple:
+  attr_reader :text
+end
+```
 
-Read a single byte, 
+The key thing to note about the above code sample is that
+the `Parameter` does not simply convert the raw binary into
+a string, it also applies a validation to ensure that the
+string contains no space characters. This is a bit of a
+contrived example, but it's meant to illustrate the ability
+of custom type handlers to apply their own data integrity
+constraints.
 
+Earlier we had drawn a line in the sand between the 
+array-of-strings representation and the IRC command format
+because the former was forced to allow spaces in strings
+until after the parsing phase, and the latter was forced
+to make a decision about whether to allow them or not
+before parsing could be completed at all. The use
+of abstract types removes this seemingly arbitrary
+limitation, allowing us to choose when and where to
+apply our validations, if we apply them at all.
 
-* Specific or general?
-* Tension between precision and expressiveness
-* Sequence of characters vs. sequence of bytes (text vs. binary)
-* Specialized format vs. generalized format
+Another dividing wall that abstract types seem to blur for
+us is the question of what the raw contents of our message
+actually represent. Using our own application-specific type
+definitions make it so that we never need to consider the
+contents of our messages to be "strings", except as an
+internal implementation detail. However, we rely
+absolutely on our decoder to convert data that has been
+tagged with these seemingly arbitrary type identifiers
+into something that matches the underlying meaning of 
+the message. In introducing abstract types, we have 
+somehow managed to make our information format more precise 
+and more opaque at the same time.
 
 ---------
 
 ## Unifying humans and computers
+
+"We want to think like a human, but work like a machine" -
+this is where parser generators, regexp come in. We write
+in a DSL (or grammar) and it generates a low-level state
+machine that makes the problem more like binary processing
+under the hood (to some extent)
+
+......
+
 
 Show implementation in the context of a correct IRC logger.
 (only focusing on PRIVMSG w. no prefix, on a particular channel)
