@@ -1,39 +1,4 @@
-Computers are mindless automatons, and humans are bad at numbers. This
-friction between people and their machines runs so deep that
-it's remarkable that any software gets built
-at all. But because there is gold to be found at the
-other side of the computational tarpit, we muddle through our differences 
-and somehow manage to make it all work.
-
-To see things in a more positive light, consider what humans and computers 
-are actually good at. Humans excel at finding meaning in messages, turning 
-raw data into useful information. Computers have no sense of meaning,
-but given some clear instructions and properly formatted data, they can perform
-precise computations and transformations that humans could never do themselves
-in a thousand lifetimes.
-
-To work together, computers and humans need a bridge between their mutually
-exclusive ways of looking at the world. And this is what coding is all about!
-We *encode* information into data and source code for computers to process,
-and then after the work is done, we *decode* the results of a computation back
-into a human-friendly message format. 
-
-Once everything is wired up, human users of software can think solely 
-in terms of meaningful information exchange, and software systems only need to 
-worry about moving numbers around and doing basic arithmetic operations. 
-Although it isn't especially romantic, this is how programmers trick computers 
-and humans into cooperating with each other. When done well, people barely
-notice the presence of the software system at all, and focus entirely on
-their job to be done. This suits the computer just fine, as it does not
-care at all what puny humans think of it.
-
-As programmers, we must concern ourselves with the needs of both people 
-and machines. This is what makes our job hard, but is also what makes
-it rewarding and almost magical at times. This article explores the
-boundary lines between these two disjoint worlds, and the complicated
-decisions that need to be made in order to cross the divide.
-
-## Where we see the forest, the computer sees only trees 
+## FIXME: ADD NECESSARY LINKS AND FOOTNOTES, DO ONE MORE PROOFREADING PASS
 
 Suppose that you want to send a friendly greeting to your friends 
 Alice, Bob, and Carol. To do this, you might log into your favorite
@@ -42,35 +7,49 @@ message and hit the enter key. Moments later, your friends would
 see your message appear on their screens, and soon after that
 they would probably send you some sort of response. As long as
 their reply was somewhat intelligible, you could be reasonably 
-certain that your message was successfully communicated, without ever 
-concerning yourself with the technical details of the 
-underlying delivery mechanism.
+certain that your message was successfully communicated, without
+giving much thought to the underlying delivery mechanism.
 
-At the software level this scenario gets turned on its head. In
-the world of chat clients and servers, the meaning of the message
-does not matter, but its structure is of critical importance. Protocols 
-define the acceptable format for messages to be encoded in, and even
-small variations will result in failed communications. These constraints
-are not limited to internal implementation details -- they can also
-directly effect user behavior. The impact of a protocol on its users
-depends entirely on how it is designed, but one common limitation
-is restricted message sizes: On Twitter, a message needs to be
-expressed in 140 characters or less, and on IRC the limit is
-roughly a few hundred characters (FOOTNOTE).
+Just beneath the surface of this everyday activity, we find a world 
+of precise rules and constraints governing (and limiting) our 
+communications. In the world of chat clients and servers, the 
+meaning of the message does not matter, but its structure is 
+of critical importance. Protocols define the format for messages 
+to be encoded in, and even small variations will result 
+in failed communications. 
 
-In addition to intentional constraints on message structure,
+Designing a message format is not a purely technical concern
+-- it can also directly affect human behavior. The impact of 
+a protocol on its users depends entirely on how it is designed, 
+but one common constraint is limited message sizes. On Twitter, 
+a message needs to be expressed in 140 characters or less, and on 
+IRC the limit is only a few hundred characters. This single design 
+decision makes Twitter and IRC fundamentally different from
+email and web forums, so it's hard to overstate the impact
+that constraints can have on a communicaitons medium.
+
+In addition to intentional restrictions on message structure,
 there are always going to be incidental technical limitations
 that need to be dealt with -- the kinds of quirks that arise
 from having too much or too little expressiveness in our
 chosen message format. These are the interesting problems in
-information exchange, because they are not part of the job to
-be done but rather an emergent property of the particular way 
-we've chosen to do the job.
+information exchange, because they are not an essential part 
+of the job to be done but rather an emergent property of the 
+way we've decided to do the job.
 
-To see the impact a communications medium can have on its messages,
+As programmers, we're constantly working to bridge the gap
+between people and the machines that serve them. This article
+explores the boundary lines between those two disjoint worlds, 
+and the complicated decisions that need to be made 
+in order to cross the invisible chasm that lies between
+computational structures and human meaning.
+
+## The medium is the message
+
+To see the impact a communication medium can have on its messages,
 let's work through a practical example. The line of text below is
-representative of what IRC-based chat message look like when they 
-get sent over the wire:
+representative of what an IRC-based chat message look like when it 
+get sent over a TCP socket:
 
 ```
 PRIVMSG #practicing-ruby-testing :Seasons greetings to you all!\r\n
@@ -95,9 +74,9 @@ are a few questions that might come up after a few minutes of
 careful thought:
 
 * What is the significance of the `:` character? Does it always signify 
-the start of the message contents, or does it mean something else?
+the start of the message body, or does it mean something else?
 
-* Why does the message end in `\r\n`? Can messages contain newlines,
+* Why does the message end in `\r\n`? Can the message body contain newlines,
 and if so, should they be represented as `\n` or `\r\n`, or something
 else entirely?
 
@@ -113,22 +92,20 @@ we know how to process the information contained within it.
 
 ## The meaning of a message depends on its level of abstraction
 
-Earlier we looked at an example of how chat messages are represented 
-in the IRC protocol. On the surface level, the simple text-based
-format made it easy for us to identify the structure and meaning
-of different parts of the command format. But when we thought
-a little more about what it would take to actually implement
-the protocol, we quickly ran into several questions about
-how to construct well-formed messages.
+At first glance, the text-based IRC protocol made it 
+easy for us to identify the structure and meaning of the various
+parts of a chat message. But when we thought a little more about what 
+it would take to actually implement the protocol, we quickly ran 
+into several questions about how to construct well-formed messages.
 
 A lot of the questions we came up with had to do with basic syntax
 rules, which is only natural when exploring an unfamiliar information
 format. For example, we can guess that the `:` symbol is a special character 
-in the following string, but we can't reliably guess its meaning without 
-reading the IRC command specification:
+in the following text, but we can't reliably guess its meaning without 
+reading the formal specification for the IRC protocol:
 
-```ruby
-"PRIVMSG #practicing-ruby-testing :Seasons greetings to you all!\r\n"
+```
+PRIVMSG #practicing-ruby-testing :Seasons greetings to you all!\r\n
 ```
 
 To see the effect of syntax on our interpretation of information
@@ -166,32 +143,32 @@ a way that makes them equivalent to one another.
 Despite their superficial similarities, the two examples
 we've looked at operate at completely different
 levels of abstraction. The IRC-based example directly 
-encodes the concept of a "chat command", whereas 
-our Ruby example encodes the concept of an "array of strings". 
+encodes the concept of a *chat message*, whereas 
+our Ruby example encodes the concept of an *array of strings*. 
 In that sense, the former is a direct representation of a 
 domain-specific concept, and the latter is a indirect 
 representation built up from general-purpose data structures.
-Both can express the concept a chat command, but they're not
+Both can express the concept a chat message, but they're not
 cut from the same cloth.
 
-Let's use a practical examples to explore why this difference
+Let's investigate why this difference
 in structure matters. Consider what might happen if we attempted
 to allow whitespace in chat channel names, i.e. 
 `#practicing ruby testing` instead of `#practicing-ruby-testing`.
 By directly substituting this new channel name into our `PRIVMSG`
-command example, we get the string shown below:
+command example, we get the text shown below:
 
-```ruby
-"PRIVMSG #practicing ruby testing :Seasons greetings to you all!\r\n"
+```
+PRIVMSG #practicing ruby testing :Seasons greetings to you all!\r\n
 ```
 
-Here we run into a syntactic challenge: If we allow for channel
+Here we run into a syntactic hiccup: If we allow for channel
 names to include whitespace, we need to come up with more complex
-rules for splitting up the command into its different parts. But
+rules for splitting up the message into its different parts. But
 if we decide this is an ill-formed string, then we need to come
-up with a syntactic rule that says that the channel parameter
+up with a constraint that says that the channel parameter
 cannot include spaces in it. Either way, we need to come up
-with a formal constraint that will be applied at parse time,
+with a formal rule that will be applied at parse time,
 before processing even begins.
 
 Now consider what happens when we use Ruby syntax instead:
@@ -210,17 +187,17 @@ Ruby example *cannot*. Any additional constraints placed on the
 format of channel names would need to be done via logical 
 validations rather than syntactic rules.
 
-The key realization here is that the concepts we're expressing
+The key insight here is that the concepts we're expressing
 when we encode something in one syntax or another have meaning
-beyond the raw data that they represent. In the IRC protocol
-a 'channel' is a defined concept at the symbolic level, with a 
-specific meaning to it. When we represent it using a Ruby
-string, we can only approximate the concept by starting with
+beyond their raw data contents. In the IRC protocol
+a channel is a defined concept at the symbolic level, with a 
+specific meaning to it. When we encode a channel name 
+as a Ruby string, we can only approximate the concept by starting with
 a more general structure and then applying logical rules to
 it to make it a more faithful representation of a concept
 it cannot directly express. This is not unlike translating
-a word from one spoken language to another which doesn't
-have a precisely equivalent concept.
+a word from one spoken language to another which cannot
+express the same exact concept using a single word.
 
 ## Every expressive syntax has at least a few corner cases
 
@@ -235,20 +212,19 @@ encoding rules are very permissive. Nearly any sequence of
 printable characters can be expressed within a Ruby string literal,
 and so there isn't much ambiguity in expression of ordinary strings.
 
-However, like all text-based formats, there are things that without
-special consideration, could lead to ambiguous or incomprehensible
-messages. For example, consider strings which have `"` characters
-within them:
+Despite its general-purpose nature, there are edge cases in Ruby's
+string literal syntax that could lead to ambiguous or incomprehensible messages. 
+For example, consider strings which have `"` characters within them:
 
 ```
 "My name is: "Gregory"\n"
 ```
 
-The above will generate syntax error in Ruby, becasuse it ends up
+The above will generate a syntax error in Ruby, becasuse it ends up
 getting parsed as the string `"My name is: "`, followed immediately
 by the constant `Gregory`, followed by the string `"\n"`. Ruby
 understandably has no way of interpreting that nonsense, so
-the parse fails. 
+the parser will fail.
 
 If we were only concerned with parsing string literals, we could 
 find a way to resolve these ambiguities by adding some special 
@@ -261,32 +237,29 @@ To get our string to parse, we'd need to do something like this:
 "My name is: \"Gregory\"\n"
 ```
 
-By writing <tt>\"</tt> instead of <tt>"</tt>, we tell the parser
+By writing `\"` instead of `"`, we tell the parser
 to treat the quote character as just another character in the string
-rather than a symbolic *end-of-string* marker. The <tt>\</tt> acts
+rather than a symbolic *end-of-string* marker. The `\` acts
 as an escape character, which is useful for resolving these sorts
-of ambiguities. The cost of course is that <tt>\</tt> itself
+of ambiguities. The cost of course is that `\` itself
 becomes a potential source of ambiguity, so you end up having to write
-<tt>\\</tt> instead of <tt>\</tt> to express backslashes in Ruby
+`\\` instead of `\` to express backslashes in Ruby
 string literals.
 
-Edge cases of this sort arise in any reasonably expressive text-based format.
+Edge cases of this sort arise in any expressive text-based format.
 They are often easy to resolve by adding a few more rules, but in many
 cases the addition of new processing rules add an even more subtle layer
-of corner cases to consider (as we've seen w. the <tt>\</tt> character).
-Resolving minor ambiguities comes natural to humans because we can
+of corner cases to consider (as we've seen w. the `\` character).
+Resolving minor ambiguities comes naturally to humans because we can
 guess at the meaning of a message, but cold-hearted computers
 can only follow the explicit rules we've given them.
 
-## What happens if we get rid of syntax entirely?
+## Can we free ourselves from the limitations of syntax?
 
-> Discusses bypassing syntax entirely as a means of overcoming syntactic
-restrictions / corner cases.
-
-One possible solution to the syntactic ambiguity problem is to represent information in
+One solution to the syntactic ambiguity problem is to represent information in
 a way that is convenient for computers, rather than optimizing for
 human readability. For example, here's the same array of strings
-represented as a raw sequence of bytes in Messagepack format:
+represented as a raw sequence of bytes in [MessagePack format]:
 
 ```
 93 a7 50 52 49 56 4d 53 47 b8 23 70 72 61 63 74 69 63 69 6e 67 2d 72 75 62 
@@ -321,8 +294,7 @@ message. This makes it harder to simply look at a message and know whether
 or not it is well-formed, and also makes it harder to notice the connections
 between the symbols and their meaning while reading an encoded message.
 
-Let's take a moment to consider a practical example. If you squint really 
-hard at the yellow boxes in the above diagram, you might
+If you squint really hard at the yellow boxes in the above diagram, you might
 guess that `93` describes the entire array, and that `A7`, `B8`, and `BD`
 all describe the strings that follow them. But `A7`, `B8`, and `BD` need to
 be expressing more than just the concept of "a string", otherwise there
@@ -331,7 +303,7 @@ discover the underlying rule by studying the example for a while, but
 it doesn't just jump out at you the way a pair of opening and closing
 brackets might.
 
-To avoid leaving you in suspense, here's the key idea: MessagePack
+To avoid leaving you in suspense, here's the key concept: MessagePack
 attempts to represent seralized data structures using as few bytes 
 as possible, while making processing as fast as possible. To do this,
 MessagePack uses type headers that tell you exactly what type of
@@ -340,7 +312,7 @@ the message. For small chunks of data, it conveys both of these
 pieces of information using a single byte!
 
 Take for example the first byte in the message, which has the
-hexidecimal value of `93`. MessagePack maps the values `90-9F`
+hexadecimal value of `93`. MessagePack maps the values `90-9F`
 to the concept of *arrays with up to 15 elements*. This
 means that an array with zero elements would have the type code 
 of `90` and an array with 15 elements would have the type code
@@ -354,7 +326,7 @@ their size, we just need to subtract the bottom of the range
 from each of them:
 
 ```ruby
-# note that results are in decimal, not hexidecimal
+# note that results are in decimal, not hexadecimal
 # String sizes are also computed explicitly for comparison
 
 >> 0xA7-0xA0
@@ -409,16 +381,16 @@ the type information and size of the encoded data, then
 read some content and decode it based on the specified type,
 then rinse and repeat.
 
-## Solving the conceptual mapping problem via abstract types
+## Separating structure from meaning via abstract types
 
 Even though representing our message in a binary format allowed
-us to make information extraction simpler and more precise, 
-the data type we used still corresponds to concepts that don't precisely
+us to make information extraction more precise, 
+the data type we used still corresponds to concepts that don't exactly
 fit the intended meaning of our message.
 
-One possible way to solve this conceptual problem is to completely 
+One possible way to solve this conceptual mapping problem is to completely 
 decouple structure from meaning in our message format. To do that,
-we could utilize MessagePack's abstract type mechanism --
+we could utilize MessagePack's application-specific type mechanism;
 resulting in a message similar to what you see below:
 
 ![](http://i.imgur.com/s3Rjgzz.png)
@@ -436,13 +408,11 @@ has been, but now the types have changed. Instead of an
 array composed of three strings, we now have an array that
 consists of elements that each have their own type.
 
-Although I've shown the contents of each object as text-based
-strings in the above diagram for the sake of readability,
+Although I've illustrated the contents of each object as text-based
+strings for the sake of readability,
 the MessagePack format does not assume that the data associated
-with extended types will be text-based. The decision of
-how to process this data (if at all) is left up to the decoder.
-
-FIXME: LINK A REFERENCE IMPLEMENTATION
+with abstract types will be text-based. The decision of
+how to process this data is left up to the decoder.
 
 Without getting into too many details, let's consider how abstract
 data types might be handled in a real Ruby program that processed
@@ -490,15 +460,14 @@ because the former was forced to allow spaces in strings
 until after the parsing phase, and the latter was forced
 to make a decision about whether to allow them or not
 before parsing could be completed at all. The use
-of abstract types removes this seemingly arbitrary
-limitation, allowing us to choose when and where to
+of abstract types removes this limitation, allowing us to choose when and where to
 apply our validations, if we apply them at all.
 
 Another dividing wall that abstract types seem to blur for
 us is the question of what the raw contents of our message
 actually represent. Using our own application-specific type
 definitions make it so that we never need to consider the
-contents of our messages to be "strings", except as an
+contents of our messages to be strings, except as an
 internal implementation detail. However, we rely
 absolutely on our decoder to convert data that has been
 tagged with these seemingly arbitrary type identifiers
@@ -508,9 +477,6 @@ somehow managed to make our information format more precise
 and more opaque at the same time.
 
 ## Combining human intuition with computational rigor 
-
-> Discusses formalizing syntax rules to allow for human
-readability without sacrificing precision.
 
 As we explored the MessagePack format, we saw that by coming up with very
 precise rules for processing an input stream, we can interpet messages by
@@ -525,12 +491,12 @@ want to express ourselves using something like the text-based IRC message
 format. Let's look at it one last time to reflect on its strengths
 and weaknesses:
 
-```ruby
-"PRIVMSG #practicing-ruby-testing :Seasons greetings to you all!\r\n"
+```
+PRIVMSG #practicing-ruby-testing :Seasons greetings to you all!\r\n
 ```
 
 The main feature of representing our message this way is that because we're
-familiar with the cocept of *commands* as programmers, it is easy to see
+familiar with the concept of *commands* as programmers, it is easy to see
 the structure of the message without even worrying about its exact syntax 
 rules: we know intuitively that `PRIVMSG` is the command being sent,
 and that `#practicing-ruby-testing` and `Seasons greetings to you all!`
@@ -614,16 +580,16 @@ Representing syntactic rules this way allows us to clearly understand
 their intended meaning, but that's not the only reason for the formality. 
 BNF-based grammar notations express syntactic rules so precisely that we can 
 use them not just as a specification for how to build a parser
-by hand, but as input data for a parser generator that can build
+by hand, but as input data for a code generator that can build
 a highly optimized parser for us. This not only saves development effort,
 it also reduces the likelihood that some obscure edge case will be
-"lost in translation" when converting grammar rules into raw
+lost in translation when converting grammar rules into raw
 processing code.
 
-To give a practical example of this technique in use, I converted the
+To demonstrate this technique in use, I converted the
 ABNF representation of the IRC message format into a grammar that is 
 readable by the Citrus parser generator. Apart from a few lines of 
-embedded Ruby code used to transform the input data, it should look 
+embedded Ruby code used to transform the input data, the following code look 
 conceptually similar to what you saw above:
 
 ```
@@ -694,57 +660,67 @@ p data[:params]
 #=> ["#practicing-ruby-testing", "Seasons greetings to you all!"]
 ```
 
-CONNECTING PARAGRAPH HERE
+In taking this approach, we're forced to accept certain constraints
+(like a set of complicated rules about where a `:` character can appear), but
+we avoid turning our entire message format into meaningless streams of numbers
+like `93` and `C7 01 08`. Even if there is a bit more magic going on in the
+conversion of a Citrus grammar into a functioning parser, we can still see
+the telltale signs of a deterministic process lurking just beneath the surface.
 
-## FIXME SUMMARY SECTION NAME
+The decision to express a message in a text-based format or a binary format
+is one rife with tradeoffs, as we've already seen from this single example.
+Now that you've seen both approaches, consider how you might implement
+a few different types of message formats. Would an audio file be better
+represented as binary file format, or a text-based format? How about
+a web page? Before you read this article you probably already knew the 
+answers to those questions, but now hopefully you have a better sense of 
+the tradeoffs involved in how we choose to represent information in
+software systems.
 
-Nothing inherently wrong w. naive approach... Could have just done this:
+## The philosophical conundrum of information exchange
 
-```ruby
-msg = "PRIVMSG #practicing-ruby-testing :Seasons greetings to you all!\r\n"
+Computers are mindless automatons, and humans are bad at numbers. This
+friction between people and their machines runs so deep that
+it's remarkable that any software gets built
+at all. But because there is gold to be found at the
+other side of the computational tarpit, we muddle through our differences 
+and somehow manage to make it all work.
 
-data = msg.match(/PRIVMSG (?<channel>.*) :(?<body>.*)\r\n/)
+To work together, computers and humans need a bridge between their mutually
+exclusive ways of looking at the world. And this is what coding is all about!
+We *encode* information into data and source code for computers to process,
+and then after the work is done, we *decode* the results of a computation back
+into a human-friendly message format. 
 
-p data[:channel]
-p data[:body]
-```
+Once everything is wired up, human users of software can think mostly 
+in terms of meaningful information exchange, and software systems only need to 
+worry about moving numbers around and doing basic arithmetic operations. 
+Although it isn't especially romantic, this is how programmers trick computers 
+and humans into cooperating with each other. When done well, people barely
+notice the presence of the software system at all, and focus entirely on
+their job to be done. This suits the computer just fine, as it does not
+care at all what puny humans think of it.
 
-we discover why something like C7 01 08 can be useful, or why placing a seemingly arbitrary : character in a string can make all the difference.
-We see the structures beneath the syntax and feel their similarities and differences. 
+As programmers, we must concern ourselves with the needs of both people 
+and machines. We are responsible for connecting two seemingly incompatible worlds,
+each with their own set of rules and expectations. This is what makes 
+our job hard, but is also what makes it rewarding and almost magical 
+at times. We've just explored some examples of the sorts of challenges that
+can arise along the boundary line between people and machine, 
+but I'm sure you can think of many more that are present in your own work. 
 
-> CREDIT: GEB.
+The next time you come across a tension point in your software design
+process, take a moment to  reflect on these ideas, and see what kind of 
+insights arise. Is the decision you're about to make meant to
+benefit the people who use your software, or the machines that run your code?
+Consider the tradeoffs carefully, but when in doubt, always choose to 
+satisfy the humans. :grin:
 
-
-----
-
-* Exposing meaning without knowing how to process something
-* What it means to understand a message (we'll focus on the first tier)
-* Direct representation vs indirect representation via generalized constructs
-* The inherent limitation of syntax, no matter how simple.
-* Processing without knowing meaning (messagepack)
-* Unification (formal grammars)
-
-* Commentary on the gradient of information formats from binary to English. (no
-free lunch, at each level you gain something and you lose something, so it's
-important to consider context if you need to design a format or protocol).
-There is also a weird cross-over effect in which they end up being so
-similar and so different at the same time.
-
-TODO: Come up with a suitable definition of "information",
-basically it's an interpeted message that we can discern the
-structure and meaning of.
-http://en.wikipedia.org/wiki/Information
-
-THOUGHT: As structure becomes more explicit, meaning becomes less specific.
-(or something like that)
-
-THOUGHT: The concept of an array (or any entitity) isn't tied up its
-representation, but instead exists in our heads (meaning), and in 
-the symbolic transformations carried out by the computer (structure).
-
-THOUGHT: The more expressive the "language", the more edge cases
-and rules you'll need to address, but the tradeoff is that you
-can precisely describe more complex structures.
+> **NOTE:** While writing this article, I was also reading "Gödel, Escher, Bach"
+in my spare time. Though I don't directly use any of its concepts here, Douglas
+Hofstadter deserves credit (and/or blame) for getting me to think deeply
+on *the meaning of meaning* and how it relates to software development.
 
 [ABNF]: http://en.wikipedia.org/wiki/Augmented_Backus%E2%80%93Naur_Form
 [^1]: For the sake of simplicity, I omitted the optional prefix which contains information about the sender of a message, because it involves somewhat complicated URI parsing. See [page 7 of the IRC specfication](http://tools.ietf.org/html/rfc2812#page-7) for details.
+[MessagePack format]: https://github.com/msgpack/msgpack/blob/master/spec.md
