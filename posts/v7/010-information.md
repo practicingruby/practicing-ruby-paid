@@ -1,20 +1,79 @@
-> CREDIT: GEB.
+Computers are mindless automatons, and humans are bad at numbers. This
+friction between people and their machines runs so deep that
+it's remarkable that any software gets built
+at all. But because there is gold to be found at the
+other side of the computational tarpit, we muddle through our differences 
+and somehow manage to make it all work.
 
-Start with a story about what happens when I type a message into an
-IRC channel, and how it gets to you. (Sockets, IRC protocol,
-client->server->client etc).
+To see things in a more positive light, consider what humans and computers 
+are actually good at. Humans excel at finding meaning in messages, turning 
+raw data into useful information. Computers have no sense of meaning,
+but given some clear instructions and properly formatted data, they can perform
+precise computations and transformations that humans could never do themselves
+in a thousand lifetimes.
 
-LOOKING AT DIFFERENT WAYS TO STORE, PROCESS, REPRESENT, AND INTERPRET
-A SINGLE SIMPLE MESSAGE.
+To work together, computers and humans need a bridge between their mutually
+exclusive ways of looking at the world. And this is what coding is all about!
+We *encode* information into data and source code for computers to process,
+and then after the work is done, we *decode* the results of a computation back
+into a human-friendly message format. 
 
----
+Once everything is wired up, human users of software can think solely 
+in terms of meaningful information exchange, and software systems only need to 
+worry about moving numbers around and doing basic arithmetic operations. 
+Although it isn't especially romantic, this is how programmers trick computers 
+and humans into cooperating with each other. When done well, people barely
+notice the presence of the software system at all, and focus entirely on
+their job to be done. This suits the computer just fine, as it does not
+care at all what puny humans think of it.
+
+As programmers, we must concern ourselves with the needs of both people 
+and machines. This is what makes our job hard, but is also what makes
+it rewarding and almost magical at times. This article explores the
+boundary lines between these two disjoint worlds, and the complicated
+decisions that need to be made in order to cross the divide.
 
 ## Where we see the forest, the computer sees only trees 
 
-**FIXME CONNECTING PARAGRAPH**
+Suppose that you want to send a friendly greeting to your friends 
+Alice, Bob, and Carol. To do this, you might log into your favorite
+chat service, join a group chat room, and then type in your
+message and hit the enter key. Moments later, your friends would
+see your message appear on their screens, and soon after that
+they would probably send you some sort of response. As long as
+their reply was somewhat intelligible, you could be reasonably 
+certain that your message was successfully communicated, without ever 
+concerning yourself with the technical details of the 
+underlying delivery mechanism.
 
-```ruby
-"PRIVMSG #practicing-ruby-testing :Seasons greetings to you all!\r\n"
+At the software level this scenario gets turned on its head. In
+the world of chat clients and servers, the meaning of the message
+does not matter, but its structure is of critical importance. Protocols 
+define the acceptable format for messages to be encoded in, and even
+small variations will result in failed communications. These constraints
+are not limited to internal implementation details -- they can also
+directly effect user behavior. The impact of a protocol on its users
+depends entirely on how it is designed, but one common limitation
+is restricted message sizes: On Twitter, a message needs to be
+expressed in 140 characters or less, and on IRC the limit is
+roughly a few hundred characters (FOOTNOTE).
+
+In addition to intentional constraints on message structure,
+there are always going to be incidental technical limitations
+that need to be dealt with -- the kinds of quirks that arise
+from having too much or too little expressiveness in our
+chosen message format. These are the interesting problems in
+information exchange, because they are not part of the job to
+be done but rather an emergent property of the particular way 
+we've chosen to do the job.
+
+To see the impact a communications medium can have on its messages,
+let's work through a practical example. The line of text below is
+representative of what IRC-based chat message look like when they 
+get sent over the wire:
+
+```
+PRIVMSG #practicing-ruby-testing :Seasons greetings to you all!\r\n
 ```
 
 Even if you've never used IRC before or looked into its implementation
@@ -23,7 +82,7 @@ of text. The structure is very simple, so it's fairly obvious that
 `PRIVMSG` represents a command, `#practicing-ruby-testing` represents
 the channel, and that the message to be delivered is 
 `"Seasons greetings to you all!"`. If I asked you to parse this
-string to produce the following array, you probably would have
+text to produce the following array, you probably would have
 no trouble doing so without any further instruction:
 
 ```ruby
@@ -652,6 +711,8 @@ p data[:body]
 
 we discover why something like C7 01 08 can be useful, or why placing a seemingly arbitrary : character in a string can make all the difference.
 We see the structures beneath the syntax and feel their similarities and differences. 
+
+> CREDIT: GEB.
 
 
 ----
