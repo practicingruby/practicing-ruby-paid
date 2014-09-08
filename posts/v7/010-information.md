@@ -1,9 +1,7 @@
-## FIXME: ADD NECESSARY LINKS AND FOOTNOTES, DO ONE MORE PROOFREADING PASS
-
-Suppose that you want to send a friendly greeting to your friends 
+Suppose that you want catch up with your friends 
 Alice, Bob, and Carol. To do this, you might log into your favorite
-chat service, join a group chat room, and then type in your
-message and hit the enter key. Moments later, your friends would
+chat service, join a group chat room, and then type in some
+sort of friendly greeting and hit the enter key. Moments later, your friends would
 see your message appear on their screens, and soon after that
 they would probably send you some sort of response. As long as
 their reply was somewhat intelligible, you could be reasonably 
@@ -11,31 +9,30 @@ certain that your message was successfully communicated, without
 giving much thought to the underlying delivery mechanism.
 
 Just beneath the surface of this everyday activity, we find a world 
-of precise rules and constraints governing (and limiting) our 
+of precise rules and constraints governing our 
 communications. In the world of chat clients and servers, the 
-meaning of the message does not matter, but its structure is 
+meaning of your message does not matter, but its structure is 
 of critical importance. Protocols define the format for messages 
 to be encoded in, and even small variations will result 
-in failed communications. 
+in delivery failures. 
 
-Designing a message format is not a purely technical concern
--- it can also directly affect human behavior. The impact of 
-a protocol on its users depends entirely on how it is designed, 
-but one common constraint is limited message sizes. On Twitter, 
+Even though much of this internal complexity is hidden by user interfaces,
+message format requirements are not a purely technical
+concern -- they can also directly affect human behavior. On Twitter, 
 a message needs to be expressed in 140 characters or less, and on 
-IRC the limit is only a few hundred characters. This single design 
-decision makes Twitter and IRC fundamentally different from
+IRC the limit is only a few hundred characters. This single
+constraint makes Twitter and IRC fundamentally different from
 email and web forums, so it's hard to overstate the impact
 that constraints can have on a communicaitons medium.
 
 In addition to intentional restrictions on message structure,
 there are always going to be incidental technical limitations
 that need to be dealt with -- the kinds of quirks that arise
-from having too much or too little expressiveness in our
-chosen message format. These are the interesting problems in
-information exchange, because they are not an essential part 
-of the job to be done but rather an emergent property of the 
-way we've decided to do the job.
+from having too much or too little expressiveness[^1] in a given
+message format. These unexpected obstacles are among the most 
+interesting problems in information exchange, because they are 
+not an essential part of the job to be done but rather an
+emergent property of the way we've decided to do the job. 
 
 As programmers, we're constantly working to bridge the gap
 between people and the machines that serve them. This article
@@ -59,7 +56,7 @@ Even if you've never used IRC before or looked into its implementation
 details, you can extract a great deal of meaning from this single line 
 of text. The structure is very simple, so it's fairly obvious that
 `PRIVMSG` represents a command, `#practicing-ruby-testing` represents
-the channel, and that the message to be delivered is 
+a channel, and that the message to be delivered is 
 `"Seasons greetings to you all!"`. If I asked you to parse this
 text to produce the following array, you probably would have
 no trouble doing so without any further instruction:
@@ -68,7 +65,7 @@ no trouble doing so without any further instruction:
 ["PRIVMSG", "#practicing-ruby-testing", "Seasons greetings to you all!"]
 ```
 
-But if this were a real project and not just an academic exercise,
+But if this were a real project and not just a thought experiment,
 you might start to wonder more about the nuances of the protocol. Here
 are a few questions that might come up after a few minutes of
 careful thought:
@@ -297,7 +294,7 @@ between the symbols and their meaning while reading an encoded message.
 If you squint really hard at the yellow boxes in the above diagram, you might
 guess that `93` describes the entire array, and that `A7`, `B8`, and `BD`
 all describe the strings that follow them. But `A7`, `B8`, and `BD` need to
-be expressing more than just the concept of "a string", otherwise there
+be expressing more than just the concept of a *string*, otherwise there
 would be no need to use three different values. You might be able to
 discover the underlying rule by studying the example for a while, but
 it doesn't just jump out at you the way a pair of opening and closing
@@ -363,7 +360,7 @@ in the bytestream.
 
 * Because we don't need to analyze the contents of the message
 to determine how to break it up into chunks, we don't need
-to worry about ambiguous interpretations of symbols in the data.
+to worry about ambiguous interpretation of symbols in the data.
 This avoids the need for introducing escape sequences for the
 sole purpose of making parsing easier.
 
@@ -415,7 +412,7 @@ with abstract types will be text-based. The decision of
 how to process this data is left up to the decoder.
 
 Without getting into too many details, let's consider how abstract
-data types might be handled in a real Ruby program that processed
+data types might be handled in a real Ruby program[^3] that processed
 MessagePack-based messages. You'd need to make an explicit mapping
 between type identifiers and the handlers for each type, perhaps
 using an API similar to what you see below:
@@ -431,7 +428,7 @@ command = MessagePackDecoder.unpack(raw_bytes, data_types)
 
 Each handler would be responsible for transforming raw byte arrays
 into meaningful data objects. For example, the following class might
-be used to convert command parameters (e.g. the channel name) into
+be used to convert message parameters (e.g. the channel name) into
 a text-based representation:
 
 ```ruby
@@ -447,7 +444,7 @@ end
 ```
 
 The key thing to note about the above code sample is that
-the `Parameter` does not simply convert the raw binary into
+the `Parameter` handler does not simply convert the raw binary into
 a string, it also applies a validation to ensure that the
 string contains no space characters. This is a bit of a
 contrived example, but it's meant to illustrate the ability
@@ -455,7 +452,7 @@ of custom type handlers to apply their own data integrity
 constraints.
 
 Earlier we had drawn a line in the sand between the 
-array-of-strings representation and the IRC command format
+array-of-strings representation and the IRC message format
 because the former was forced to allow spaces in strings
 until after the parsing phase, and the latter was forced
 to make a decision about whether to allow them or not
@@ -470,7 +467,7 @@ definitions make it so that we never need to consider the
 contents of our messages to be strings, except as an
 internal implementation detail. However, we rely
 absolutely on our decoder to convert data that has been
-tagged with these seemingly arbitrary type identifiers
+tagged with these arbitrary type identifiers
 into something that matches the underlying meaning of 
 the message. In introducing abstract types, we have 
 somehow managed to make our information format more precise 
@@ -548,8 +545,8 @@ rules, it is possible to describe a grammar in a way that is both
 human readable and computationally unambiguous.
 
 When we look at the real specification for the IRC message format,
-we see one of these metalanguages in. Below
-you'll see a nearly complete specification[^1] for the general form
+we see one of these metalanguages in use. Below
+you'll see a nearly complete specification[^2] for the general form
 of IRC messages expressed in [Augmented Backus–Naur Form][ABNF]:
 
 ```
@@ -588,7 +585,7 @@ processing code.
 
 To demonstrate this technique in use, I converted the
 ABNF representation of the IRC message format into a grammar that is 
-readable by the Citrus parser generator. Apart from a few lines of 
+readable by the [Citrus parser generator][]. Apart from a few lines of 
 embedded Ruby code used to transform the input data, the following code look 
 conceptually similar to what you saw above:
 
@@ -706,7 +703,7 @@ and machines. We are responsible for connecting two seemingly incompatible world
 each with their own set of rules and expectations. This is what makes 
 our job hard, but is also what makes it rewarding and almost magical 
 at times. We've just explored some examples of the sorts of challenges that
-can arise along the boundary line between people and machine, 
+can arise along the boundary line between people and machines, 
 but I'm sure you can think of many more that are present in your own work. 
 
 The next time you come across a tension point in your software design
@@ -721,6 +718,12 @@ in my spare time. Though I don't directly use any of its concepts here, Douglas
 Hofstadter deserves credit (and/or blame) for getting me to think deeply
 on *the meaning of meaning* and how it relates to software development.
 
-[ABNF]: http://en.wikipedia.org/wiki/Augmented_Backus%E2%80%93Naur_Form
-[^1]: For the sake of simplicity, I omitted the optional prefix which contains information about the sender of a message, because it involves somewhat complicated URI parsing. See [page 7 of the IRC specfication](http://tools.ietf.org/html/rfc2812#page-7) for details.
+[^1]: Having too much or too little expressiveness in a format is pretty much a guarantee, because even as we get closer to the *Goldilocks Zone*, increasingly subtle edge cases tend to proliferate. Since we can't expect perfection, we need to settle for expressiveness that's "good enough" and the tradeoffs that come along with it.
+
+[^2]: For the sake of simplicity, I omitted the optional prefix in IRC messages which contains information about the sender of a message, because it involves somewhat complicated URI parsing. See [page 7 of the IRC specification](http://tools.ietf.org/html/rfc2812#page-7) for details.
+
+[^3]: The abstract types API shown in this article is only a theoretical example, because the [official MessagePack library](https://github.com/msgpack/msgpack-ruby) for Ruby does not support application-specific types as of September 2014, even though they're documented in the specification. It may be a fun patch to write if you want to explore these topics more, though!
+
 [MessagePack format]: https://github.com/msgpack/msgpack/blob/master/spec.md
+[Citrus parser generator]: https://github.com/mjackson/citrus
+[ABNF]: http://en.wikipedia.org/wiki/Augmented_Backus%E2%80%93Naur_Form
