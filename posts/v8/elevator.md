@@ -18,6 +18,8 @@
 - https://www.youtube.com/watch?v=2PPgsDoyzmY
 (pull out and take notes from "Lift Doctor Q+A")
 
+
+
 - https://courses.cit.cornell.edu/ee476/FinalProjects/s2007/aoc6_dah64/aoc6_dah64/
 - http://en.wikipedia.org/wiki/Elevator
 - http://en.wikipedia.org/wiki/Elevator_algorithm
@@ -31,8 +33,10 @@
 - http://www.bestoldgames.net/simtower
 
 - https://news.ycombinator.com/item?id=3351649
-- http://www.jnd.org/dn.mss/are_the_new_elevators_bad_design.html
-- http://tierneylab.blogs.nytimes.com/2007/12/20/smart-elevators-dumb-people/?_r=0
+- http://www.jnd.org/dn.mss/are_the_new_elevators_bad_design.html (by donald norman)
+- http://tierneylab.blogs.nytimes.com/2007/12/20/smart-elevators-dumb-people/?_r=0a (references don norman)
+
+- Look in "Design of everyday things" for relevant sections on elevators (if any)
 
 > Optimize for average waiting time, but how to determine average waiting time reliably?
 > Also, where do you draw the line and switch to other behavior?
@@ -102,6 +106,45 @@ which could be plugged into the "real" simulator and analyzed in practice.
 > Investigate if this actually does lead to good average waiting time results.
 > If so, consider usability issues. 
 (I.e. contrast human optimal vs. mathematical optimal result)
+
+
+From NYT article:
+
+--------------------------------------------------
+
+> Another problem with new technology is that it’s usually introduced with
+glitches. When our building opened, people kept getting off on the 
+wrong floor because the elevator didn’t tell you which floor it was.
+Traditional elevators tell you where you are by lighting up each floor number
+as you reach it, but this elevator didn’t bother. It simply listed the next 
+stops it was making. If it was stopping at floors 4 and 7, when the doors 
+opened at the 4th floor, the electronic sign above the elevator doors would
+be displaying 7 – and people going to the 7th floor would see it and get off.
+It took months before engineers finally added a feature to the sign showing 
+which floor the elevator was on.
+
+> Every new technology has bugs in it,” Dr. Norman said. “But we compound the
+problem when we devise a whole new method of doing something and
+then we don’t’ work out the little details that annoy people. In some
+cases they get so annoyed they don’t use the technology at all. 
+But they don’t have much choice when it comes to using elevators.”
+
+--------------------------------------------------
+
+From Don Norman:
+
+> If the story ended there, I would not be sharing this experience with you. 
+> It turns out, I had to re-visit the same office about an hour later. 
+> On the first encounter I was alone in the waiting area, so there was one elevator, 
+> one person. Good, a match. The second visit however, there were a dozen people and four elevators open.
+> Finally in frustration I went to the lobby security guard. I give him credit for his courtesy,
+> he demonstrated that when you pad in your floor number,
+> the display also shows the letter for your ride "A-J". His next comment demonstrated 
+> how little people understand the problem. He said "It's easy once you get used to it". 
+> It may be easy for those who work in the building, but the offices there are to serve the public.
+> Most of the public visitors will only come once or twice and will never get past the learning curve.
+>
+> (See his reply in article)
 
 Possible scenarios:
 
