@@ -1,3 +1,9 @@
+> Write article like a good piece of journalism or in-depth story telling
+> with technical details and code as supporting materials, moreso than a
+> dry technical analysis. Ideally we'll seamlessly blend human-centric
+> anecdotes with some hard math/code, in the way that a good book like
+> GEB might.
+
 # FUNDAMENTAL ASSUMPTIONS: 
  > No *external, human visible* changes to existing elevator interface
  > No expensive or complex monitoring systems (simple weight sensors OK, and similar)
@@ -26,6 +32,7 @@
 
 - https://news.ycombinator.com/item?id=3351649
 - http://www.jnd.org/dn.mss/are_the_new_elevators_bad_design.html
+- http://tierneylab.blogs.nytimes.com/2007/12/20/smart-elevators-dumb-people/?_r=0
 
 > Optimize for average waiting time, but how to determine average waiting time reliably?
 > Also, where do you draw the line and switch to other behavior?
